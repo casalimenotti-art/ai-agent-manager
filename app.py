@@ -137,10 +137,11 @@ def make_plan(goal, context):
         plan.setdefault("approvals", [])
         plan.setdefault("missing_integrations", [])
         return plan, "api"
-    except Exception as e:
-        plan = fallback_plan(goal)
-        plan["assumptions"].append(f"Errore nella generazione AI: {type(e).__name__}. È stato creato un piano demo.")
-        return plan, "demo"
+  except Exception as e:
+    st.error(
+        f"Errore API OpenAI: {type(e).__name__}: {e}"
+    )
+    return fallback_plan(goal), "demo"
 
 def init_state():
     defaults = {
