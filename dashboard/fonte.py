@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 import agenti
 import chat
+import clienti
 import config
 import monitor
 import skill
@@ -66,6 +67,21 @@ class Fonte(ABC):
     def imposta_azienda(self, testo: str) -> dict: ...
 
     @abstractmethod
+    def clienti(self) -> list[dict]: ...      # lead dai CSV + stato visita
+
+    @abstractmethod
+    def imposta_visita(self, slug: str, stato: str, note: str, consenso_foto: bool) -> dict: ...
+
+    @abstractmethod
+    def salva_foto(self, slug: str, dati: bytes, consenso: bool) -> dict: ...
+
+    @abstractmethod
+    def foto(self, slug: str) -> list[dict]: ...  # [{nome, dati}]
+
+    @abstractmethod
+    def scheda_visita(self, slug: str) -> str: ...
+
+    @abstractmethod
     def esegui(self, prompt: str, cwd: str, resume: str | None = None) -> Iterator[dict]: ...  # eventi stream-json
 
     @abstractmethod
@@ -114,6 +130,21 @@ class FonteLocale(Fonte):
 
     def squadra(self):
         return skill.squadra_locale()
+
+    def clienti(self):
+        return clienti.clienti()
+
+    def imposta_visita(self, slug, stato, note, consenso_foto):
+        return clienti.imposta_visita(slug, stato, note, consenso_foto)
+
+    def salva_foto(self, slug, dati, consenso):
+        return clienti.salva_foto(slug, dati, consenso)
+
+    def foto(self, slug):
+        return clienti.foto(slug)
+
+    def scheda_visita(self, slug):
+        return clienti.scheda_visita(slug)
 
     def installa_squadra(self):
         return skill.installa_squadra_locale()
@@ -181,6 +212,16 @@ class FonteRemota(Fonte):
 
     def catalogo(self): return self._json("/api/catalogo")
     def squadra(self): return self._json("/api/squadra")
+    def clienti(self): return self._json("/api/clienti")
+    def scheda_visita(self, slug): return self._json(f"/api/clienti/{slug}/scheda").get("testo", "")
+    def foto(self, slug): return []            # le foto restano sul PC dove sono state scattate
+
+    def salva_foto(self, slug, dati, consenso):
+        return {"ok": False, "messaggio": "Le foto si salvano solo sul PC locale."}
+
+    def imposta_visita(self, slug, stato, note, consenso_foto):
+        with self._req("/api/clienti/visita", {"slug": slug, "stato": stato, "note": note, "consenso_foto": consenso_foto}) as r:
+            return json.load(r)
     def azienda(self): return self._json("/api/azienda")["testo"]
 
     def installa_squadra(self):

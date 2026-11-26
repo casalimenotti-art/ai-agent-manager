@@ -29,6 +29,8 @@ CLAUDE_BIN = os.environ.get("CLAUDE_BIN") or "claude"
 EVENTS_FILE = _path("GUARDIAN_EVENTS_FILE", "~/.claude/guardian/events.jsonl")
 PROJECTS_DIR = CLAUDE_HOME / "projects"
 SKILLS_DIR = CLAUDE_HOME / "skills"
+LEADS_DIR = _path("LEADS_DIR", str(BASE_DIR.parent / "leads"))     # CSV scritti da cacciatore-clienti
+VISITE_DIR = EVENTS_FILE.parent                                     # stati visite e foto (fuori dal repo)
 DEFAULT_PROJECTS = [p.strip() for p in (os.environ.get("DEFAULT_PROJECTS") or "").split(",") if p.strip()]
 
 REFRESH_S = int(_num("REFRESH_S", 3))

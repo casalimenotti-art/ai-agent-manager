@@ -66,7 +66,8 @@ if st.get_option("server.address") not in ("localhost", "127.0.0.1"):
     st.warning("⚠️ Il server ascolta su tutte le interfacce e la chat può far eseguire comandi a Claude: "
                "riavvia con `streamlit run dashboard/app.py --server.address localhost`.")
 st.markdown(theme.intestazione(fonte.nome, config.CHAT_PERMISSION_MODE, config.REFRESH_S), unsafe_allow_html=True)
-tab_stat, tab_costi, tab_agenti, tab_chat, tab_skill, tab_store = st.tabs(["Statistiche", "Costi & Output", "Agenti", "Agente centrale", "Skill", "Store"])
+tab_stat, tab_costi, tab_agenti, tab_clienti, tab_chat, tab_skill, tab_store = st.tabs(
+    ["Statistiche", "Costi & Output", "Agenti", "Clienti", "Agente centrale", "Skill", "Store"])
 
 
 # ---------------------------------------------------------------- 1. Statistiche
@@ -210,6 +211,62 @@ with tab_agenti:
         voce = lambda: [{"hooks": [{"type": "command", "command": f"python3 {hook}"}]}]
         st.json({"hooks": {"UserPromptSubmit": voce(), "PreToolUse": [{"matcher": "*", **voce()[0]}],
                            "PostToolUse": [{"matcher": "*", **voce()[0]}], "Stop": voce()}})
+
+
+# ---------------------------------------------------------------- 2b. Clienti (lead + visite di persona)
+with tab_clienti:
+    leads = fonte.clienti()
+    if not leads:
+        st.info("Nessun lead ancora. In Claude Code scrivi «usa cacciatore-clienti per trovare 20 clienti a Cagliari»: "
+                "i risultati compaiono qui (cartella leads/).")
+    else:
+        conta = lambda s: sum(1 for x in leads if x["stato"] == s)
+        k1, k2, k3, k4 = st.columns(4)
+        k1.markdown(theme.metrica("Lead", str(len(leads)), sub=f"{sum(1 for x in leads if x['adattamento'] >= 4)} con fit ≥ 4"), unsafe_allow_html=True)
+        k2.markdown(theme.metrica("Da visitare", str(conta("da visitare"))), unsafe_allow_html=True)
+        k3.markdown(theme.metrica("Interessati", str(conta("interessato")), sub=f"da richiamare {conta('richiamare')}"), unsafe_allow_html=True)
+        k4.markdown(theme.metrica("Visitati", str(conta("visitato") + conta("interessato") + conta("richiamare") + conta("no"))), unsafe_allow_html=True)
+        f1, f2, f3 = st.columns([2, 1, 1])
+        cat = f1.multiselect("Categoria", sorted({x.get("categoria", "—") for x in leads}), key="cl_cat", placeholder="Tutte")
+        minfit = f2.slider("Fit minimo", 0, 5, 3, key="cl_fit")
+        st_f = f3.selectbox("Stato", ["tutti"] + list(__import__("clienti").STATI), key="cl_stato")
+        vis = [x for x in leads if x["adattamento"] >= minfit and (not cat or x.get("categoria", "—") in cat)
+               and (st_f == "tutti" or x["stato"] == st_f)]
+        st.caption(f"{len(vis)} attività")
+        st.markdown(theme.tabella_clienti(vis), unsafe_allow_html=True)
+        if vis:
+            st.subheader("Scheda e visita")
+            scelto = st.selectbox("Attività", [x["azienda"] for x in vis], key="cl_sel")
+            c = next(x for x in vis if x["azienda"] == scelto)
+            cx, cy = st.columns([3, 2])
+            with cx:
+                st.markdown(f"**{c['azienda']}** · {c.get('categoria', '—')} · {c.get('zona', '—')}")
+                st.markdown(f"**Prova:** {c.get('prova', 'non verificato')}")
+                if c.get("opportunita"):
+                    st.markdown(f"**Opportunità:** {c['opportunita']}")
+                st.markdown(f"**Contatto pubblico:** {c.get('contatto', 'non pubblico')}")
+                if c.get("da_verificare", "").lower() in ("sì", "si", "yes", "true", "1"):
+                    st.warning("Da verificare prima della visita.")
+                sch = fonte.scheda_visita(c["slug"])
+                if sch:
+                    with st.expander("Scheda di visita preparata dall'agente"):
+                        st.markdown(sch)
+            with cy:
+                with st.form(f"visita_{c['slug']}"):
+                    stati = list(__import__("clienti").STATI)
+                    nuovo = st.selectbox("Stato", stati, index=stati.index(c["stato"]))
+                    note = st.text_area("Note", value=c["note"], height=110)
+                    cons = st.checkbox("Il titolare mi ha dato il permesso di fotografare", value=c["consenso_foto"])
+                    foto_up = st.file_uploader("Foto (JPG/PNG/WEBP)", type=["jpg", "jpeg", "png", "webp"], accept_multiple_files=True)
+                    if st.form_submit_button("Salva visita"):
+                        r = fonte.imposta_visita(c["slug"], nuovo, note, cons)
+                        (st.success if r["ok"] else st.error)(r["messaggio"])
+                        for fl in foto_up or []:
+                            rf = fonte.salva_foto(c["slug"], fl.getvalue(), cons)
+                            (st.success if rf["ok"] else st.error)(rf["messaggio"])
+                ft = fonte.foto(c["slug"])
+                if ft:
+                    st.image([f["dati"] for f in ft], caption=[f["nome"] for f in ft], width=120)
 
 
 # ---------------------------------------------------------------- 3. Agente centrale

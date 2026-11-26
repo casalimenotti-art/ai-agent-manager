@@ -319,3 +319,22 @@ def card_store(voce: dict) -> str:
     return (f"<div class='g-card g-skill'><div class='g-name'>{esc(voce['titolo'])} {stato}</div>"
             f"<div class='g-desc'>{esc(voce['descrizione'])}</div>"
             f"<div class='g-sub'>rischio: <b class='risk {classe}'>{esc(rischio)}</b> · {esc(voce['repo'])}</div></div>")
+
+
+def tabella_clienti(righe: list[dict]) -> str:
+    """Lead con punteggio, stato visita e prova. Tutto il testo viene da file scritti da agenti: sempre escapato."""
+    if not righe:
+        return ""
+    import clienti as _c
+    corpo = []
+    for r in righe:
+        fonte = _c.url_sicuro(r.get("fonte", ""))
+        link = f"<a href='{esc(fonte)}' target='_blank' rel='noopener noreferrer'>fonte</a>" if fonte else "—"
+        on = r["stato"] == "interessato"
+        corpo.append(
+            f"<tr><td class='num'><b>{r['adattamento']}</b>/5</td><td>{esc(r['azienda'])}</td><td>{esc(r.get('categoria', '—'))}</td>"
+            f"<td>{esc(r.get('zona', '—'))}</td><td><span class='pill {'on' if on else 'off'}'><i></i>{esc(r['stato'].upper())}</span></td>"
+            f"<td class='msg' title='{esc(r.get('prova', ''))}'>{esc((r.get('opportunita') or r.get('prova') or r.get('motivo') or '—')[:160])}</td>"
+            f"<td>{link}</td></tr>")
+    testa = "".join(f"<th>{h}</th>" for h in ("Fit", "Attività", "Categoria", "Zona", "Visita", "Opportunità / prova", "Fonte"))
+    return f"<div class='g-wrap'><table class='g-table'><thead><tr>{testa}</tr></thead><tbody>{''.join(corpo)}</tbody></table></div>"
