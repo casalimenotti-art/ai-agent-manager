@@ -129,3 +129,17 @@ def test_installa_catalogo_rifiuta_symlink_e_senza_skillmd(tmp_path, monkeypatch
     assert not (base / "frontend-design").exists()
     _patch_clone(monkeypatch, _repo_con_sottocartella(tmp_path / "b", scrivi_skill=False))
     assert not skill.installa_catalogo_locale("frontend-design", base)["ok"]
+
+
+def test_elenca_skill_tutte_le_origini(tmp_path, monkeypatch):
+    import config
+    home = tmp_path / "home"
+    def sk(p, nome):
+        (home / p).mkdir(parents=True); (home / p / "SKILL.md").write_text(f"---\nname: {nome}\ndescription: d {nome}\n---\n")
+    sk("skills/mia", "mia")
+    sk("skills/synced/uuid/docx", "docx")
+    sk("skills/synced/uuid/mia", "mia")                      # duplicato per nome: vince "installata"
+    sk("plugins/synced/a/b/skills/brainstorming", "brainstorming")
+    monkeypatch.setattr(config, "CLAUDE_HOME", home)
+    r = {s["nome"]: s["origine"] for s in skill.elenca_skill()}
+    assert r == {"mia": "installata", "docx": "account", "brainstorming": "plugin"}

@@ -239,12 +239,19 @@ with tab_skill:
     st.subheader("Skill installate")
     skills = fonte.skill_elenco()
     if not skills:
-        st.info("Nessuna skill in ~/.claude/skills/*/SKILL.md")
+        st.info("Nessuna skill trovata. Installane una dallo Store o da un URL GitHub qui sotto.")
+    f1, f2 = st.columns([3, 1])
+    cerca = f1.text_input("Cerca", placeholder="nome o parola della descrizione…", label_visibility="collapsed", key="cerca_skill")
+    origini = sorted({s.get("origine", "installata") for s in skills})
+    scelta = f2.selectbox("Origine", ["tutte"] + origini, label_visibility="collapsed", key="orig_skill")
+    skills = [s for s in skills if (scelta == "tutte" or s.get("origine", "installata") == scelta)
+              and (not cerca.strip() or cerca.strip().lower() in (s["nome"] + " " + s["descrizione"]).lower())]
+    st.caption(f"{len(skills)} skill")
     cols = st.columns(3)
     for i, s in enumerate(skills):
         with cols[i % 3]:
-            st.markdown(theme.card_skill(s["nome"], s["descrizione"]), unsafe_allow_html=True)
-            if st.button("Usa", key=f"usa_{s['cartella']}", use_container_width=True):
+            st.markdown(theme.card_skill(s["nome"], s["descrizione"], s.get("origine", "installata")), unsafe_allow_html=True)
+            if st.button("Usa", key=f"usa_{s.get('origine', 'i')}_{s['cartella']}", use_container_width=True):
                 st.session_state["skill_sel"] = s["nome"]
                 st.session_state.pop("skill_out", None)
     sel = st.session_state.get("skill_sel")

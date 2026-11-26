@@ -17,24 +17,43 @@ import config
 URL_GITHUB = re.compile(r"^https://github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)/([A-Za-z0-9._-]+?)(?:\.git)?/?$")
 
 
+def _meta(f: Path) -> dict:
+    try:
+        m = re.match(r"^---\s*\n(.*?)\n---", f.read_text(encoding="utf-8", errors="replace"), re.S)
+        meta = yaml.safe_load(m.group(1)) if m else {}
+    except (OSError, yaml.YAMLError):
+        meta = {}
+    return meta if isinstance(meta, dict) else {}
+
+
+def _radici(skills_dir: Path | None) -> list[tuple[str, list[Path]]]:
+    """(origine, file SKILL.md) in ordine di priorità. Con skills_dir esplicito guarda solo lì (test)."""
+    if skills_dir is not None:
+        return [("installata", sorted(skills_dir.glob("*/SKILL.md")))]
+    home = config.CLAUDE_HOME
+    return [
+        ("installata", sorted(f for f in (home / "skills").glob("*/SKILL.md"))),
+        ("account", sorted((home / "skills" / "synced").glob("*/*/SKILL.md"))),   # skill sincronizzate dal tuo account
+        ("plugin", sorted(home.glob("plugins/*/*/*/skills/*/SKILL.md"))),          # skill dei plugin
+    ]
+
+
 def elenca_skill(skills_dir: Path = None) -> list[dict]:
-    base = skills_dir or config.SKILLS_DIR
-    out = []
-    for f in sorted(base.glob("*/SKILL.md")):
-        meta: dict = {}
-        try:
-            m = re.match(r"^---\s*\n(.*?)\n---", f.read_text(encoding="utf-8", errors="replace"), re.S)
-            if m:
-                meta = yaml.safe_load(m.group(1)) or {}
-        except (OSError, yaml.YAMLError):
-            pass
-        if not isinstance(meta, dict):
-            meta = {}
-        out.append({
-            "nome": str(meta.get("name") or f.parent.name),
-            "descrizione": " ".join(str(meta.get("description") or "(nessuna descrizione)").split()),
-            "cartella": f.parent.name,
-        })
+    """Tutte le skill visibili a Claude Code su questa macchina, senza duplicati per nome (vince la prima origine)."""
+    out, visti = [], set()
+    for origine, files in _radici(skills_dir):
+        for f in files:
+            meta = _meta(f)
+            nome = str(meta.get("name") or f.parent.name)
+            if nome in visti:
+                continue
+            visti.add(nome)
+            out.append({
+                "nome": nome,
+                "descrizione": " ".join(str(meta.get("description") or "(nessuna descrizione)").split()),
+                "cartella": f.parent.name,
+                "origine": origine,
+            })
     return out
 
 

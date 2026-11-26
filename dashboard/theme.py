@@ -179,9 +179,13 @@ def metrica(label: str, valore: str, unita: str = "", sub: str = "", pct: float 
     return f"<div class='g-card'><div class='g-label'>{esc(label)}</div><div class='g-value'>{esc(valore)}{u}</div>{gauge}{s}</div>"
 
 
-def card_skill(nome: str, descrizione: str) -> str:
+ETICHETTA_ORIGINE = {"installata": "installata", "account": "dal tuo account", "plugin": "plugin"}
+
+
+def card_skill(nome: str, descrizione: str, origine: str = "installata") -> str:
     d = descrizione if len(descrizione) < 170 else descrizione[:167] + "…"
-    return f"<div class='g-card g-skill'><div class='g-name'>{esc(nome)}</div><div class='g-desc'>{esc(d)}</div></div>"
+    return (f"<div class='g-card g-skill'><div class='g-name'>{esc(nome)}</div><div class='g-desc'>{esc(d)}</div>"
+            f"<div class='g-sub'>{esc(ETICHETTA_ORIGINE.get(origine, origine))}</div></div>")
 
 
 def tabella_agenti(righe: list[dict], fa) -> str:
