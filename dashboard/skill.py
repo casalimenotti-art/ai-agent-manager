@@ -123,6 +123,22 @@ CATALOGO = [
     {"id": "web-design-guidelines", "repo": "vercel-labs/agent-skills", "path": "skills/web-design-guidelines", "rischio": "basso",
      "titolo": "Web Design Guidelines", "descrizione": "Audit di UI, accessibilità e UX contro le Web Interface Guidelines di Vercel."},
 ]
+CATALOGO += [
+    # Da affaan-m/ECC (progetto di un singolo autore, MIT): SOLO queste skill, lette per intero e di solo testo.
+    # Non si installano mai l'installer, gli hook (28, girano a ogni comando) né le altre ~320 skill.
+    {"id": "ecc-frontend-patterns", "repo": "affaan-m/ECC", "path": "skills/frontend-patterns", "rischio": "basso",
+     "titolo": "Frontend Patterns (ECC)", "descrizione": "Schemi per React e Next.js: stato, prestazioni, componenti."},
+    {"id": "ecc-frontend-a11y", "repo": "affaan-m/ECC", "path": "skills/frontend-a11y", "rischio": "basso",
+     "titolo": "Frontend A11y (ECC)", "descrizione": "Accessibilità: HTML semantico, ARIA, tastiera, focus, lettori di schermo."},
+    {"id": "ecc-design-system", "repo": "affaan-m/ECC", "path": "skills/design-system", "rischio": "basso",
+     "titolo": "Design System (ECC)", "descrizione": "Estrae token di design da un codice esistente o ne verifica la coerenza visiva."},
+    {"id": "ecc-seo", "repo": "affaan-m/ECC", "path": "skills/seo", "rischio": "basso",
+     "titolo": "SEO (ECC)", "descrizione": "Audit e miglioramenti SEO: tecnica, on-page, dati strutturati, Core Web Vitals."},
+    {"id": "ecc-security-review", "repo": "affaan-m/ECC", "path": "skills/security-review", "rischio": "basso",
+     "titolo": "Security Review (ECC)", "descrizione": "Checklist di sicurezza per autenticazione, input utente, segreti, API e pagamenti."},
+    {"id": "ecc-api-design", "repo": "affaan-m/ECC", "path": "skills/api-design", "rischio": "basso",
+     "titolo": "API Design (ECC)", "descrizione": "Progettazione di API REST: nomi, codici di stato, paginazione, versioni, limiti."},
+]
 CATALOGO.append({
     "id": "graphify", "tipo": "pypi", "repo": "Graphify-Labs/graphify", "path": "skills/graphify", "rischio": "medio",
     "titolo": "Graphify",
