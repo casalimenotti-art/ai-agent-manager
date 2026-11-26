@@ -185,6 +185,25 @@ def vista_agenti():
 
 with tab_agenti:
     vista_agenti()
+    st.subheader("Squadra di agenti")
+    st.caption("Agenti Claude Code specializzati. Fanno solo ricerca e bozze: nessuno invia messaggi o contatta clienti da solo.")
+    membri = fonte.squadra()
+    cs = st.columns(3)
+    for i, m in enumerate(membri):
+        with cs[i % 3]:
+            st.markdown(theme.card_skill(m["nome"], m["descrizione"], "installata" if m["installata"] else "da installare"), unsafe_allow_html=True)
+    if any(not m["installata"] for m in membri) and st.button("Installa la squadra", type="primary", key="inst_squadra"):
+        res = fonte.installa_squadra()
+        (st.success if res["ok"] else st.error)(res["messaggio"])
+        st.rerun()
+    with st.form("form_azienda"):
+        st.markdown("#### Profilo azienda · lo leggono tutti gli agenti")
+        testo_az = st.text_area("Cosa vendi, a chi, zona, prezzo, cosa NON fare", value=fonte.azienda(), height=200)
+        if st.form_submit_button("Salva profilo"):
+            res = fonte.imposta_azienda(testo_az)
+            (st.success if res["ok"] else st.error)(res["messaggio"])
+    st.caption("Per usarli, in Claude Code scrivi: «usa cacciatore-clienti per trovare 20 clienti a …», poi «redattore-outreach» per le bozze "
+               "e «analista-risultati» quando hai gli esiti.")
     with st.expander("Attivare gli hook (aggiornamento immediato, opzionale)"):
         hook = (Path(__file__).resolve().parent / "hooks" / "guardian_hook.py")
         st.markdown("Aggiungi in `~/.claude/settings.json` (Guardian **non** lo modifica da solo):")

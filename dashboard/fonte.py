@@ -54,6 +54,18 @@ class Fonte(ABC):
     def installa_catalogo(self, id_skill: str) -> dict: ...  # {ok, messaggio}
 
     @abstractmethod
+    def squadra(self) -> list[dict]: ...      # agenti Claude Code della squadra + flag "installata"
+
+    @abstractmethod
+    def installa_squadra(self) -> dict: ...
+
+    @abstractmethod
+    def azienda(self) -> str: ...
+
+    @abstractmethod
+    def imposta_azienda(self, testo: str) -> dict: ...
+
+    @abstractmethod
     def esegui(self, prompt: str, cwd: str, resume: str | None = None) -> Iterator[dict]: ...  # eventi stream-json
 
     @abstractmethod
@@ -99,6 +111,18 @@ class FonteLocale(Fonte):
 
     def catalogo(self):
         return skill.catalogo_locale()
+
+    def squadra(self):
+        return skill.squadra_locale()
+
+    def installa_squadra(self):
+        return skill.installa_squadra_locale()
+
+    def azienda(self):
+        return skill.leggi_azienda()
+
+    def imposta_azienda(self, testo):
+        return skill.scrivi_azienda(testo)
 
     def installa_catalogo(self, id_skill):
         return skill.installa_catalogo_locale(id_skill)
@@ -156,6 +180,16 @@ class FonteRemota(Fonte):
             yield {"type": "guardian_end", "returncode": -1, "stderr": f"Agent remoto: {e}"}
 
     def catalogo(self): return self._json("/api/catalogo")
+    def squadra(self): return self._json("/api/squadra")
+    def azienda(self): return self._json("/api/azienda")["testo"]
+
+    def installa_squadra(self):
+        with self._req("/api/squadra/installa", {}) as r:
+            return json.load(r)
+
+    def imposta_azienda(self, testo):
+        with self._req("/api/azienda", {"testo": testo}) as r:
+            return json.load(r)
 
     def installa_catalogo(self, id_skill):
         try:

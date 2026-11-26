@@ -179,3 +179,33 @@ def test_graphify_errore_pip_non_crea_nulla(tmp_path, monkeypatch):
 def test_catalogo_graphify_dispatch(tmp_path, monkeypatch):
     monkeypatch.setattr(skill, "installa_graphify_locale", lambda b=None: {"ok": True, "messaggio": "ok"})
     assert skill.installa_catalogo_locale("graphify", tmp_path)["ok"]
+
+
+def test_squadra_installa_senza_sovrascrivere(tmp_path):
+    src, dst = tmp_path / "s", tmp_path / "dst"; src.mkdir()
+    (src / "a.md").write_text("---\nname: a\ndescription: d\n---\nx"); (src / "b.md").write_text("---\nname: b\ndescription: d\n---\ny")
+    (src / "azienda.template.md").write_text("t")
+    assert [v["nome"] for v in skill.squadra_locale(src, dst)] == ["a", "b"]
+    dst.mkdir(); (dst / "a.md").write_text("MIO")
+    r = skill.installa_squadra_locale(src, dst)
+    assert "b" in r["messaggio"] and (dst / "a.md").read_text() == "MIO" and (dst / "b.md").is_file()
+    assert "già tutti" in skill.installa_squadra_locale(src, dst)["messaggio"]
+
+
+def test_squadra_reale_ha_regole_di_sicurezza():
+    nomi = {v["nome"]: v for v in skill.squadra_locale()}
+    assert {"cacciatore-clienti", "redattore-outreach", "analista-risultati"} <= set(nomi)
+    for f in skill.SQUADRA_DIR.glob("*.md"):
+        if f.name.endswith(".template.md"):
+            continue
+        tools = skill._meta(f).get("tools", "")
+        assert "Bash" not in tools and "Edit" not in tools     # nessun agente esegue comandi né modifica file altrui
+    assert "WebSearch" in skill._meta(skill.SQUADRA_DIR / "cacciatore-clienti.md")["tools"]
+    assert "WebSearch" not in skill._meta(skill.SQUADRA_DIR / "redattore-outreach.md")["tools"]
+
+
+def test_azienda_scrittura(tmp_path):
+    p = tmp_path / "x" / "azienda.md"
+    assert skill.scrivi_azienda("vendo X", p)["ok"] and skill.leggi_azienda(p) == "vendo X"
+    assert not skill.scrivi_azienda("a" * 20_001, p)["ok"] and not skill.scrivi_azienda(5, p)["ok"]
+    assert "Cosa vendiamo" in skill.leggi_azienda(tmp_path / "manca.md")   # modello se il file non esiste

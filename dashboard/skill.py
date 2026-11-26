@@ -221,3 +221,53 @@ def installa_catalogo_locale(id_skill: str, skills_dir: Path = None) -> dict:
         return {"ok": True, "messaggio": f"'{nome}' installata (commit {sha[:7]}) in {dest}"}
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ----------------------------------------------------------------- squadra di agenti Claude Code
+SQUADRA_DIR = config.BASE_DIR / "squadra"
+AGENTI_DIR = config.CLAUDE_HOME / "agents"
+AZIENDA_FILE = config.EVENTS_FILE.parent / "azienda.md"
+_MAX_AZIENDA = 20_000
+
+
+def squadra_locale(squadra_dir: Path = None, agenti_dir: Path = None) -> list[dict]:
+    src, dst = squadra_dir or SQUADRA_DIR, agenti_dir or config.CLAUDE_HOME / "agents"
+    out = []
+    for f in sorted(src.glob("*.md")):
+        if f.name.endswith(".template.md"):
+            continue
+        meta = _meta(f)
+        out.append({"nome": str(meta.get("name") or f.stem), "descrizione": " ".join(str(meta.get("description", "")).split()),
+                    "file": f.name, "installata": (dst / f.name).is_file()})
+    return out
+
+
+def installa_squadra_locale(squadra_dir: Path = None, agenti_dir: Path = None) -> dict:
+    """Copia gli agenti mancanti in ~/.claude/agents (mai sovrascrivere)."""
+    src, dst = squadra_dir or SQUADRA_DIR, agenti_dir or config.CLAUDE_HOME / "agents"
+    nuovi = []
+    for v in squadra_locale(src, dst):
+        if not v["installata"]:
+            dst.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src / v["file"], dst / v["file"])
+            nuovi.append(v["nome"])
+    return {"ok": True, "messaggio": ("Installati: " + ", ".join(nuovi)) if nuovi else "Erano già tutti installati."}
+
+
+def leggi_azienda(path: Path = None) -> str:
+    p = path or config.EVENTS_FILE.parent / "azienda.md"
+    try:
+        return p.read_text(encoding="utf-8")
+    except OSError:
+        return (SQUADRA_DIR / "azienda.template.md").read_text(encoding="utf-8")
+
+
+def scrivi_azienda(testo: str, path: Path = None) -> dict:
+    if not isinstance(testo, str) or len(testo) > _MAX_AZIENDA:
+        return {"ok": False, "messaggio": f"Testo non valido (max {_MAX_AZIENDA} caratteri)."}
+    p = path or config.EVENTS_FILE.parent / "azienda.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(testo, encoding="utf-8")
+    tmp.replace(p)
+    return {"ok": True, "messaggio": f"Profilo salvato in {p}"}
