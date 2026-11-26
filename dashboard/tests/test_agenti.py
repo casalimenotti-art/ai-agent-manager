@@ -158,3 +158,46 @@ def test_burn_rate_ultime_5_ore(tmp_path):
     un_msg = agenti.costo("claude-sonnet-5-5", 10, 1_000_000, 1000, 500)
     assert k["ultime_5h"] == pytest.approx(un_msg, abs=1e-3)       # il messaggio di 6 ore fa è escluso
     assert k["burn_orario"] == pytest.approx(un_msg / 5, abs=1e-3)
+
+
+def _tool_use(t, tid, nome, inp, mid="mu"):
+    return {"type": "assistant", "timestamp": iso(t), "cwd": "/p/app", "uuid": mid + tid,
+            "message": {"id": mid + tid, "model": "claude-sonnet-5-5",
+                        "content": [{"type": "tool_use", "id": tid, "name": nome, "input": inp}], "usage": {}}}
+
+
+def _tool_result(t, tid, testo):
+    return {"type": "user", "timestamp": iso(t), "cwd": "/p/app",
+            "message": {"content": [{"type": "tool_result", "tool_use_id": tid, "content": testo}]}}
+
+
+def test_attivita_delega_web_e_risultati_mascherati(tmp_path):
+    now = time.time()
+    scrivi(tmp_path / "projects" / "x" / "s1.jsonl", [
+        _tool_use(now - 50, "t1", "Agent", {"subagent_type": "cacciatore-clienti", "description": "Cerca ristoranti", "prompt": "Trova 10 ristoranti a Cagliari"}),
+        _tool_use(now - 40, "t2", "WebSearch", {"query": "ristoranti Cagliari senza sito"}),
+        _tool_result(now - 39, "t2", "Risultati: A, B, C"),
+        _tool_use(now - 30, "t3", "WebFetch", {"url": "https://example.com/a", "prompt": "c'è un sito?"}),
+        _tool_result(now - 29, "t3", [{"type": "text", "text": "La pagina non esiste"}]),
+        _tool_use(now - 20, "t4", "Bash", {"command": "curl -H 'Authorization: Bearer abcdefghijklmnop12345' x && export API_KEY=supersegreto"}),
+        _tool_use(now - 10, "t5", "Write", {"file_path": "leads/2026-11-26-bar.csv", "content": "NON DEVE COMPARIRE"}),
+        asst(now - 5, "m9", testo="Ho finito la ricerca"),
+    ])
+    ev = indice(tmp_path).attivita(limite=50)
+    tipi = [e["tipo"] for e in ev]
+    assert tipi[:2] == ["dice", "file"] and set(tipi) >= {"delega", "web-ricerca", "web-apri", "comando", "file"}   # più recenti prima
+    per = {e["tipo"]: e for e in ev}
+    assert per["delega"]["testo"].startswith("cacciatore-clienti") and "10 ristoranti" in per["delega"]["brief"]
+    assert per["web-apri"]["url"] == "https://example.com/a" and per["web-apri"]["risultato"] == "La pagina non esiste"
+    assert per["web-ricerca"]["risultato"] == "Risultati: A, B, C"
+    tutto = json.dumps(ev)
+    assert "abcdefghijklmnop12345" not in tutto and "supersegreto" not in tutto and "NON DEVE COMPARIRE" not in tutto
+    assert per["file"]["testo"] == "leads/2026-11-26-bar.csv"
+
+
+def test_attivita_filtri_e_limite(tmp_path):
+    now = time.time()
+    scrivi(tmp_path / "projects" / "x" / "s1.jsonl", [_tool_use(now - i, f"t{i}", "WebSearch", {"query": f"q{i}"}) for i in range(1, 8)])
+    ix = indice(tmp_path)
+    assert len(ix.attivita(limite=3)) == 3 and ix.attivita(limite=3)[0]["testo"] == "q1"
+    assert ix.attivita(tipi={"delega"}) == []

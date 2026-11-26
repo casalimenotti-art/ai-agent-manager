@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import threading
 from pathlib import Path
@@ -10,15 +11,22 @@ from typing import Iterator
 import config
 
 
-def costruisci_comando(resume: str | None = None) -> list[str]:
+def agente_installato(nome: str | None) -> bool:
+    """L'agente esiste in ~/.claude/agents (o è un nome sicuro)? Se no, non lo si passa a claude (darebbe errore)."""
+    return bool(nome) and bool(re.fullmatch(r"[a-z0-9-]{1,64}", nome)) and (config.CLAUDE_HOME / "agents" / f"{nome}.md").is_file()
+
+
+def costruisci_comando(resume: str | None = None, agente: str | None = None) -> list[str]:
     cmd = [config.CLAUDE_BIN, "-p", "--output-format", "stream-json", "--verbose",
            "--include-partial-messages", "--permission-mode", config.CHAT_PERMISSION_MODE]
+    if agente and agente_installato(agente):
+        cmd += ["--agent", agente]
     if resume:
         cmd += ["--resume", resume]
     return cmd
 
 
-def esegui_locale(prompt: str, cwd: str, resume: str | None = None) -> Iterator[dict]:
+def esegui_locale(prompt: str, cwd: str, resume: str | None = None, agente: str | None = None) -> Iterator[dict]:
     """Lancia claude e produce gli eventi stream-json (dict).
 
     Il prompt va su stdin (equivale a `claude -p "<domanda>"` ma evita problemi con
@@ -31,7 +39,7 @@ def esegui_locale(prompt: str, cwd: str, resume: str | None = None) -> Iterator[
         return
     try:
         proc = subprocess.Popen(
-            costruisci_comando(resume), cwd=cartella, stdin=subprocess.PIPE,
+            costruisci_comando(resume, agente), cwd=cartella, stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", bufsize=1,
         )
     except FileNotFoundError:

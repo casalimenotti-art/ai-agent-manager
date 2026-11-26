@@ -32,4 +32,5 @@ Sono una stima: con un abbonamento a tariffa fissa non è ciò che paghi. Overri
 senza sovrascrivere nulla e con il commit di origine registrato in `.guardian-source.json`.
 
 **Modalità demo (dati finti).** Per mostrare Guardian a soci e clienti senza esporre i progetti veri: doppio clic su `avvia-demo.bat` (Windows) o `avvia-demo.sh`. Chat, installazioni e foto sono disattivate.
-**Documenti.** `PROMPT_FINALE.md` (finire la dashboard), `PROMPT_OBIETTIVO_10K.md` (attività commerciale), `SETUP_PC.md` (browser e PC in sicurezza), `docs/spec/` (specifiche), `docs/graph/GRAPH_REPORT.md` (grafico del codice).
+**Spazi.** Centro · Consumi · Costi · Agenti (feed live: deleghe, ricerche, pagine aperte) · Clienti · Siti demo · Guardian (chat col manager + microfono) · Skill · Store.
+**Documenti.** `PROMPT_30_CLIENTI.md` (operazione di oggi), `PROMPT_FINALE.md` (finire la dashboard), `PROMPT_OBIETTIVO_10K.md` (attività commerciale), `SETUP_PC.md` (browser e PC in sicurezza), `docs/spec/` (specifiche), `docs/graph/GRAPH_REPORT.md` (grafico del codice).

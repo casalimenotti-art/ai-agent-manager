@@ -38,6 +38,8 @@ IDLE_THRESHOLD_S = _num("IDLE_THRESHOLD_S", 120)
 HISTORY_S = _num("HISTORY_S", 120)
 AGENT_MAX_AGE_H = _num("AGENT_MAX_AGE_H", 24)
 CHAT_TIMEOUT_S = _num("CHAT_TIMEOUT_S", 900)
+MANAGER_AGENT = os.environ.get("MANAGER_AGENT") or "guardian-manager"   # agente usato nella tab Guardian
+WHISPER_MODEL = os.environ.get("WHISPER_MODEL") or "base"          # tiny | base | small (più preciso, più lento)
 CHAT_PERMISSION_MODE = os.environ.get("CHAT_PERMISSION_MODE") or "default"
 
 # Prezzi USD / milione di token, da https://platform.claude.com/docs/en/about-claude/pricing (verificati 2026-11-26).

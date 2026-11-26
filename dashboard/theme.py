@@ -8,6 +8,7 @@ Nessun font/risorsa esterna: tutto è locale.
 from __future__ import annotations
 
 import html
+import re
 
 import altair as alt
 import pandas as pd
@@ -338,3 +339,85 @@ def tabella_clienti(righe: list[dict]) -> str:
             f"<td>{link}</td></tr>")
     testa = "".join(f"<th>{h}</th>" for h in ("Fit", "Attività", "Categoria", "Zona", "Visita", "Opportunità / prova", "Fonte"))
     return f"<div class='g-wrap'><table class='g-table'><thead><tr>{testa}</tr></thead><tbody>{''.join(corpo)}</tbody></table></div>"
+
+
+# ---------------------------------------------------------------- navigazione, transizioni, feed agenti
+CSS_EXTRA = """
+<style>
+/* Transizione tra spazi: ogni sezione vive in un contenitore con chiave diversa, quindi al cambio il DOM nasce nuovo
+   e l'animazione parte una volta sola (i fragment che si aggiornano dentro non la rifanno). */
+[class*="st-key-sez_"] { animation: g-entra .34s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes g-entra { from { opacity:0; transform:translateY(16px) scale(.992); filter:blur(3px); }
+                     to   { opacity:1; transform:none; filter:none; } }
+@media (prefers-reduced-motion: reduce) { [class*="st-key-sez_"] { animation:none; } }
+
+/* barra di navigazione */
+[data-testid="stButtonGroup"] [role="radiogroup"] { gap:.35rem; flex-wrap:wrap; }
+button[data-variant="segmented_control"] { background:rgba(13,16,32,.85) !important; color:#8b97b3 !important;
+  border:1px solid #1c2340 !important; border-radius:0 !important; letter-spacing:.14em; text-transform:uppercase;
+  font-size:.7rem !important; padding:.5rem .9rem !important; transition:color .18s, border-color .18s, box-shadow .18s, background .18s; }
+button[data-variant="segmented_control"]:hover { color:#e8f1ff !important; border-color:rgba(0,240,255,.5) !important; }
+button[data-variant="segmented_control"][data-selected="true"] { color:#00f0ff !important; border-color:#00f0ff !important;
+  background:rgba(0,240,255,.10) !important; box-shadow:0 0 16px rgba(0,240,255,.28), inset 0 -2px 0 #00f0ff; }
+
+/* tessere del Centro */
+.g-tile { position:relative; background:linear-gradient(180deg, rgba(18,23,46,.9), rgba(10,12,26,.92)); border:1px solid #1c2340;
+  padding:1.05rem 1.1rem; min-height:8.2rem; margin-bottom:.4rem; transition:border-color .2s, box-shadow .2s; }
+.g-tile::before { content:""; position:absolute; top:-1px; left:-1px; width:14px; height:14px; border-top:2px solid #00f0ff; border-left:2px solid #00f0ff; }
+.g-tile:hover { border-color:rgba(0,240,255,.5); box-shadow:0 0 24px rgba(0,240,255,.12); }
+.g-tile .t { font-size:.72rem; letter-spacing:.2em; text-transform:uppercase; color:#8b97b3; }
+.g-tile .v { font-size:2rem; font-weight:700; margin-top:.3rem; font-variant-numeric:tabular-nums; color:#e8f1ff; }
+.g-tile .s { font-size:.78rem; color:#a3aecb; margin-top:.3rem; }
+
+/* feed degli agenti */
+.g-feed { border:1px solid #1c2340; background:rgba(10,12,26,.72); max-height:560px; overflow-y:auto; }
+.g-ev { display:grid; grid-template-columns:62px 1fr; gap:.2rem .8rem; padding:.7rem .9rem; border-bottom:1px solid rgba(28,35,64,.6); font-size:.8rem; }
+.g-ev:hover { background:rgba(0,240,255,.035); }
+.g-ev .ora { color:#8b97b3; font-variant-numeric:tabular-nums; }
+.g-ev .chi { color:#8b97b3; font-size:.7rem; }
+.g-ev .tag { display:inline-block; padding:.05rem .5rem; margin-right:.55rem; font-size:.62rem; letter-spacing:.14em; border:1px solid; text-transform:uppercase; }
+.tag.delega { color:#ff6ee7; border-color:rgba(255,43,214,.55); } .tag.web { color:#00d4f2; border-color:rgba(0,212,242,.55); }
+.tag.file { color:#fcee0a; border-color:rgba(252,238,10,.5); } .tag.comando { color:#ff8a6b; border-color:rgba(255,95,69,.55); }
+.tag.dice, .tag.altro { color:#a3aecb; border-color:#2a3566; }
+.g-ev .corpo { color:#e8f1ff; word-break:break-word; } .g-ev .sub { grid-column:2; color:#a3aecb; font-size:.76rem; }
+.g-ev .sub b { color:#00d4f2; font-weight:600; } .g-ev a { color:#00d4f2; }
+.g-ev.nuovo { animation:g-nuovo 1.2s ease-out; }
+@keyframes g-nuovo { from { background:rgba(0,240,255,.18); } to { background:transparent; } }
+@media (prefers-reduced-motion: reduce) { .g-ev.nuovo { animation:none; } }
+</style>
+"""
+
+_TAG = {"delega": ("delega", "DELEGA"), "web-ricerca": ("web", "CERCA"), "web-apri": ("web", "APRE"), "browser": ("web", "BROWSER"),
+        "file": ("file", "FILE"), "comando": ("comando", "CMD"), "dice": ("dice", "DICE"), "lettura": ("altro", "LEGGE"),
+        "strumento": ("altro", "USA")}
+
+
+def tessera(titolo: str, valore: str, sub: str = "") -> str:
+    return f"<div class='g-tile'><div class='t'>{esc(titolo)}</div><div class='v'>{esc(valore)}</div><div class='s'>{esc(sub)}</div></div>"
+
+
+def feed_attivita(righe: list[dict], fa, ora: float, nuovi_da: float = 0.0) -> str:
+    """Feed live: chi fa cosa, quali pagine apre, cosa ne ricava. Tutto il testo viene da agenti: sempre escapato."""
+    import time as _t
+    import clienti as _c
+    if not righe:
+        return "<div class='g-feed'><div class='g-ev'><div></div><div class='corpo'>Nessuna attività recente.</div></div></div>"
+    out = []
+    for e in righe:
+        classe, etichetta = _TAG.get(e["tipo"], ("altro", "USA"))
+        url = _c.url_sicuro(e.get("url", ""))
+        if url:
+            dominio = re.sub(r"^https?://", "", url).split("/")[0]
+            corpo = f"<a href='{esc(url)}' target='_blank' rel='noopener noreferrer'>{esc(dominio)}</a> {esc(e.get('testo', ''))}"
+        else:
+            corpo = esc(e.get("testo") or e.get("strumento") or "")
+        sub = ""
+        if e.get("brief"):
+            sub += f"<div class='sub'>Brief: {esc(e['brief'][:320])}</div>"
+        if e.get("risultato"):
+            sub += f"<div class='sub'><b>ha preso:</b> {esc(e['risultato'][:300])}</div>"
+        nuovo = " nuovo" if e["ts"] > nuovi_da > 0 else ""
+        out.append(f"<div class='g-ev{nuovo}'><div class='ora'>{_t.strftime('%H:%M:%S', _t.localtime(e['ts']))}</div>"
+                   f"<div><span class='tag {classe}'>{etichetta}</span><span class='corpo'>{corpo}</span> "
+                   f"<span class='chi'>· {esc(e.get('chi', ''))}</span></div>{sub}</div>")
+    return f"<div class='g-feed'>{''.join(out)}</div>"

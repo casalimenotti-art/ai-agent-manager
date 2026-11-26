@@ -8,11 +8,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # import dei moduli ac
 import streamlit as st
 
 import chat
+import clienti
 import config
 import fonte as fonte_mod
+import hashlib
 import monitor
+import siti_demo
 import skill
 import theme
+import voce
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Guardian", page_icon="🛡️", layout="wide")
 
@@ -23,7 +28,7 @@ try:
         st._config.set_option(f"theme.{chiave}", valore)
 except Exception:
     pass
-st.markdown(theme.CSS, unsafe_allow_html=True)
+st.markdown(theme.CSS + theme.CSS_EXTRA, unsafe_allow_html=True)
 
 
 @st.cache_resource
@@ -43,12 +48,12 @@ def fa(ts: float) -> str:
     return f"{s}s fa" if s < 60 else f"{s // 60}m fa" if s < 3600 else f"{s // 3600}h {s % 3600 // 60}m fa"
 
 
-def esegui_e_mostra(prompt: str, cwd: str, resume: str | None) -> chat.Risposta:
+def esegui_e_mostra(prompt: str, cwd: str, resume: str | None, agente: str | None = None) -> chat.Risposta:
     """Esegue sulla fonte e aggiorna in streaming l'interfaccia."""
     r = chat.Risposta()
     box, info = st.empty(), st.empty()
     box.markdown("⏳ _Claude sta lavorando…_")
-    for ev in fonte.esegui(prompt, cwd, resume):
+    for ev in fonte.esegui(prompt, cwd, resume, agente):
         if r.aggiungi(ev):
             box.markdown(r.testo or "⏳ _Claude sta lavorando…_")
             if r.strumenti:
@@ -66,8 +71,16 @@ if st.get_option("server.address") not in ("localhost", "127.0.0.1"):
     st.warning("⚠️ Il server ascolta su tutte le interfacce e la chat può far eseguire comandi a Claude: "
                "riavvia con `streamlit run dashboard/app.py --server.address localhost`.")
 st.markdown(theme.intestazione(fonte.nome, config.CHAT_PERMISSION_MODE, config.REFRESH_S), unsafe_allow_html=True)
-tab_stat, tab_costi, tab_agenti, tab_clienti, tab_chat, tab_skill, tab_store = st.tabs(
-    ["Statistiche", "Costi & Output", "Agenti", "Clienti", "Agente centrale", "Skill", "Store"])
+SEZIONI = [("centro", "Centro"), ("consumi", "Consumi"), ("costi", "Costi"), ("agenti", "Agenti"), ("clienti", "Clienti"),
+           ("siti", "Siti demo"), ("guardian", "Guardian"), ("skill", "Skill"), ("store", "Store")]
+
+
+def vai(k: str):
+    st.session_state["sezione"] = k
+
+
+sezione = st.segmented_control("Sezione", [k for k, _ in SEZIONI], format_func=dict(SEZIONI).get, key="sezione",
+                               default="centro", label_visibility="collapsed") or "centro"
 
 
 # ---------------------------------------------------------------- 1. Statistiche
@@ -107,7 +120,7 @@ def vista_statistiche():
         st.caption("Nessun processo Claude Code in esecuzione.")
 
 
-with tab_stat:
+def sez_consumi():
     vista_statistiche()
 
 
@@ -167,25 +180,51 @@ def vista_costi():
     st.caption("Costi = token × prezzi di listino configurabili (PRICES_JSON). Con un abbonamento a tariffa fissa non è ciò che paghi davvero.")
 
 
-with tab_costi:
+def sez_costi():
     vista_costi()
 
 
 # ---------------------------------------------------------------- 2. Monitor agenti
-@st.fragment(run_every=config.REFRESH_S)
-def vista_agenti():
+TIPI_FEED = {"delega": ["delega"], "web": ["web-ricerca", "web-apri", "browser"], "file": ["file"], "comando": ["comando"],
+             "dice": ["dice"], "lettura": ["lettura"]}
+
+
+@st.fragment(run_every=2)
+def vista_palcoscenico():
+    """Cosa fanno gli agenti adesso: chi delega a chi, cosa cercano sul web, quali pagine aprono, cosa ne ricavano."""
     righe = fonte.sessioni()
     al_lavoro = sum(r["stato"] == "al lavoro" for r in righe)
-    st.caption(f"{al_lavoro} al lavoro · {len(righe) - al_lavoro} fermi · soglia {config.IDLE_THRESHOLD_S:.0f}s "
-               f"· dati: JSONL" + (" + hook" if any(r["fonte"] == "hook" for r in righe) else " (hook non attivi)"))
-    if not righe:
-        st.info("Nessuna sessione recente in ~/.claude/projects")
-        return
-    st.markdown(theme.tabella_agenti(righe, fa), unsafe_allow_html=True)
+    scelte = st.pills("Mostra", list(TIPI_FEED), selection_mode="multi", default=["delega", "web", "file", "comando", "dice"],
+                      key="f_att", label_visibility="collapsed") or list(TIPI_FEED)
+    tipi = {x for k in scelte for x in TIPI_FEED[k]}
+    ev = fonte.attivita(80, tipi)
+    ora = time.time()
+    recenti = [e for e in ev if ora - e["ts"] < 600]
+    k1, k2, k3, k4 = st.columns(4)
+    k1.markdown(theme.tessera("Al lavoro", str(al_lavoro), f"{len(righe) - al_lavoro} fermi"), unsafe_allow_html=True)
+    k2.markdown(theme.tessera("Eventi · 10 min", str(len(recenti)), "deleghe, ricerche, file"), unsafe_allow_html=True)
+    k3.markdown(theme.tessera("Pagine aperte", str(sum(e["tipo"] in ("web-apri", "browser") for e in recenti)), "negli ultimi 10 min"), unsafe_allow_html=True)
+    k4.markdown(theme.tessera("Deleghe", str(sum(e["tipo"] == "delega" for e in recenti)), "ordini del manager"), unsafe_allow_html=True)
+    sx, dx = st.columns([3, 2])
+    with sx:
+        st.subheader("Cosa sta succedendo")
+        visto = st.session_state.get("_att_visto", 0.0)
+        st.markdown(theme.feed_attivita(ev, fa, ora, visto), unsafe_allow_html=True)
+        if ev:
+            st.session_state["_att_visto"] = max(e["ts"] for e in ev)
+        st.caption("Le pagine si aprono nel browser dell'agente: qui vedi dove va e cosa ne ricava. Per vederle scorrere dal vivo, "
+                   "usa Claude in Chrome (le schede appaiono nel tuo Chrome).")
+    with dx:
+        st.subheader("Chi lavora")
+        if righe:
+            st.markdown(theme.tabella_agenti(righe, fa), unsafe_allow_html=True)
+        else:
+            st.info("Nessuna sessione recente in ~/.claude/projects")
+        st.caption(f"Soglia {config.IDLE_THRESHOLD_S:.0f}s · dati: JSONL" + (" + hook" if any(r["fonte"] == "hook" for r in righe) else " (hook non attivi)"))
 
 
-with tab_agenti:
-    vista_agenti()
+def sez_agenti():
+    vista_palcoscenico()
     st.subheader("Squadra di agenti")
     st.caption("Agenti Claude Code specializzati. Fanno solo ricerca e bozze: nessuno invia messaggi o contatta clienti da solo.")
     membri = fonte.squadra()
@@ -208,13 +247,13 @@ with tab_agenti:
     with st.expander("Attivare gli hook (aggiornamento immediato, opzionale)"):
         hook = (Path(__file__).resolve().parent / "hooks" / "guardian_hook.py")
         st.markdown("Aggiungi in `~/.claude/settings.json` (Guardian **non** lo modifica da solo):")
-        voce = lambda: [{"hooks": [{"type": "command", "command": f"python3 {hook}"}]}]
-        st.json({"hooks": {"UserPromptSubmit": voce(), "PreToolUse": [{"matcher": "*", **voce()[0]}],
-                           "PostToolUse": [{"matcher": "*", **voce()[0]}], "Stop": voce()}})
+        voce_hook = lambda: [{"hooks": [{"type": "command", "command": f"python3 {hook}"}]}]
+        st.json({"hooks": {"UserPromptSubmit": voce_hook(), "PreToolUse": [{"matcher": "*", **voce_hook()[0]}],
+                           "PostToolUse": [{"matcher": "*", **voce_hook()[0]}], "Stop": voce_hook()}})
 
 
 # ---------------------------------------------------------------- 2b. Clienti (lead + visite di persona)
-with tab_clienti:
+def sez_clienti():
     leads = fonte.clienti()
     if not leads:
         st.info("Nessun lead ancora. In Claude Code scrivi «usa cacciatore-clienti per trovare 20 clienti a Cagliari»: "
@@ -279,8 +318,13 @@ def scegli_cartella(chiave: str) -> str:
     return scelta
 
 
-with tab_chat:
+def sez_guardian():
     st.session_state.setdefault("chat", {})  # cwd -> {"sid": ..., "msgs": [...]}
+    if chat.agente_installato(config.MANAGER_AGENT):
+        st.caption(f"Parli con **Guardian**, il manager: coordina gli altri agenti (agente `{config.MANAGER_AGENT}`).")
+    else:
+        st.warning(f"L'agente `{config.MANAGER_AGENT}` non è installato: installa la squadra dalla sezione Agenti. "
+                   "Intanto rispondo come un normale Claude Code.")
     cwd = scegli_cartella("chat")
     conv = st.session_state["chat"].setdefault(cwd, {"sid": None, "msgs": []})
     c1, c2 = st.columns([4, 1])
@@ -293,7 +337,34 @@ with tab_chat:
             st.markdown(m["testo"])
             if m.get("nota"):
                 st.caption(m["nota"])
-    domanda = st.chat_input("Scrivi una domanda per Claude Code…", key="chat_in")
+    with st.expander("Parla a Guardian (microfono)"):
+        st.caption("L'audio resta sul tuo PC: il riconoscimento è locale. Vedi sempre cosa ho capito e confermi tu prima dell'invio.")
+        audio = st.audio_input("Premi per registrare, premi di nuovo per fermare", key="mic")
+        if audio is not None:
+            dati = audio.getvalue()
+            h = hashlib.sha1(dati).hexdigest()
+            if st.session_state.get("_voce_h") != h:
+                if voce.disponibile():
+                    with st.spinner("Ascolto…"):
+                        r = voce.trascrivi(dati)
+                else:
+                    r = {"ok": False, "testo": "", "messaggio": "Riconoscimento vocale non installato (vedi sotto)."}
+                st.session_state.update(_voce_h=h, _voce_r=r)
+            r = st.session_state["_voce_r"]
+            if r["ok"]:
+                testo_voce = st.text_area("Ho capito (puoi correggere):", value=r["testo"], key=f"voce_t_{h}")
+                if st.button("Invia a Guardian", type="primary", key=f"voce_i_{h}"):
+                    st.session_state["_invio_voce"] = testo_voce
+            else:
+                st.warning(r["messaggio"])
+        if not voce.disponibile():
+            st.caption(f"Serve il pacchetto {voce.PACCHETTO} {voce.VERSIONE} (versione fissata, solo wheel). Il primo riconoscimento scarica "
+                       "il modello (~140 MB) da Hugging Face; l'audio non viene mai inviato.")
+            if st.button("Installa il riconoscimento vocale locale", key="inst_voce", disabled=fonte.nome.startswith("DEMO")):
+                with st.spinner("Installazione in corso (alcuni minuti)…"):
+                    res = voce.installa()
+                (st.success if res["ok"] else st.error)(res["messaggio"])
+    domanda = st.chat_input("Scrivi o detta un messaggio per Guardian…", key="chat_in") or st.session_state.pop("_invio_voce", None)
     if domanda:
         if not cwd:
             st.warning("Scegli una cartella progetto.")
@@ -302,7 +373,7 @@ with tab_chat:
             with st.chat_message("user"):
                 st.markdown(domanda)
             with st.chat_message("assistant"):
-                r = esegui_e_mostra(domanda, cwd, conv["sid"])
+                r = esegui_e_mostra(domanda, cwd, conv["sid"], config.MANAGER_AGENT)
             if r.session_id and not r.errore:
                 conv["sid"] = r.session_id
             nota = " · ".join(x for x in (("🔧 " + ", ".join(r.strumenti)) if r.strumenti else "",
@@ -311,7 +382,7 @@ with tab_chat:
 
 
 # ---------------------------------------------------------------- 4/5. Skill
-with tab_skill:
+def sez_skill():
     st.subheader("Skill installate")
     skills = fonte.skill_elenco()
     if not skills:
@@ -364,7 +435,7 @@ with tab_skill:
 
 
 # ---------------------------------------------------------------- 6. Store (catalogo verificato)
-with tab_store:
+def sez_store():
     st.subheader("Skill di design verificate")
     st.caption("Catalogo fisso: ogni skill è stata letta e scansionata prima di entrare in elenco (solo testo e asset, nessuno script). "
                "Si installano in ~/.claude/skills e non sovrascrivono nulla di esistente.")
@@ -386,3 +457,62 @@ with tab_store:
                 (st.success if res["ok"] else st.error)(res["messaggio"])
                 if res["ok"]:
                     st.rerun()
+
+
+# ---------------------------------------------------------------- Centro (porta d'ingresso)
+def sez_centro():
+    righe = fonte.sessioni()
+    lav = sum(r["stato"] == "al lavoro" for r in righe)
+    p = fonte.processi()
+    leads = fonte.clienti()
+    skills = fonte.skill_elenco()
+    k = fonte.costi(30)
+    tessere = [
+        ("agenti", "Agenti", f"{lav} al lavoro", "chi fa cosa, quali pagine apre, cosa ne ricava"),
+        ("guardian", "Guardian", "manager", "parlagli a testo o a voce: coordina gli altri agenti"),
+        ("consumi", "Consumi e sistema", f"{p['n']} processi", f"CPU Claude {p['cpu']:.1f}% · RAM {p['ram_mb']:.0f} MB"),
+        ("costi", "Costi e output", f"${k['oggi']:.2f} oggi", f"mese ${k['mese']:.2f} · proiezione ${k['proiezione_mese']:.2f}"),
+        ("clienti", "Clienti", str(len(leads)), f"{sum(1 for x in leads if x['stato'] == 'da visitare')} da visitare"),
+        ("siti", "Siti demo", str(len(leads)), "un sito dimostrativo per ogni cliente"),
+        ("skill", "Skill", str(len(skills)), "cosa puoi usare e quando"),
+        ("store", "Store", "catalogo", "skill verificate da installare"),
+    ]
+    st.caption("Scegli uno spazio. Ogni sezione si apre con una transizione e si aggiorna da sola.")
+    cols = st.columns(4)
+    for i, (chiave, titolo, valore, sub) in enumerate(tessere):
+        with cols[i % 4]:
+            st.markdown(theme.tessera(titolo, valore, sub), unsafe_allow_html=True)
+            st.button("Apri", key=f"apri_{chiave}", on_click=vai, args=(chiave,), use_container_width=True)
+
+
+# ---------------------------------------------------------------- Siti demo
+def sez_siti():
+    st.subheader("Siti demo dei clienti")
+    st.caption("Per ogni cliente trovato genero un sito dimostrativo da mostrare di persona. Non invento nulla sull'attività: "
+               "orari, contatti e prezzi restano «da inserire». Nessuna richiesta di rete, nessuno script.")
+    leads = fonte.clienti()
+    if not leads:
+        st.info("Nessun cliente ancora: quando gli agenti trovano i lead (cartella leads/) compaiono qui.")
+        return
+    c1, c2 = st.columns([3, 1])
+    nome = c1.selectbox("Cliente", [x["azienda"] for x in leads], key="siti_sel")
+    tema = c2.selectbox("Stile", list(siti_demo.TEMI), key="siti_tema")
+    c = next(x for x in leads if x["azienda"] == nome)
+    pagina = siti_demo.genera_sito(c["azienda"], c.get("categoria", ""), c.get("zona", ""), tema, c.get("opportunita", ""))
+    components.html(pagina, height=720, scrolling=True)
+    b1, b2 = st.columns(2)
+    b1.download_button("Scarica questo sito (HTML)", data=pagina, file_name=f"{siti_demo.slug_file(nome)}.html", mime="text/html",
+                       use_container_width=True)
+    if b2.button("Salva tutti in siti-demo/", use_container_width=True, disabled=fonte.nome.startswith("DEMO")):
+        cartella = config.LEADS_DIR.parent / "siti-demo"
+        cartella.mkdir(parents=True, exist_ok=True)
+        for x in leads:
+            (cartella / f"{siti_demo.slug_file(x['azienda'])}.html").write_text(
+                siti_demo.genera_sito(x["azienda"], x.get("categoria", ""), x.get("zona", ""), tema, x.get("opportunita", "")), encoding="utf-8")
+        st.success(f"{len(leads)} siti salvati in {cartella}")
+
+
+SEZ = {"centro": sez_centro, "consumi": sez_consumi, "costi": sez_costi, "agenti": sez_agenti, "clienti": sez_clienti,
+       "siti": sez_siti, "guardian": sez_guardian, "skill": sez_skill, "store": sez_store}
+with st.container(key=f"sez_{sezione}"):
+    SEZ[sezione]()

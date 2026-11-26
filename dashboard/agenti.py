@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import re
 import time
+from collections import deque
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -31,6 +33,39 @@ def costo(modello: str, inp: int, out: int, cache_read: int, cache_write: int) -
     if chiave == "haiku-5-5" and inp + cache_read + cache_write > config.HAIKU_55_LUNGO["soglia"]:
         p_in, p_out = config.HAIKU_55_LUNGO["input"], config.HAIKU_55_LUNGO["output"]
     return (inp * p_in + out * p_out + cache_read * p_in * mult_read + cache_write * p_in * 1.25) / 1e6
+
+
+_SEGRETI = re.compile(
+    r"(sk-[A-Za-z0-9_-]{10,}|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{12,}|Bearer\s+[A-Za-z0-9._-]{12,}"
+    r"|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+|(?i:(?:password|passwd|token|secret|api[_-]?key)\s*[=:]\s*\S+))")
+
+
+def maschera(testo, n: int = 300) -> str:
+    """Testo corto e senza chiavi/token riconoscibili (i comandi possono contenerli)."""
+    return _SEGRETI.sub("[…nascosto…]", " ".join(str(testo or "").split()))[:n]
+
+
+def evento_da_strumento(nome: str, inp: dict, ts: float) -> dict:
+    """Trasforma una chiamata di strumento in un evento leggibile: delega, web, file, comando…"""
+    inp = inp if isinstance(inp, dict) else {}
+    e = {"ts": ts, "tipo": "strumento", "strumento": nome, "testo": "", "url": "", "brief": "", "risultato": ""}
+    if nome in ("Agent", "Task"):
+        e.update(tipo="delega", testo=maschera(f"{inp.get('subagent_type') or 'agente'}: {inp.get('description') or ''}", 200),
+                 brief=maschera(inp.get("prompt"), 600))
+    elif nome == "WebSearch":
+        e.update(tipo="web-ricerca", testo=maschera(inp.get("query"), 200))
+    elif nome == "WebFetch":
+        e.update(tipo="web-apri", url=str(inp.get("url") or "")[:300], testo=maschera(inp.get("prompt"), 200))
+    elif nome.startswith("mcp__") and re.search(r"chrome|browser|playwright", nome, re.I):
+        u = inp.get("url")
+        e.update(tipo="browser", strumento=nome.split("__")[-1], url=u[:300] if isinstance(u, str) else "")
+    elif nome in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+        e.update(tipo="file", testo=maschera(inp.get("file_path") or inp.get("notebook_path"), 200))
+    elif nome in ("Read", "Glob", "Grep"):
+        e.update(tipo="lettura", testo=maschera(inp.get("file_path") or inp.get("pattern"), 200))
+    elif nome == "Bash":
+        e.update(tipo="comando", testo=maschera(inp.get("command"), 140))
+    return e
 
 
 def _testo(content) -> str:
@@ -63,6 +98,8 @@ class _Stato:
         self.giorni: dict[str, dict] = {}   # "YYYY-MM-DD" (ora locale) -> contatori
         self.ore: dict[str, float] = {}  # "YYYY-MM-DD HH" (ora locale) -> costo
         self.modelli_g: dict[str, dict[str, float]] = {}  # giorno -> modello -> costo
+        self.attivita: deque = deque(maxlen=300)   # eventi leggibili (delega, web, file…)
+        self._attesa: dict[str, dict] = {}         # tool_use_id -> evento in attesa del risultato
         self._visti: set[str] = set()  # id messaggi già contati (il JSONL ripete gli usage)
 
     def _giorno(self, ts: float) -> dict:
@@ -90,7 +127,16 @@ class _Stato:
             g = self._giorno(ts or self.ultimo_ts)
             if isinstance(content, list):
                 for b in content:
+                    if isinstance(b, dict) and b.get("type") == "text" and (b.get("text") or "").strip():
+                        self.attivita.append({"ts": ts or self.ultimo_ts, "tipo": "dice", "strumento": "", "url": "", "brief": "",
+                                              "risultato": "", "testo": maschera(b["text"], 260)})
                     if isinstance(b, dict) and b.get("type") == "tool_use":
+                        ev = evento_da_strumento(b.get("name", ""), b.get("input"), ts or self.ultimo_ts)
+                        self.attivita.append(ev)
+                        if b.get("id") and ev["tipo"] in ("delega", "web-ricerca", "web-apri", "browser"):
+                            self._attesa[b["id"]] = ev
+                            if len(self._attesa) > 500:
+                                self._attesa.pop(next(iter(self._attesa)))
                         self.ultimo_strumento = b.get("name", "")
                         g["tools"] += 1
                         if self.ultimo_strumento in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
@@ -118,6 +164,13 @@ class _Stato:
                 g["cache"] += cr + cw
                 g["msgs"] += 1
         elif tipo == "user":
+            if isinstance(content, list):
+                for b in content:
+                    if isinstance(b, dict) and b.get("type") == "tool_result" and b.get("tool_use_id") in self._attesa:
+                        ris = b.get("content")
+                        if isinstance(ris, list):
+                            ris = " ".join(x.get("text", "") for x in ris if isinstance(x, dict))
+                        self._attesa.pop(b["tool_use_id"])["risultato"] = maschera(ris, 320)
             testo = _testo(content)  # i tool_result non hanno testo: vengono ignorati
             if testo:
                 self.ultimo_utente = testo
@@ -228,6 +281,22 @@ class Indice:
             })
         risultato.sort(key=lambda s: s["ultimo_agg"], reverse=True)
         return risultato
+
+    def attivita(self, limite: int = 80, eta_h: float = 6, tipi: set | None = None) -> list[dict]:
+        """Cosa stanno facendo gli agenti: deleghe, ricerche, pagine aperte, file, messaggi (più recenti prima)."""
+        meta = {s["sessione"] + s["agente"]: s for s in self.sessioni(eta_max_h=eta_h)}
+        soglia = time.time() - eta_h * 3600
+        out = []
+        for p, st in self._stati.items():
+            info = meta.get(st.session_id + st.agent_id)
+            if not info:
+                continue
+            chi = f"{info['progetto']} · " + (f"subagente {st.agent_id[:7]}" if st.sidechain else "sessione")
+            for e in st.attivita:
+                if e["ts"] >= soglia and (not tipi or e["tipo"] in tipi):
+                    out.append({**e, "chi": chi, "sidechain": st.sidechain, "sessione": st.session_id})
+        out.sort(key=lambda e: e["ts"], reverse=True)
+        return out[:limite]
 
     def progetti(self) -> list[str]:
         visti = dict.fromkeys(config.DEFAULT_PROJECTS)

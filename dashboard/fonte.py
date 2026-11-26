@@ -37,6 +37,9 @@ class Fonte(ABC):
     def sessioni(self) -> list[dict]: ...    # vedi agenti.Indice.sessioni
 
     @abstractmethod
+    def attivita(self, limite: int = 80, tipi: set | None = None) -> list[dict]: ...  # cosa fanno gli agenti (feed)
+
+    @abstractmethod
     def costi(self, giorni: int = 30) -> dict: ...  # vedi agenti.Indice.costi
 
     @abstractmethod
@@ -85,7 +88,7 @@ class Fonte(ABC):
     def scheda_visita(self, slug: str) -> str: ...
 
     @abstractmethod
-    def esegui(self, prompt: str, cwd: str, resume: str | None = None) -> Iterator[dict]: ...  # eventi stream-json
+    def esegui(self, prompt: str, cwd: str, resume: str | None = None, agente: str | None = None) -> Iterator[dict]: ...  # eventi stream-json
 
     @abstractmethod
     def installa_skill(self, url: str) -> dict: ...  # {ok, messaggio}
@@ -113,6 +116,9 @@ class FonteLocale(Fonte):
     def costi(self, giorni=30):
         return self._indice.costi(giorni)
 
+    def attivita(self, limite=80, tipi=None):
+        return self._indice.attivita(limite, tipi=tipi)
+
     def ricavi(self):
         return monitor.leggi_ricavi()
 
@@ -122,8 +128,8 @@ class FonteLocale(Fonte):
     def skill_elenco(self):
         return skill.elenca_skill()
 
-    def esegui(self, prompt, cwd, resume=None):
-        return chat.esegui_locale(prompt, cwd, resume)
+    def esegui(self, prompt, cwd, resume=None, agente=None):
+        return chat.esegui_locale(prompt, cwd, resume, agente)
 
     def installa_skill(self, url):
         return skill.installa_locale(url)
@@ -197,6 +203,7 @@ class FonteRemota(Fonte):
     def sessioni(self): return self._json("/api/sessioni")
     def progetti(self): return self._json("/api/progetti")
     def costi(self, giorni=30): return self._json(f"/api/costi?giorni={int(giorni)}")
+    def attivita(self, limite=80, tipi=None): return self._json(f"/api/attivita?limite={int(limite)}")
     def ricavi(self): return self._json("/api/ricavi")
 
     def imposta_ricavo(self, mese, importo):
@@ -204,9 +211,9 @@ class FonteRemota(Fonte):
             return json.load(r)
     def skill_elenco(self): return self._json("/api/skill")
 
-    def esegui(self, prompt, cwd, resume=None):
+    def esegui(self, prompt, cwd, resume=None, agente=None):
         try:
-            with self._req("/api/chat", {"prompt": prompt, "cwd": cwd, "resume": resume}, timeout=config.CHAT_TIMEOUT_S) as r:
+            with self._req("/api/chat", {"prompt": prompt, "cwd": cwd, "resume": resume, "agente": agente}, timeout=config.CHAT_TIMEOUT_S) as r:
                 for riga in r:
                     if riga.strip():
                         yield json.loads(riga)
@@ -308,6 +315,24 @@ class FonteDemo(FonteLocale):
                 "ultimi30": round(sum(x["costo"] for x in serie[-30:]), 4), "mese": round(mese, 4), "media7": round(media7, 4),
                 "proiezione_mese": round(mese + media7 * 10, 4), "mese_id": time.strftime("%Y-%m")}
 
+    def attivita(self, limite=80, tipi=None):
+        t = time.time()
+        passi = [
+            ("delega", "guardian-manager", "cacciatore-clienti: ristoranti Cagliari", "", "Trova 10 ristoranti di Cagliari senza sito, con prova", "ok: 9 lead"),
+            ("web-ricerca", "cacciatore-clienti", "ristoranti Cagliari senza sito web", "", "", "12 risultati: elenchi di directory e pagine social"),
+            ("web-apri", "cacciatore-clienti", "c'è un sito proprio?", "https://example.com/trattoria-demo", "", "Solo una pagina Facebook, nessun sito"),
+            ("delega", "guardian-manager", "analista-presenza-online: ESEMPIO Trattoria", "", "Audit con prove di sito, scheda Google, prenotazioni", ""),
+            ("browser", "analista-presenza-online", "", "https://example.com/trattoria-demo/menu", "", "Menu in PDF, non leggibile dal telefono"),
+            ("file", "analista-presenza-online", "audit/esempio-trattoria.md", "", "", ""),
+            ("dice", "scopritore-problemi", "Trovato: prenotazioni solo al telefono e martedì vuoto: chatbot + offerta nel giorno debole", "", "", ""),
+            ("file", "compilatore-schede-visita", "visite/esempio-trattoria.md", "", "", ""),
+        ]
+        out = [{"ts": t - 3 * (len(passi) - i), "tipo": ty, "strumento": "", "testo": tx, "url": u, "brief": b, "risultato": r,
+                "chi": f"demo · {chi}", "sidechain": chi != "guardian-manager", "sessione": "demo"}
+               for i, (ty, chi, tx, u, b, r) in enumerate(passi)]
+        out = [e for e in out if not tipi or e["tipo"] in tipi]
+        return sorted(out, key=lambda e: e["ts"], reverse=True)[:limite]
+
     def clienti(self):
         demo = [("ESEMPIO Trattoria", "ristorante", "Cagliari", 5, "Solo pagina Facebook, nessun sito", "prenotazioni online + offerta nei giorni deboli"),
                 ("ESEMPIO Ottica", "ottica", "Cagliari", 5, "Sito non adatto al telefono", "catalogo con prova virtuale degli occhiali"),
@@ -347,7 +372,7 @@ class FonteDemo(FonteLocale):
     def imposta_azienda(self, testo): return dict(self._OFF)
     def azienda(self): return "Profilo azienda (esempio): siti web immediati e software su misura a Cagliari."
 
-    def esegui(self, prompt, cwd, resume=None):
+    def esegui(self, prompt, cwd, resume=None, agente=None):
         yield {"type": "guardian_end", "returncode": -1, "stderr": "La chat è disattivata in modalità demo."}
 
 
