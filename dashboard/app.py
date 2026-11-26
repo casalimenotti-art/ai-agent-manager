@@ -66,7 +66,7 @@ if st.get_option("server.address") not in ("localhost", "127.0.0.1"):
     st.warning("⚠️ Il server ascolta su tutte le interfacce e la chat può far eseguire comandi a Claude: "
                "riavvia con `streamlit run dashboard/app.py --server.address localhost`.")
 st.markdown(theme.intestazione(fonte.nome, config.CHAT_PERMISSION_MODE, config.REFRESH_S), unsafe_allow_html=True)
-tab_stat, tab_agenti, tab_chat, tab_skill = st.tabs(["Statistiche", "Agenti", "Agente centrale", "Skill"])
+tab_stat, tab_costi, tab_agenti, tab_chat, tab_skill, tab_store = st.tabs(["Statistiche", "Costi & Output", "Agenti", "Agente centrale", "Skill", "Store"])
 
 
 # ---------------------------------------------------------------- 1. Statistiche
@@ -108,6 +108,66 @@ def vista_statistiche():
 
 with tab_stat:
     vista_statistiche()
+
+
+# ---------------------------------------------------------------- 1b. Costi & output
+@st.fragment(run_every=max(10, config.REFRESH_S * 5))
+def vista_costi():
+    k = fonte.costi(30)
+    ric = fonte.ricavi()
+    ricavo_mese = ric.get(k["mese_id"], 0.0)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.markdown(theme.metrica("Spesa oggi", f"${k['oggi']:.2f}", sub="stima a listino API"), unsafe_allow_html=True)
+    c2.markdown(theme.metrica("Ultimi 7 giorni", f"${k['ultimi7']:.2f}", sub=f"media ${k['media7']:.2f}/giorno"), unsafe_allow_html=True)
+    c3.markdown(theme.metrica("Questo mese", f"${k['mese']:.2f}", sub=f"proiezione fine mese ${k['proiezione_mese']:.2f}"), unsafe_allow_html=True)
+    c4.markdown(theme.metrica("Ultimi 30 giorni", f"${k['ultimi30']:.2f}"), unsafe_allow_html=True)
+    b1, b2 = st.columns(2)
+    b1.markdown(theme.metrica("Finestra ultime 5 ore", f"${k['ultime_5h']:.2f}", sub="spesa stimata nelle ultime 5 ore"), unsafe_allow_html=True)
+    b2.markdown(theme.metrica("Burn rate", f"${k['burn_orario']:.2f}", "/ora", "media oraria sulle ultime 5 ore"), unsafe_allow_html=True)
+    st.subheader("Spesa giornaliera · 30 giorni")
+    st.altair_chart(theme.grafico_costi(k["giorni"]), width="stretch", theme=None)
+    st.subheader("Mappa di calore · 12 settimane")
+    st.altair_chart(theme.heatmap_giorni(fonte.costi(84)["giorni"]), width="content", theme=None)
+    oggi = k["giorni"][-1]
+    tot = {x: sum(g[x] for g in k["giorni"]) for x in ("msgs", "tools", "edits", "token_out")}
+    st.subheader("Output · cosa produci")
+    o1, o2, o3, o4 = st.columns(4)
+    o1.markdown(theme.metrica("Risposte di Claude", f"{tot['msgs']:,}", sub=f"oggi {oggi['msgs']:,}"), unsafe_allow_html=True)
+    o2.markdown(theme.metrica("Azioni (strumenti)", f"{tot['tools']:,}", sub=f"oggi {oggi['tools']:,}"), unsafe_allow_html=True)
+    o3.markdown(theme.metrica("File modificati", f"{tot['edits']:,}", sub=f"oggi {oggi['edits']:,} · Edit/Write"), unsafe_allow_html=True)
+    per_msg = k["ultimi30"] / tot["msgs"] if tot["msgs"] else 0
+    o4.markdown(theme.metrica("Costo / risposta", f"${per_msg:.3f}", sub=f"{tot['token_out']:,} token output"), unsafe_allow_html=True)
+    sx, dx = st.columns(2)
+    with sx:
+        st.subheader("Per progetto")
+        st.markdown(theme.barre_orizzontali([(p["progetto"], p["costo"]) for p in k["progetti"]]), unsafe_allow_html=True)
+    with dx:
+        st.subheader("Per modello")
+        st.markdown(theme.barre_orizzontali([(m["modello"], m["costo"]) for m in k["modelli"]]), unsafe_allow_html=True)
+    st.subheader("Quanto guadagni · margine")
+    r1, r2 = st.columns([1, 2])
+    with r1:
+        with st.form("form_ricavi"):
+            nuovo = st.number_input(f"Ricavi di {k['mese_id']} (USD)", min_value=0.0, value=float(ricavo_mese), step=50.0)
+            if st.form_submit_button("Salva ricavi"):
+                try:
+                    fonte.imposta_ricavo(k["mese_id"], float(nuovo))
+                    st.rerun(scope="fragment")
+                except ValueError as e:
+                    st.error(str(e))
+    with r2:
+        if ricavo_mese > 0:
+            margine = ricavo_mese - k["mese"]
+            st.markdown(theme.metrica("Margine del mese", f"${margine:,.2f}",
+                                      sub=f"ricavi ${ricavo_mese:,.2f} − spesa ${k['mese']:.2f} · ritorno {ricavo_mese / max(k['mese'], 0.01):.1f}×"),
+                        unsafe_allow_html=True)
+        else:
+            st.caption("Inserisci a mano quanto incassi: Guardian non può saperlo da solo. Calcolerà margine e ritorno sulla spesa.")
+    st.caption("Costi = token × prezzi di listino configurabili (PRICES_JSON). Con un abbonamento a tariffa fissa non è ciò che paghi davvero.")
+
+
+with tab_costi:
+    vista_costi()
 
 
 # ---------------------------------------------------------------- 2. Monitor agenti
@@ -218,3 +278,28 @@ with tab_skill:
             (st.success if res["ok"] else st.error)(res["messaggio"])
             if res["ok"]:
                 st.info("Ricarica la pagina per vedere la nuova card.")
+
+
+# ---------------------------------------------------------------- 6. Store (catalogo verificato)
+with tab_store:
+    st.subheader("Skill di design verificate")
+    st.caption("Catalogo fisso: ogni skill è stata letta e scansionata prima di entrare in elenco (solo testo e asset, nessuno script). "
+               "Si installano in ~/.claude/skills e non sovrascrivono nulla di esistente.")
+    voci = fonte.catalogo()
+    mancanti = [v for v in voci if not v["installata"]]
+    if mancanti and st.button(f"Installa tutte le {len(mancanti)} mancanti", type="primary", key="inst_tutte"):
+        with st.spinner("Installazione in corso…"):
+            for v in mancanti:
+                res = fonte.installa_catalogo(v["id"])
+                (st.success if res["ok"] else st.error)(f"{v['titolo']}: {res['messaggio']}")
+        st.rerun()
+    colonne = st.columns(3)
+    for i, v in enumerate(voci):
+        with colonne[i % 3]:
+            st.markdown(theme.card_store(v), unsafe_allow_html=True)
+            if not v["installata"] and st.button("Installa", key=f"inst_{v['id']}", use_container_width=True):
+                with st.spinner(f"Installo {v['titolo']}…"):
+                    res = fonte.installa_catalogo(v["id"])
+                (st.success if res["ok"] else st.error)(res["messaggio"])
+                if res["ok"]:
+                    st.rerun()

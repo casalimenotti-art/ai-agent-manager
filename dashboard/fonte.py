@@ -33,10 +33,25 @@ class Fonte(ABC):
     def sessioni(self) -> list[dict]: ...    # vedi agenti.Indice.sessioni
 
     @abstractmethod
+    def costi(self, giorni: int = 30) -> dict: ...  # vedi agenti.Indice.costi
+
+    @abstractmethod
+    def ricavi(self) -> dict: ...            # {"YYYY-MM": importo_usd}
+
+    @abstractmethod
+    def imposta_ricavo(self, mese: str, importo: float) -> dict: ...
+
+    @abstractmethod
     def progetti(self) -> list[str]: ...
 
     @abstractmethod
     def skill_elenco(self) -> list[dict]: ...  # [{nome, descrizione, cartella}]
+
+    @abstractmethod
+    def catalogo(self) -> list[dict]: ...    # skill del catalogo verificato + flag "installata"
+
+    @abstractmethod
+    def installa_catalogo(self, id_skill: str) -> dict: ...  # {ok, messaggio}
 
     @abstractmethod
     def esegui(self, prompt: str, cwd: str, resume: str | None = None) -> Iterator[dict]: ...  # eventi stream-json
@@ -64,6 +79,15 @@ class FonteLocale(Fonte):
     def progetti(self):
         return self._indice.progetti()
 
+    def costi(self, giorni=30):
+        return self._indice.costi(giorni)
+
+    def ricavi(self):
+        return monitor.leggi_ricavi()
+
+    def imposta_ricavo(self, mese, importo):
+        return monitor.scrivi_ricavo(mese, importo)
+
     def skill_elenco(self):
         return skill.elenca_skill()
 
@@ -73,11 +97,17 @@ class FonteLocale(Fonte):
     def installa_skill(self, url):
         return skill.installa_locale(url)
 
+    def catalogo(self):
+        return skill.catalogo_locale()
+
+    def installa_catalogo(self, id_skill):
+        return skill.installa_catalogo_locale(id_skill)
+
 
 class FonteRemota(Fonte):
     """Legge un agent HTTP (da scrivere) che espone, con `Authorization: Bearer <token>`:
 
-    GET  /api/processi | /api/cpu | /api/sessioni | /api/progetti | /api/skill   -> JSON (stessi formati di Fonte)
+    GET  /api/processi | /api/cpu | /api/sessioni | /api/progetti | /api/skill | /api/costi?giorni=N | /api/ricavi   -> JSON (stessi formati di Fonte)
     POST /api/chat           {prompt, cwd, resume}  -> NDJSON: un evento stream-json per riga
     POST /api/skill/installa {url}                  -> {ok, messaggio}   (l'agent RI-valida l'URL)
     """
@@ -108,6 +138,12 @@ class FonteRemota(Fonte):
     def cpu_totale(self): return self._json("/api/cpu")
     def sessioni(self): return self._json("/api/sessioni")
     def progetti(self): return self._json("/api/progetti")
+    def costi(self, giorni=30): return self._json(f"/api/costi?giorni={int(giorni)}")
+    def ricavi(self): return self._json("/api/ricavi")
+
+    def imposta_ricavo(self, mese, importo):
+        with self._req("/api/ricavi", {"mese": mese, "importo": importo}) as r:
+            return json.load(r)
     def skill_elenco(self): return self._json("/api/skill")
 
     def esegui(self, prompt, cwd, resume=None):
@@ -118,6 +154,15 @@ class FonteRemota(Fonte):
                         yield json.loads(riga)
         except (urllib.error.URLError, OSError, ValueError) as e:
             yield {"type": "guardian_end", "returncode": -1, "stderr": f"Agent remoto: {e}"}
+
+    def catalogo(self): return self._json("/api/catalogo")
+
+    def installa_catalogo(self, id_skill):
+        try:
+            with self._req("/api/catalogo/installa", {"id": id_skill}, timeout=200) as r:
+                return json.load(r)
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            return {"ok": False, "messaggio": f"Agent remoto: {e}"}
 
     def installa_skill(self, url):
         try:

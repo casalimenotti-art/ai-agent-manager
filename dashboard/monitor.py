@@ -1,6 +1,8 @@
 """Statistiche di sistema: processi Claude Code, CPU totale con storico, token/costo."""
 from __future__ import annotations
 
+import json
+import math
 import os
 import threading
 import time
@@ -106,3 +108,32 @@ def riepilogo_token(sessioni: list[dict], ore: float = 24) -> dict:
         "totale": somma(recenti),
         "ore": ore,
     }
+
+
+# ---- ricavi inseriti a mano (per margine/ROI): {"YYYY-MM": importo_usd}
+def _file_ricavi():
+    return config.EVENTS_FILE.parent / "ricavi.json"
+
+
+def leggi_ricavi() -> dict[str, float]:
+    try:
+        d = json.loads(_file_ricavi().read_text(encoding="utf-8"))
+        return {str(k): float(v) for k, v in d.items() if isinstance(v, (int, float))}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
+def scrivi_ricavo(mese: str, importo: float) -> dict[str, float]:
+    import re
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", mese or ""):
+        raise ValueError("mese non valido (atteso YYYY-MM)")
+    if not isinstance(importo, (int, float)) or not math.isfinite(importo) or importo < 0 or importo > 1e9:
+        raise ValueError("importo non valido")
+    dati = leggi_ricavi()
+    dati[mese] = round(float(importo), 2)
+    path = _file_ricavi()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(dati, indent=1), encoding="utf-8")
+    tmp.replace(path)
+    return dati

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import config
@@ -18,17 +18,19 @@ def parse_ts(s: str | None) -> float:
         return 0.0
 
 
-def prezzo_modello(modello: str) -> tuple[float, float]:
+def prezzo_modello(modello: str) -> tuple[str, float, float, float]:
     m = (modello or "").lower()
-    for chiave, prezzo in config.PRICES.items():
-        if chiave in m:
-            return prezzo
+    for voce in config.PRICES:
+        if voce[0] in m:
+            return voce
     return config.DEFAULT_PRICE
 
 
 def costo(modello: str, inp: int, out: int, cache_read: int, cache_write: int) -> float:
-    p_in, p_out = prezzo_modello(modello)
-    return (inp * p_in + out * p_out + cache_read * p_in * 0.1 + cache_write * p_in * 1.25) / 1e6
+    chiave, p_in, p_out, mult_read = prezzo_modello(modello)
+    if chiave == "haiku-5-5" and inp + cache_read + cache_write > config.HAIKU_55_LUNGO["soglia"]:
+        p_in, p_out = config.HAIKU_55_LUNGO["input"], config.HAIKU_55_LUNGO["output"]
+    return (inp * p_in + out * p_out + cache_read * p_in * mult_read + cache_write * p_in * 1.25) / 1e6
 
 
 def _testo(content) -> str:
@@ -58,13 +60,21 @@ class _Stato:
         self.token_in = self.token_out = self.cache_r = self.cache_w = 0
         self.costo = 0.0
         self.modello = ""
+        self.giorni: dict[str, dict] = {}   # "YYYY-MM-DD" (ora locale) -> contatori
+        self.ore: dict[str, float] = {}  # "YYYY-MM-DD HH" (ora locale) -> costo
+        self.modelli_g: dict[str, dict[str, float]] = {}  # giorno -> modello -> costo
         self._visti: set[str] = set()  # id messaggi già contati (il JSONL ripete gli usage)
+
+    def _giorno(self, ts: float) -> dict:
+        chiave = datetime.fromtimestamp(ts).strftime("%Y-%m-%d") if ts else "?"
+        return self.giorni.setdefault(chiave, {"costo": 0.0, "token_in": 0, "token_out": 0, "cache": 0,
+                                               "msgs": 0, "tools": 0, "edits": 0})
 
     def feed(self, riga: dict):
         ts = parse_ts(riga.get("timestamp"))
         if ts:
             self.ultimo_ts = max(self.ultimo_ts, ts)
-        self.cwd = riga.get("cwd") or self.cwd
+        self.cwd = self.cwd or riga.get("cwd") or ""  # cartella di avvio: stabile anche se la sessione fa cd
         if riga.get("isSidechain"):
             self.sidechain = True
         tipo = riga.get("type")
@@ -76,10 +86,15 @@ class _Stato:
             testo = _testo(content)
             if testo:
                 self.ultimo_assistente = testo
+            g_chiave = datetime.fromtimestamp(ts or self.ultimo_ts).strftime("%Y-%m-%d") if (ts or self.ultimo_ts) else "?"
+            g = self._giorno(ts or self.ultimo_ts)
             if isinstance(content, list):
                 for b in content:
                     if isinstance(b, dict) and b.get("type") == "tool_use":
                         self.ultimo_strumento = b.get("name", "")
+                        g["tools"] += 1
+                        if self.ultimo_strumento in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
+                            g["edits"] += 1
             usage = msg.get("usage") or {}
             mid = msg.get("id") or riga.get("uuid") or ""
             if usage and mid not in self._visti:
@@ -91,7 +106,17 @@ class _Stato:
                 self.cache_r += cr
                 self.cache_w += cw
                 self.modello = msg.get("model") or self.modello
-                self.costo += costo(self.modello, i, o, cr, cw)
+                c = costo(self.modello, i, o, cr, cw)
+                self.costo += c
+                mg = self.modelli_g.setdefault(g_chiave, {})
+                mg[self.modello or "?"] = mg.get(self.modello or "?", 0.0) + c
+                g["costo"] += c
+                ora_k = datetime.fromtimestamp(ts or self.ultimo_ts).strftime("%Y-%m-%d %H") if (ts or self.ultimo_ts) else "?"
+                self.ore[ora_k] = self.ore.get(ora_k, 0.0) + c
+                g["token_in"] += i
+                g["token_out"] += o
+                g["cache"] += cr + cw
+                g["msgs"] += 1
         elif tipo == "user":
             testo = _testo(content)  # i tool_result non hanno testo: vengono ignorati
             if testo:
@@ -210,3 +235,61 @@ class Indice:
             if s["cwd"]:
                 visti.setdefault(s["cwd"])
         return list(visti)
+
+
+    def costi(self, giorni: int = 30) -> dict:
+        """Spesa e produttività aggregate per giorno / progetto / modello (ultimi `giorni` giorni)."""
+        oggi = date.today()
+        inizio = oggi - timedelta(days=giorni - 1)
+        elenco = [(inizio + timedelta(days=i)).isoformat() for i in range(giorni)]
+        tot = {k: {"data": k, "costo": 0.0, "token_in": 0, "token_out": 0, "cache": 0, "msgs": 0, "tools": 0, "edits": 0}
+               for k in elenco}
+        progetti: dict[str, float] = {}
+        modelli: dict[str, float] = {}
+        ore: dict[str, float] = {}
+        limite = time.time() - giorni * 86400
+        for p in self._files():
+            try:
+                if p.stat().st_mtime < limite:
+                    continue
+            except OSError:
+                continue
+            st = self._stati.get(p) or self._stati.setdefault(p, _Stato(p))
+            st.aggiorna()
+            nome = Path(st.cwd).name if st.cwd else p.parent.name
+            for chiave, g in st.giorni.items():
+                if chiave not in tot:
+                    continue
+                for k, v in g.items():
+                    tot[chiave][k] += v
+                progetti[nome] = progetti.get(nome, 0.0) + g["costo"]
+            for ok, v in st.ore.items():
+                ore[ok] = ore.get(ok, 0.0) + v
+            for chiave, per_modello in st.modelli_g.items():
+                if chiave in tot:
+                    for m, c in per_modello.items():
+                        modelli[m] = modelli.get(m, 0.0) + c
+        serie = [dict(v, costo=round(v["costo"], 4)) for v in tot.values()]
+        costo_di = lambda n: sum(x["costo"] for x in serie[-n:])
+        attivi7 = [x["costo"] for x in serie[-7:]]
+        media7 = sum(attivi7) / 7
+        giorni_mese = (date(oggi.year + (oggi.month == 12), oggi.month % 12 + 1, 1) - date(oggi.year, oggi.month, 1)).days
+        mese = sum(x["costo"] for x in serie if x["data"].startswith(oggi.strftime("%Y-%m")))
+        adesso = datetime.now()
+        ultime5 = [(adesso - timedelta(hours=i)).strftime("%Y-%m-%d %H") for i in range(5)]
+        costo_5h = sum(ore.get(k, 0.0) for k in ultime5)
+        return {
+            "giorni": serie,
+            "ultime_5h": round(costo_5h, 4),
+            "burn_orario": round(costo_5h / 5, 4),   # media oraria sulle ultime 5 ore di calendario
+            "ore": {k: round(v, 4) for k, v in ore.items() if k in ultime5},
+            "progetti": sorted(({"progetto": k, "costo": round(v, 4)} for k, v in progetti.items()), key=lambda x: -x["costo"]),
+            "modelli": sorted(({"modello": k, "costo": round(v, 4)} for k, v in modelli.items()), key=lambda x: -x["costo"]),
+            "oggi": round(serie[-1]["costo"], 4),
+            "ultimi7": round(costo_di(7), 4),
+            "ultimi30": round(costo_di(30), 4),
+            "mese": round(mese, 4),
+            "media7": round(media7, 4),
+            "proiezione_mese": round(mese + media7 * (giorni_mese - oggi.day), 4),
+            "mese_id": oggi.strftime("%Y-%m"),
+        }

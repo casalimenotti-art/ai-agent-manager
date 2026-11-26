@@ -73,7 +73,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{ color:var(--cy); text-shadow
 .g-card::before, .g-card::after {{ content:""; position:absolute; width:12px; height:12px; pointer-events:none; }}
 .g-card::before {{ top:-1px; left:-1px; border-top:2px solid var(--cy); border-left:2px solid var(--cy); }}
 .g-card::after {{ bottom:-1px; right:-1px; border-bottom:2px solid var(--mg); border-right:2px solid var(--mg); }}
-.g-label {{ font-size:.66rem; letter-spacing:.22em; text-transform:uppercase; color:var(--ink2); }}
+.g-label {{ font-size:.72rem; letter-spacing:.22em; text-transform:uppercase; color:var(--ink2); }}
 .g-value {{ font-size:2rem; font-weight:700; color:var(--ink); margin-top:.3rem; line-height:1.1;
   text-shadow:0 0 18px rgba(0,240,255,.28); font-variant-numeric:tabular-nums; }}
 .g-value small {{ font-size:.85rem; color:var(--ink2); margin-left:.25rem; font-weight:500; text-shadow:none; }}
@@ -141,9 +141,17 @@ button[data-baseweb="tab"][aria-selected="true"], button[data-baseweb="tab"][ari
 .g-wrap table, .g-wrap td, .g-wrap th {{ border-left:0; border-right:0; border-top:0; }}
 .g-legend {{ display:flex; gap:1.4rem; margin:.1rem 0 .4rem; font-size:.74rem; color:var(--ink); }}
 .g-leg i {{ display:inline-block; width:18px; height:3px; margin-right:.5rem; vertical-align:middle; }}
+.g-bar {{ display:grid; grid-template-columns:minmax(80px,170px) 1fr 70px; gap:.6rem; align-items:center; font-size:.76rem; margin:.45rem 0; }}
+.g-bar .n {{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }}
+.g-bar .b {{ height:6px; background:#151b34; }} .g-bar .b i {{ display:block; height:100%; background:{SERIE_TOT}; }}
+.g-bar .v {{ text-align:right; color:var(--ink2); font-variant-numeric:tabular-nums; }}
+.risk.ok {{ color:var(--ok); }} .risk.mid {{ color:var(--warn); }}
+.g-logo {{ animation:g-boot .9s steps(1,end) 1; }}
+@keyframes g-boot {{ 0%{{opacity:0; transform:translateX(-3px)}} 15%{{opacity:1; transform:translateX(2px)}} 30%{{opacity:.2}} 45%{{opacity:1; transform:none}} 60%{{opacity:.5}} 100%{{opacity:1}} }}
+:focus-visible {{ outline:2px solid var(--cy) !important; outline-offset:2px; }}
 .g-dot {{ animation:g-pulse 1.8s ease-in-out infinite; }}
 @keyframes g-pulse {{ 50% {{ opacity:.45; }} }}
-@media (prefers-reduced-motion: reduce) {{ .g-dot, .pill.on i {{ animation:none; }} }}
+@media (prefers-reduced-motion: reduce) {{ .g-dot, .pill.on i, .g-logo {{ animation:none; }} }}
 @media (max-width: 700px) {{ .g-logo {{ font-size:1.5rem; letter-spacing:.2em; }} .g-value {{ font-size:1.5rem; }} }}
 </style>
 """
@@ -248,3 +256,62 @@ def legenda_cpu() -> str:
     """Legenda sempre presente (2 serie): swatch a linea + etichetta, in testo neutro."""
     voce = lambda col, nome: (f"<span class='g-leg'><i style='background:{col}'></i>{esc(nome)}</span>")
     return ("<div class='g-legend'>" + voce(SERIE_TOT, "CPU macchina") + voce(SERIE_CLAUDE, "CPU Claude (% della macchina)") + "</div>")
+
+
+def grafico_costi(giorni: list[dict]) -> alt.Chart:
+    """Colonne giornaliere: <=24px, estremo superiore arrotondato 4px, base squadrata, tooltip."""
+    df = pd.DataFrame(giorni)
+    df["giorno"] = pd.to_datetime(df["data"])
+    barre = alt.Chart(df).mark_bar(size=14, cornerRadiusTopLeft=4, cornerRadiusTopRight=4, color=SERIE_TOT).encode(
+        x=alt.X("giorno:T", title=None, axis=alt.Axis(format="%d/%m", labelColor=INK2, domain=False, tickColor="#1c2340", tickCount={"interval": "day", "step": 5},
+                                                       labelFont="monospace", labelOverlap="greedy", grid=False)),
+        y=alt.Y("costo:Q", title=None, axis=alt.Axis(format="$.2f", labelColor=INK2, domain=False, gridColor="#141a33",
+                                                      tickSize=0, labelFont="monospace")),
+        tooltip=[alt.Tooltip("data:N", title="giorno"), alt.Tooltip("costo:Q", format="$.2f", title="costo ≈"),
+                 alt.Tooltip("msgs:Q", title="messaggi"), alt.Tooltip("tools:Q", title="strumenti"),
+                 alt.Tooltip("edits:Q", title="file modificati")],
+        opacity=alt.condition(alt.datum.costo > 0, alt.value(1), alt.value(0.25)),
+    )
+    return barre.properties(height=240, background="transparent").configure_view(stroke=None).configure(font="monospace")
+
+
+def barre_orizzontali(righe: list[tuple[str, float]], fmt=lambda v: f"${v:.2f}") -> str:
+    """Classifica con barre CSS (valore in testo: nessuna informazione solo a colore)."""
+    if not righe:
+        return "<div class='g-sub'>nessun dato</div>"
+    massimo = max(v for _, v in righe) or 1
+    out = []
+    for nome, v in righe[:8]:
+        out.append(f"<div class='g-bar'><span class='n' title='{esc(nome)}'>{esc(nome)}</span>"
+                   f"<span class='b'><i style='width:{max(2, v / massimo * 100):.0f}%'></i></span><span class='v'>{esc(fmt(v))}</span></div>")
+    return "<div class='g-bars'>" + "".join(out) + "</div>"
+
+
+def heatmap_giorni(giorni: list[dict]) -> alt.Chart:
+    """Heatmap a settimane (colonne) x giorno della settimana (righe) della spesa giornaliera."""
+    df = pd.DataFrame(giorni)
+    d = pd.to_datetime(df["data"])
+    df["settimana"] = (d - pd.Timestamp(d.min()) + pd.Timedelta(days=int(d.min().weekday()))).dt.days // 7
+    df["giorno_sett"] = d.dt.weekday
+    df["etichetta_sett"] = d.dt.strftime("%d/%m")
+    giorni_nome = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"]
+    return (alt.Chart(df).mark_rect(stroke=SURFACE, strokeWidth=3, cornerRadius=2).encode(
+        x=alt.X("settimana:O", title=None, axis=None),
+        y=alt.Y("giorno_sett:O", title=None, sort=list(range(7)),
+                axis=alt.Axis(labelExpr="['lun','mar','mer','gio','ven','sab','dom'][datum.value]", labelColor=INK2,
+                              domain=False, ticks=False, labelFont="monospace")),
+        color=alt.Color("costo:Q", scale=alt.Scale(range=["#10182c", "#0b4a63", SERIE_TOT, "#00e5ff"], type="sqrt"),
+                        legend=alt.Legend(orient="bottom", title="spesa giornaliera", format="$.2f", gradientLength=160,
+                                          labelColor=INK2, titleColor=INK2, labelFont="monospace", titleFont="monospace")),
+        tooltip=[alt.Tooltip("data:N", title="giorno"), alt.Tooltip("costo:Q", format="$.2f", title="costo ≈"),
+                 alt.Tooltip("msgs:Q", title="messaggi")])
+        .properties(width=alt.Step(24), height=alt.Step(22), background="transparent").configure_view(stroke=None).configure(font="monospace"))
+
+
+def card_store(voce: dict) -> str:
+    rischio = voce["rischio"]
+    classe = "ok" if rischio == "basso" else "mid"
+    stato = "<span class='pill on'><i></i>INSTALLATA</span>" if voce["installata"] else ""
+    return (f"<div class='g-card g-skill'><div class='g-name'>{esc(voce['titolo'])} {stato}</div>"
+            f"<div class='g-desc'>{esc(voce['descrizione'])}</div>"
+            f"<div class='g-sub'>rischio: <b class='risk {classe}'>{esc(rischio)}</b> · {esc(voce['repo'])}</div></div>")

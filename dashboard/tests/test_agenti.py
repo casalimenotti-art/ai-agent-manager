@@ -110,3 +110,51 @@ def test_script_hook_scrive_evento_senza_tool_input(tmp_path):
     assert riga["tool"] == "Bash" and riga["session_id"] == "s9" and "SEGRETO" not in ev.read_text()
     # input non valido: esce comunque con 0
     assert subprocess.run([sys.executable, str(HOOK)], input="garbage", text=True, env={"GUARDIAN_EVENTS_FILE": str(ev)}).returncode == 0
+
+
+def test_costi_per_giorno_progetto_modello_e_output(tmp_path):
+    now = time.time()
+    p = tmp_path / "projects" / "x" / "s1.jsonl"
+    scrivi(p, [asst(now - 10, "m1", tool="Edit", out=1000), asst(now - 9, "m2", tool="Bash", out=500, cwd="/p/miaapp")])
+    ix = indice(tmp_path)
+    k = ix.costi(7)
+    oggi = k["giorni"][-1]
+    assert len(k["giorni"]) == 7 and oggi["msgs"] == 2 and oggi["tools"] == 2 and oggi["edits"] == 1
+    assert oggi["token_out"] == 1500 and k["oggi"] > 0 and k["ultimi7"] == k["oggi"]
+    assert k["progetti"][0]["progetto"] == "miaapp" and k["modelli"][0]["modello"] == "claude-sonnet-5-5"
+    assert k["proiezione_mese"] >= k["mese"]
+    ix.costi(7)  # seconda lettura: nessun doppio conteggio
+    assert ix.costi(7)["giorni"][-1]["msgs"] == 2
+
+
+def test_costi_ignora_giorni_fuori_finestra(tmp_path):
+    scrivi(tmp_path / "projects" / "x" / "s1.jsonl", [asst(time.time() - 40 * 86400, "m1", testo="vecchio")])
+    assert indice(tmp_path).costi(30)["ultimi30"] == 0
+
+
+import pytest
+@pytest.mark.parametrize("modello,inp,out,cr,cw,atteso", [
+    ("claude-sonnet-5-5", 1_000_000, 0, 0, 0, 2.0),
+    ("claude-sonnet-5-5", 0, 1_000_000, 0, 0, 10.0),
+    ("claude-sonnet-5-5", 0, 0, 1_000_000, 0, 0.10),   # cache read 0.05x
+    ("claude-opus-5-5", 0, 0, 0, 1_000_000, 5.0),       # cache write 1.25x
+    ("claude-opus-5-5", 0, 1_000_000, 0, 0, 20.0),
+    ("claude-opus-4-1-20250805", 1_000_000, 0, 0, 0, 15.0),
+    ("claude-opus-4-6", 1_000_000, 0, 0, 0, 5.0),
+    ("claude-haiku-4-5-20251001", 0, 1_000_000, 0, 0, 5.0),
+    ("claude-haiku-5-5", 50_000, 0, 0, 0, 0.005),
+    ("claude-haiku-5-5", 200_000, 0, 0, 0, 0.10),       # prompt > 100k: tariffa lunga
+    ("claude-fable-5-2", 0, 0, 1_000_000, 0, 0.20),
+    ("modello-sconosciuto", 1_000_000, 0, 0, 0, 2.0),
+])
+def test_prezzi_ufficiali(modello, inp, out, cr, cw, atteso):
+    assert agenti.costo(modello, inp, out, cr, cw) == pytest.approx(atteso)
+
+
+def test_burn_rate_ultime_5_ore(tmp_path):
+    now = time.time()
+    scrivi(tmp_path / "projects" / "x" / "s1.jsonl", [asst(now - 5, "m1", out=1_000_000), asst(now - 6 * 3600, "m2", out=1_000_000)])
+    k = indice(tmp_path).costi(7)
+    un_msg = agenti.costo("claude-sonnet-5-5", 10, 1_000_000, 1000, 500)
+    assert k["ultime_5h"] == pytest.approx(un_msg, abs=1e-3)       # il messaggio di 6 ore fa è escluso
+    assert k["burn_orario"] == pytest.approx(un_msg / 5, abs=1e-3)
