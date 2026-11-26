@@ -30,9 +30,10 @@ class Campionatore:
     def __init__(self, storico_s: float | None = None):
         self.storico_s = config.HISTORY_S if storico_s is None else storico_s
         self._procs: dict[int, psutil.Process] = {}
-        self._storico: deque[tuple[float, float]] = deque()
+        self._storico: deque[tuple[float, float, float]] = deque()
         self._lock = threading.Lock()
         self._mio_pid = os.getpid()
+        self._claude_pct = 0.0  # CPU Claude in % dell'intera macchina (cpu / n_core)
         psutil.cpu_percent(None)  # primo campione a vuoto
 
     def processi(self) -> dict:
@@ -56,9 +57,11 @@ class Campionatore:
                 })
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
+        somma = round(sum(x["cpu"] for x in lista), 1)
+        self._claude_pct = min(100.0, somma / (psutil.cpu_count() or 1))
         return {
             "n": len(lista),
-            "cpu": round(sum(x["cpu"] for x in lista), 1),
+            "cpu": somma,
             "ram_mb": round(sum(x["ram_mb"] for x in lista), 1),
             "lista": sorted(lista, key=lambda x: -x["cpu"]),
         }
@@ -66,10 +69,10 @@ class Campionatore:
     def cpu_totale(self) -> dict:
         ora = time.time()
         with self._lock:
-            self._storico.append((ora, psutil.cpu_percent(None)))
+            self._storico.append((ora, psutil.cpu_percent(None), self._claude_pct))
             while self._storico and ora - self._storico[0][0] > self.storico_s:
                 self._storico.popleft()
-            storico = [[round(t - ora, 1), v] for t, v in self._storico]  # secondi relativi a "ora"
+            storico = [[round(t - ora, 1), v, c] for t, v, c in self._storico]  # [sec relativi a ora, totale %, Claude %]
         vm = psutil.virtual_memory()
         return {
             "cpu": storico[-1][1],

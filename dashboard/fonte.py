@@ -27,7 +27,7 @@ class Fonte(ABC):
     def processi(self) -> dict: ...          # {n, cpu, ram_mb, lista:[{pid,nome,cpu,ram_mb,cmd}]}
 
     @abstractmethod
-    def cpu_totale(self) -> dict: ...        # {cpu, n_core, ram_pct, ram_tot_mb, storico:[[sec_rel, pct]]}
+    def cpu_totale(self) -> dict: ...        # {cpu, n_core, ram_pct, ram_tot_mb, storico:[[sec_rel, pct_tot, pct_claude]]}
 
     @abstractmethod
     def sessioni(self) -> list[dict]: ...    # vedi agenti.Indice.sessioni

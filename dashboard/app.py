@@ -5,7 +5,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # import dei moduli accanto ad app.py
 
-import pandas as pd
 import streamlit as st
 
 import chat
@@ -13,23 +12,18 @@ import config
 import fonte as fonte_mod
 import monitor
 import skill
+import theme
 
 st.set_page_config(page_title="Guardian", page_icon="🛡️", layout="wide")
 
 # Tema scuro: .streamlit/config.toml vale solo se si avvia da dashboard/, quindi forzo anche da qui.
 try:
-    st._config.set_option("theme.base", "dark")
+    for chiave, valore in (("base", "dark"), ("primaryColor", "#00F0FF"), ("backgroundColor", "#080A12"),
+                           ("secondaryBackgroundColor", "#0D1020"), ("textColor", "#E8F1FF")):
+        st._config.set_option(f"theme.{chiave}", valore)
 except Exception:
     pass
-st.markdown("""
-<style>
-:root { color-scheme: dark; }
-.stApp, [data-testid="stHeader"] { background: #0e1117; color: #e6e6e6; }
-[data-testid="stMetric"], .gcard { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: .7rem .9rem; }
-.gcard { min-height: 7.2rem; margin-bottom: .3rem; }
-.gcard b { color: #9db4ff; } .gcard span { color: #9aa4b2; font-size: .85rem; }
-.block-container { padding-top: 2.2rem; max-width: 1400px; }
-</style>""", unsafe_allow_html=True)
+st.markdown(theme.CSS, unsafe_allow_html=True)
 
 
 @st.cache_resource
@@ -71,45 +65,43 @@ def esegui_e_mostra(prompt: str, cwd: str, resume: str | None) -> chat.Risposta:
 if st.get_option("server.address") not in ("localhost", "127.0.0.1"):
     st.warning("⚠️ Il server ascolta su tutte le interfacce e la chat può far eseguire comandi a Claude: "
                "riavvia con `streamlit run dashboard/app.py --server.address localhost`.")
-st.title("🛡️ Guardian")
-st.caption(f"Sorgente: **{fonte.nome}** · aggiornamento ogni {config.REFRESH_S}s · "
-           f"permessi chat: `{config.CHAT_PERMISSION_MODE}`")
-tab_stat, tab_agenti, tab_chat, tab_skill = st.tabs(["📊 Statistiche", "🤖 Agenti", "💬 Agente centrale", "🧩 Skill"])
+st.markdown(theme.intestazione(fonte.nome, config.CHAT_PERMISSION_MODE, config.REFRESH_S), unsafe_allow_html=True)
+tab_stat, tab_agenti, tab_chat, tab_skill = st.tabs(["Statistiche", "Agenti", "Agente centrale", "Skill"])
 
 
 # ---------------------------------------------------------------- 1. Statistiche
 @st.fragment(run_every=config.REFRESH_S)
 def vista_statistiche():
     p, c = fonte.processi(), fonte.cpu_totale()
-    sessioni = fonte.sessioni()
-    t = monitor.riepilogo_token(sessioni)
+    t = monitor.riepilogo_token(fonte.sessioni())
     a, b, c3, d = st.columns(4)
-    a.metric("Processi Claude Code", p["n"])
-    b.metric("CPU Claude (% di un core)", f"{p['cpu']:.1f}")
-    c3.metric("RAM Claude", f"{p['ram_mb']:.0f} MB")
-    d.metric("CPU totale macchina", f"{c['cpu']:.0f}%", help=f"{c['n_core']} core · RAM usata {c['ram_pct']:.0f}% di {c['ram_tot_mb']} MB")
+    a.markdown(theme.metrica("Processi Claude", str(p["n"]), sub="claude / @anthropic-ai/claude-code"), unsafe_allow_html=True)
+    b.markdown(theme.metrica("CPU Claude", f"{p['cpu']:.1f}", "% core", f"{c['storico'][-1][2]:.1f}% della macchina",
+                             pct=c["storico"][-1][2]), unsafe_allow_html=True)
+    c3.markdown(theme.metrica("RAM Claude", f"{p['ram_mb']:.0f}", "MB", f"macchina: {c['ram_pct']:.0f}% di {c['ram_tot_mb']} MB",
+                              pct=c["ram_pct"]), unsafe_allow_html=True)
+    d.markdown(theme.metrica("CPU macchina", f"{c['cpu']:.0f}", "%", f"{c['n_core']} core", pct=c["cpu"]), unsafe_allow_html=True)
     sx, dx = st.columns([3, 2])
     with sx:
-        st.subheader("CPU totale · ultimi 2 minuti")
-        df = pd.DataFrame(c["storico"], columns=["s", "CPU %"]).set_index("s")
-        st.line_chart(df, height=240, y_label="CPU %", x_label="secondi fa")
+        st.subheader("CPU · ultimi 2 minuti")
+        st.markdown(theme.legenda_cpu(), unsafe_allow_html=True)
+        st.altair_chart(theme.grafico_cpu(c["storico"], c["n_core"]), width="stretch", theme=None)
     with dx:
         st.subheader("Token e costo (stima)")
         if t["ultima"]:
             u = t["ultima"]
-            st.markdown(f"**Sessione più recente** · {u['progetto']}")
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Input/Output", f"{u['token_in'] + u['token_out']:,}", help=f"in {u['token_in']:,} · out {u['token_out']:,}")
-            m2.metric("Cache", f"{u['cache']:,}")
-            m3.metric("Costo ≈", f"${u['costo']:.2f}")
-            st.caption(f"Ultime {t['ore']:.0f}h, tutte le sessioni: ${t['totale']['costo']:.2f} · "
-                       f"{t['totale']['token_out']:,} token output")
+            st.caption(f"sessione più recente · {u['progetto']}")
+            m1, m2 = st.columns(2)
+            m1.markdown(theme.metrica("Token in/out", f"{u['token_in'] + u['token_out']:,}", sub=f"in {u['token_in']:,} · out {u['token_out']:,}"),
+                        unsafe_allow_html=True)
+            m2.markdown(theme.metrica("Costo ≈", f"${u['costo']:.2f}", sub=f"cache {u['cache']:,}"), unsafe_allow_html=True)
+            st.markdown(theme.metrica(f"Ultime {t['ore']:.0f}h · tutte le sessioni", f"${t['totale']['costo']:.2f}",
+                                      sub=f"{t['totale']['token_out']:,} token output"), unsafe_allow_html=True)
         else:
             st.info("Nessuna sessione trovata in ~/.claude/projects")
     st.subheader("Processi")
     if p["lista"]:
-        st.dataframe(pd.DataFrame(p["lista"]).rename(columns={"nome": "Nome", "cpu": "CPU %", "ram_mb": "RAM MB", "cmd": "Comando"}),
-                     hide_index=True, use_container_width=True)
+        st.markdown(theme.tabella_processi(p["lista"]), unsafe_allow_html=True)
     else:
         st.caption("Nessun processo Claude Code in esecuzione.")
 
@@ -123,21 +115,12 @@ with tab_stat:
 def vista_agenti():
     righe = fonte.sessioni()
     al_lavoro = sum(r["stato"] == "al lavoro" for r in righe)
-    st.markdown(f"**{al_lavoro}** al lavoro · {len(righe) - al_lavoro} fermi · soglia {config.IDLE_THRESHOLD_S:.0f}s "
-                f"· dati: JSONL" + (" + hook" if any(r["fonte"] == "hook" for r in righe) else " (hook non attivi)"))
+    st.caption(f"{al_lavoro} al lavoro · {len(righe) - al_lavoro} fermi · soglia {config.IDLE_THRESHOLD_S:.0f}s "
+               f"· dati: JSONL" + (" + hook" if any(r["fonte"] == "hook" for r in righe) else " (hook non attivi)"))
     if not righe:
         st.info("Nessuna sessione recente in ~/.claude/projects")
         return
-    df = pd.DataFrame([{
-        "Stato": ("🟢 " if r["stato"] == "al lavoro" else "⚪ ") + r["stato"],
-        "Progetto": r["progetto"],
-        "Tipo": r["tipo"] + (f" {r['agente'][:7]}" if r["agente"] else ""),
-        "Ultimo strumento": r["strumento"] or "—",
-        "Ultimo messaggio": r["messaggio"][:160],
-        "Aggiornato": fa(r["ultimo_agg"]),
-        "Costo ≈": f"${r['costo']:.2f}",
-    } for r in righe])
-    st.dataframe(df, hide_index=True, use_container_width=True, height=min(600, 44 + 35 * len(df)))
+    st.markdown(theme.tabella_agenti(righe, fa), unsafe_allow_html=True)
 
 
 with tab_agenti:
@@ -166,7 +149,7 @@ with tab_chat:
     conv = st.session_state["chat"].setdefault(cwd, {"sid": None, "msgs": []})
     c1, c2 = st.columns([4, 1])
     c1.caption(f"Contesto: {'sessione ' + conv['sid'][:8] if conv['sid'] else 'nuova conversazione'}")
-    if c2.button("🗑️ Nuova conversazione", disabled=not conv["msgs"]):
+    if c2.button("Nuova conversazione", disabled=not conv["msgs"]):
         st.session_state["chat"][cwd] = {"sid": None, "msgs": []}
         st.rerun()
     for m in conv["msgs"]:
@@ -200,8 +183,7 @@ with tab_skill:
     cols = st.columns(3)
     for i, s in enumerate(skills):
         with cols[i % 3]:
-            desc = s["descrizione"] if len(s["descrizione"]) < 180 else s["descrizione"][:177] + "…"
-            st.markdown(f"<div class='gcard'><b>{s['nome']}</b><br><span>{desc}</span></div>", unsafe_allow_html=True)
+            st.markdown(theme.card_skill(s["nome"], s["descrizione"]), unsafe_allow_html=True)
             if st.button("Usa", key=f"usa_{s['cartella']}", use_container_width=True):
                 st.session_state["skill_sel"] = s["nome"]
                 st.session_state.pop("skill_out", None)
@@ -209,10 +191,10 @@ with tab_skill:
     if sel:
         st.divider()
         with st.form("form_skill"):
-            st.markdown(f"#### Skill **{sel}**")
+            st.markdown(f"#### Skill · {sel}")
             richiesta = st.text_area("Cosa deve fare", placeholder="Descrivi il compito…")
             cartella_skill = scegli_cartella("skill")
-            invia = st.form_submit_button("▶️ Esegui", type="primary")
+            invia = st.form_submit_button("Esegui", type="primary")
         if invia:
             if not richiesta.strip() or not cartella_skill:
                 st.warning("Compila 'cosa deve fare' e la cartella.")
@@ -226,7 +208,7 @@ with tab_skill:
     st.subheader("Installa una skill da GitHub")
     with st.form("form_install", clear_on_submit=False):
         url = st.text_input("URL del repository", placeholder="https://github.com/utente/repo")
-        ok = st.form_submit_button("⬇️ Clona in ~/.claude/skills")
+        ok = st.form_submit_button("Clona in ~/.claude/skills")
     if ok:
         if not skill.valida_url(url):
             st.error("Accetto solo URL del tipo https://github.com/<utente>/<repo>")
