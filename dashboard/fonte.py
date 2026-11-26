@@ -7,6 +7,9 @@ FonteRemota  -> agent HTTP su un altro PC (stessi metodi, token Bearer). SCHELET
 from __future__ import annotations
 
 import json
+import math
+import random
+import time
 import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
@@ -247,7 +250,110 @@ class FonteRemota(Fonte):
             return {"ok": False, "messaggio": f"Agent remoto: {e}"}
 
 
+class FonteDemo(FonteLocale):
+    """Dati FINTI per mostrare Guardian a soci e clienti senza esporre i progetti veri.
+
+    Tutto ciò che scrive o esegue è disattivato: niente chat, installazioni, foto, profilo azienda.
+    """
+    nome = "DEMO · dati finti"
+    _OFF = {"ok": False, "messaggio": "Disattivato in modalità demo."}
+
+    def __init__(self):
+        super().__init__()
+        self._visite: dict[str, dict] = {}
+        self._ricavi = {time.strftime("%Y-%m"): 3200.0}
+
+    def processi(self):
+        t = time.time()
+        lista = [{"pid": 1000 + i, "nome": "claude", "cpu": round(max(0.0, 6 + 5 * math.sin(t / (7 + i)) + i), 1),
+                  "ram_mb": 280 + 40 * i, "cmd": f"claude --agent demo-{i}"} for i in range(3)]
+        return {"n": 3, "cpu": round(sum(x["cpu"] for x in lista), 1), "ram_mb": sum(x["ram_mb"] for x in lista), "lista": lista}
+
+    def cpu_totale(self):
+        t = time.time()
+        storico = []
+        for k in range(120, -1, -1):
+            x = t - k
+            tot = 30 + 18 * math.sin(x / 9) + 7 * math.sin(x / 2.3)
+            storico.append([-k, round(max(2, min(95, tot)), 1), round(max(0.5, 6 + 3 * math.sin(x / 7)), 1)])
+        return {"cpu": storico[-1][1], "n_core": 8, "ram_pct": 41.0, "ram_tot_mb": 16384, "storico": storico}
+
+    def sessioni(self):
+        t = time.time()
+        base = [("sito-ottico", "sessione", "", "Edit", "Aggiorno la pagina del catalogo occhiali", 4),
+                ("sito-ottico", "subagente", "a1b2c3d", "WebSearch", "Cerco esempi di prova virtuale occhiali", 9),
+                ("ricerca-clienti", "subagente", "e4f5a6b", "WebFetch", "Verifico il sito di un ristorante", 30),
+                ("dashboard", "sessione", "", "Bash", "Eseguo i test della dashboard", 400)]
+        return [{"progetto": p, "cwd": f"/demo/{p}", "sessione": f"demo-{i}", "tipo": ty, "agente": ag, "padre": "demo-0" if ag else "",
+                 "stato": "al lavoro" if eta < 120 else "fermo", "strumento": tool, "messaggio": msg,
+                 "ultimo_agg": t - eta, "fonte": "demo", "token_in": 90 + 10 * i, "token_out": 14000 + 900 * i,
+                 "cache_read": 600000 + 40000 * i, "cache_write": 30000, "costo": round(0.8 + 0.45 * i, 4),
+                 "modello": "claude-sonnet-5-5"} for i, (p, ty, ag, tool, msg, eta) in enumerate(base)]
+
+    def costi(self, giorni=30):
+        rnd = random.Random(7)
+        oggi = time.time()
+        serie = []
+        for k in range(giorni - 1, -1, -1):
+            d = time.strftime("%Y-%m-%d", time.localtime(oggi - k * 86400))
+            c = 0.0 if rnd.random() < 0.2 else round(rnd.uniform(0.8, 6.5), 4)
+            serie.append({"data": d, "costo": c, "token_in": int(c * 40), "token_out": int(c * 9000), "cache": int(c * 700000),
+                          "msgs": int(c * 14), "tools": int(c * 22), "edits": int(c * 4)})
+        mese = sum(x["costo"] for x in serie[-time.localtime().tm_mday:])
+        media7 = sum(x["costo"] for x in serie[-7:]) / 7
+        return {"giorni": serie, "progetti": [{"progetto": "sito-ottico", "costo": 31.2}, {"progetto": "ricerca-clienti", "costo": 18.4},
+                                              {"progetto": "dashboard", "costo": 12.9}],
+                "modelli": [{"modello": "claude-sonnet-5-5", "costo": 44.0}, {"modello": "claude-opus-5-5", "costo": 18.5}],
+                "ultime_5h": 2.1, "burn_orario": 0.42, "ore": {}, "oggi": serie[-1]["costo"], "ultimi7": round(media7 * 7, 4),
+                "ultimi30": round(sum(x["costo"] for x in serie[-30:]), 4), "mese": round(mese, 4), "media7": round(media7, 4),
+                "proiezione_mese": round(mese + media7 * 10, 4), "mese_id": time.strftime("%Y-%m")}
+
+    def clienti(self):
+        demo = [("ESEMPIO Trattoria", "ristorante", "Cagliari", 5, "Solo pagina Facebook, nessun sito", "prenotazioni online + offerta nei giorni deboli"),
+                ("ESEMPIO Ottica", "ottica", "Cagliari", 5, "Sito non adatto al telefono", "catalogo con prova virtuale degli occhiali"),
+                ("ESEMPIO B&B", "B&B", "Quartu S.E.", 4, "Prenotazioni solo al telefono", "sito immediato con prenotazione"),
+                ("ESEMPIO Parrucchiere", "parrucchiere", "Selargius", 4, "Recensioni senza risposta", "prenotazioni + promemoria"),
+                ("ESEMPIO Officina", "officina", "Elmas", 3, "Nessun sito, orari incoerenti", "sito vetrina"),
+                ("ESEMPIO Studio", "studio", "Cagliari", 2, "Non verificato", "da verificare")]
+        out = []
+        for n, cat, z, fit, prova, opp in demo:
+            s = clienti.slug(n)
+            v = self._visite.get(s, {})
+            out.append({"azienda": n, "categoria": cat, "zona": z, "contatto": "non pubblico", "prova": prova, "fonte": "",
+                        "adattamento": fit, "motivo": prova, "da_verificare": "sì" if fit < 3 else "no", "opportunita": opp,
+                        "slug": s, "file": "demo.csv", "stato": v.get("stato", "da visitare"), "note": v.get("note", ""),
+                        "consenso_foto": False, "aggiornato": 0})
+        return out
+
+    def imposta_visita(self, slug, stato, note, consenso_foto):
+        if stato not in clienti.STATI:
+            return {"ok": False, "messaggio": "Stato non valido."}
+        self._visite[slug] = {"stato": stato, "note": note[:200]}
+        return {"ok": True, "messaggio": "Salvato (solo in memoria, demo)."}
+
+    def salva_foto(self, slug, dati, consenso): return dict(self._OFF)
+    def foto(self, slug): return []
+    def scheda_visita(self, slug): return ""
+    def ricavi(self): return dict(self._ricavi)
+
+    def imposta_ricavo(self, mese, importo):
+        self._ricavi[mese] = float(importo)
+        return dict(self._ricavi)
+
+    def progetti(self): return ["/demo/sito-ottico", "/demo/ricerca-clienti"]
+    def installa_skill(self, url): return dict(self._OFF)
+    def installa_catalogo(self, id_skill): return dict(self._OFF)
+    def installa_squadra(self): return dict(self._OFF)
+    def imposta_azienda(self, testo): return dict(self._OFF)
+    def azienda(self): return "Profilo azienda (esempio): siti web immediati e software su misura a Cagliari."
+
+    def esegui(self, prompt, cwd, resume=None):
+        yield {"type": "guardian_end", "returncode": -1, "stderr": "La chat è disattivata in modalità demo."}
+
+
 def crea_fonte() -> Fonte:
+    if config.SOURCE == "demo":
+        return FonteDemo()
     if config.SOURCE == "remote":
         return FonteRemota(config.AGENT_URL, config.TOKEN)
     return FonteLocale()

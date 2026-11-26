@@ -30,3 +30,6 @@ Sono una stima: con un abbonamento a tariffa fissa non è ciò che paghi. Overri
 **Ricavi.** Si inseriscono a mano nella tab Costi (salvati in `~/.claude/guardian/ricavi.json`) per calcolare margine e ritorno.
 **Store.** Catalogo fisso di skill di design lette e scansionate prima dell'inserimento; si installano in `~/.claude/skills`
 senza sovrascrivere nulla e con il commit di origine registrato in `.guardian-source.json`.
+
+**Modalità demo (dati finti).** Per mostrare Guardian a soci e clienti senza esporre i progetti veri: doppio clic su `avvia-demo.bat` (Windows) o `avvia-demo.sh`. Chat, installazioni e foto sono disattivate.
+**Documenti.** `PROMPT_FINALE.md` (finire la dashboard), `PROMPT_OBIETTIVO_10K.md` (attività commerciale), `SETUP_PC.md` (browser e PC in sicurezza), `docs/spec/` (specifiche), `docs/graph/GRAPH_REPORT.md` (grafico del codice).
