@@ -1,5 +1,9 @@
 # 🛡️ Guardian — centrale di controllo per Claude Code
 
+**Avvio a un clic:** doppio clic su `dashboard/avvia.bat` (Windows) oppure `dashboard/avvia.sh` (macOS/Linux). Al primo giro crea l'ambiente e installa tutto, poi apre il browser su http://localhost:8501.
+
+Avvio manuale:
+
 ```bash
 pip install -r dashboard/requirements.txt
 streamlit run dashboard/app.py --server.address localhost
