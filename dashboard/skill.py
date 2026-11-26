@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -122,7 +123,56 @@ CATALOGO = [
     {"id": "web-design-guidelines", "repo": "vercel-labs/agent-skills", "path": "skills/web-design-guidelines", "rischio": "basso",
      "titolo": "Web Design Guidelines", "descrizione": "Audit di UI, accessibilità e UX contro le Web Interface Guidelines di Vercel."},
 ]
+CATALOGO.append({
+    "id": "graphify", "tipo": "pypi", "repo": "Graphify-Labs/graphify", "path": "skills/graphify", "rischio": "medio",
+    "titolo": "Graphify",
+    "descrizione": "Trasforma codice, documenti e immagini in un grafo di conoscenza interrogabile (/graphify). Pacchetto PyPI 'graphifyy' "
+                   "v0.9.120 in un ambiente isolato. Documenti e immagini possono essere inviati a un LLM; hook non attivati.",
+})
 _ID_CATALOGO = {c["id"]: c for c in CATALOGO}
+
+GRAPHIFY_PACCHETTO, GRAPHIFY_VERSIONE = "graphifyy", "0.9.120"  # due "y": gli altri pacchetti graphify* non sono affiliati
+
+
+def installa_graphify_locale(skills_dir: Path = None, venv_dir: Path = None, runner=None) -> dict:
+    """Installa graphify in un venv dedicato (versione fissata, solo wheel) e registra la skill per Claude Code.
+
+    Non attiva gli hook e fa una copia di ~/.claude/CLAUDE.md prima, perché `graphify install` può scriverci.
+    """
+    run = runner or (lambda cmd, **kw: subprocess.run(cmd, capture_output=True, text=True, timeout=600, **kw))
+    base = skills_dir or config.SKILLS_DIR
+    if (base / "graphify" / "SKILL.md").is_file():
+        return {"ok": False, "messaggio": "'graphify' è già installata: non la sovrascrivo."}
+    if not ((3, 11, 5) <= sys.version_info[:3] < (3, 15)):
+        return {"ok": False, "messaggio": f"graphify richiede Python 3.11.5–3.14 (qui {sys.version.split()[0]})."}
+    venv = venv_dir or (config.EVENTS_FILE.parent / "venvs" / "graphify")
+    py = venv / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    exe = venv / ("Scripts/graphify.exe" if sys.platform == "win32" else "bin/graphify")
+    passi = [
+        [sys.executable, "-m", "venv", str(venv)],
+        [str(py), "-m", "pip", "install", "-q", "--disable-pip-version-check", "--only-binary=:all:",
+         f"{GRAPHIFY_PACCHETTO}=={GRAPHIFY_VERSIONE}"],
+    ]
+    claude_md = config.CLAUDE_HOME / "CLAUDE.md"
+    backup = None
+    try:
+        for cmd in passi:
+            r = run(cmd)
+            if r.returncode != 0:
+                return {"ok": False, "messaggio": "Installazione non riuscita: " + (r.stderr.strip()[-300:] or "errore")}
+        if claude_md.is_file():
+            backup = claude_md.with_name("CLAUDE.md.guardian-bak")
+            shutil.copy2(claude_md, backup)
+        r = run([str(exe), "install", "--platform", "claude"])
+        if r.returncode != 0:
+            return {"ok": False, "messaggio": "graphify install non riuscito: " + (r.stderr.strip()[-300:] or "errore")}
+    except (subprocess.TimeoutExpired, OSError) as e:
+        return {"ok": False, "messaggio": f"Installazione non riuscita: {e}"}
+    if not (base / "graphify" / "SKILL.md").is_file():
+        return {"ok": False, "messaggio": "Installato il pacchetto ma SKILL.md non è stato creato in " + str(base)}
+    nota = f" Copia di CLAUDE.md in {backup.name}." if backup else ""
+    return {"ok": True, "messaggio": f"graphify {GRAPHIFY_VERSIONE} installata. Aggiungi la cartella {exe.parent} al PATH per "
+            f"evitare che la skill reinstalli il pacchetto senza versione fissata.{nota}"}
 
 
 def catalogo_locale(skills_dir: Path = None) -> list[dict]:
@@ -139,6 +189,8 @@ def installa_catalogo_locale(id_skill: str, skills_dir: Path = None) -> dict:
     voce = _ID_CATALOGO.get(id_skill)
     if not voce:
         return {"ok": False, "messaggio": "Skill non presente nel catalogo."}
+    if voce.get("tipo") == "pypi":
+        return installa_graphify_locale(skills_dir)
     base = skills_dir or config.SKILLS_DIR
     nome = Path(voce["path"]).name
     dest = base / nome

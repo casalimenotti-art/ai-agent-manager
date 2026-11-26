@@ -143,3 +143,39 @@ def test_elenca_skill_tutte_le_origini(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "CLAUDE_HOME", home)
     r = {s["nome"]: s["origine"] for s in skill.elenca_skill()}
     assert r == {"mia": "installata", "docx": "account", "brainstorming": "plugin"}
+
+
+def test_graphify_comandi_sicuri_e_nessuna_sovrascrittura(tmp_path, monkeypatch):
+    import config, types
+    monkeypatch.setattr(config, "CLAUDE_HOME", tmp_path / "h")
+    monkeypatch.setattr(config, "EVENTS_FILE", tmp_path / "g" / "e.jsonl")
+    (tmp_path / "h").mkdir(); (tmp_path / "h" / "CLAUDE.md").write_text("mie istruzioni")
+    base = tmp_path / "h" / "skills"
+    chiamate = []
+    def finto(cmd, **kw):
+        chiamate.append(cmd)
+        if "install" in cmd and "--platform" in cmd:
+            (base / "graphify").mkdir(parents=True); (base / "graphify" / "SKILL.md").write_text("x")
+        return types.SimpleNamespace(returncode=0, stderr="", stdout="")
+    r = skill.installa_graphify_locale(base, tmp_path / "venv", runner=finto)
+    assert r["ok"], r
+    pip = next(c for c in chiamate if "pip" in c)
+    assert "--only-binary=:all:" in pip and "graphifyy==0.9.120" in pip       # versione fissata, nome corretto, solo wheel
+    assert not any("graphify" in c and "hook" in " ".join(c) for c in chiamate)  # nessun hook
+    assert not any("--break-system-packages" in c for c in chiamate)
+    assert (tmp_path / "h" / "CLAUDE.md.guardian-bak").read_text() == "mie istruzioni"
+    assert "già installata" in skill.installa_graphify_locale(base, tmp_path / "venv", runner=finto)["messaggio"]
+
+
+def test_graphify_errore_pip_non_crea_nulla(tmp_path, monkeypatch):
+    import config, types
+    monkeypatch.setattr(config, "CLAUDE_HOME", tmp_path / "h")
+    monkeypatch.setattr(config, "EVENTS_FILE", tmp_path / "g" / "e.jsonl")
+    finto = lambda cmd, **kw: types.SimpleNamespace(returncode=1, stderr="boom", stdout="")
+    r = skill.installa_graphify_locale(tmp_path / "h" / "skills", tmp_path / "venv", runner=finto)
+    assert not r["ok"] and "boom" in r["messaggio"] and not (tmp_path / "h" / "skills").exists()
+
+
+def test_catalogo_graphify_dispatch(tmp_path, monkeypatch):
+    monkeypatch.setattr(skill, "installa_graphify_locale", lambda b=None: {"ok": True, "messaggio": "ok"})
+    assert skill.installa_catalogo_locale("graphify", tmp_path)["ok"]
