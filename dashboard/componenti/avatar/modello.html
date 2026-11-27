@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+html,body{height:100%;margin:0;overflow:hidden;background:transparent}
+canvas{display:block;width:100%;height:100%;background:radial-gradient(ellipse at 48% 43%,#43534c,#272f2b 53%,#1e2421 85%)}
+p{margin:1rem;color:#e8e6dd;font:15px system-ui;text-align:center}
+</style>
+<canvas aria-hidden="true"></canvas><p hidden>Modello 3D non disponibile in questo browser.</p>
+<script>
+"use strict";
+const canvas = document.querySelector("canvas");
+const gl = canvas.getContext("webgl", {alpha:true, antialias:true});
+if (!gl) {
+  canvas.hidden = true;
+  document.querySelector("p").hidden = false;
+} else {
+  renderGuardian(gl);
+}
+
+function renderGuardian(gl) {
+  const vertex = `
+    attribute vec3 point;
+    uniform mat3 basis;
+    uniform vec3 center, radii;
+    uniform float aspect;
+    varying vec3 normal, position;
+    void main() {
+      position = basis * (point * radii) + center;
+      normal = normalize(basis * (point / radii));
+      float d = 9.0 - position.z;
+      gl_Position = vec4(position.x * 4.25 / aspect, (position.y - 0.70) * 4.25, d * 0.99 - 1.0, d);
+    }`;
+  const fragment = `
+    precision mediump float;
+    uniform vec3 paint;
+    uniform float finish;
+    varying vec3 normal, position;
+    void main() {
+      vec3 n = normalize(normal);
+      vec3 key = normalize(vec3(-0.58, 0.83, 0.75));
+      float light = max(0.0, dot(n, key));
+      float edge = pow(1.0 - max(0.0,n.z), 2.3);
+      float shine = pow(max(0.0,dot(n,normalize(key+vec3(0.,0.,1.)))),25.0);
+      gl_FragColor = vec4(paint*(0.39+0.61*light)+vec3(0.23,0.31,0.30)*edge+finish*shine, 1.0);
+    }`;
+  const program = gl.createProgram();
+  for (const [type, source] of [[gl.VERTEX_SHADER,vertex],[gl.FRAGMENT_SHADER,fragment]]) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader,source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    gl.attachShader(program,shader);
+  }
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+  const geometry = [];
+  const steps = 26;
+  function node(y,x) {
+    const a = Math.PI * y/steps, b = 2*Math.PI*x/steps;
+    return [Math.sin(a)*Math.cos(b),Math.cos(a),Math.sin(a)*Math.sin(b)];
+  }
+  for (let y=0;y<steps;y++) for (let x=0;x<steps;x++) {
+    const a=node(y,x),b=node(y+1,x),c=node(y+1,x+1),d=node(y,x+1);
+    geometry.push(...a,...b,...c,...a,...c,...d);
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(geometry),gl.STATIC_DRAW);
+  const point = gl.getAttribLocation(program,"point");
+  gl.enableVertexAttribArray(point);
+  gl.vertexAttribPointer(point,3,gl.FLOAT,false,0,0);
+  const u = Object.fromEntries(["basis","center","radii","aspect","paint","finish"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  gl.enable(gl.DEPTH_TEST);
+  const pearl=[0.83,0.84,0.76], shell=[0.63,0.69,0.63], carbon=[0.16,0.21,0.19], alloy=[0.37,0.46,0.41], jade=[0.50,0.97,0.75];
+  const identity=[1,0,0,0,1,0,0,0,1];
+  const add=(a,b)=>a.map((x,i)=>x+b[i]);
+  const scale=(a,k)=>a.map(x=>x*k);
+  const norm=a=>scale(a,1/Math.hypot(...a));
+  const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  function part(center,radii,paint,basis=identity,finish=0.20) {
+    gl.uniformMatrix3fv(u.basis,false,basis);
+    gl.uniform3fv(u.center,center);
+    gl.uniform3fv(u.radii,radii);
+    gl.uniform3fv(u.paint,paint);
+    gl.uniform1f(u.finish,finish);
+    gl.drawArrays(gl.TRIANGLES,0,geometry.length/3);
+  }
+  function joint(a,b,width,depth,paint) {
+    const delta=add(b,scale(a,-1));
+    const y=norm(delta), x=norm(cross(y,[0,0,1])), z=cross(x,y);
+    part(scale(add(a,b),.5),[width,Math.hypot(...delta)*.63,depth],paint,[...x,...y,...z]);
+  }
+  const parentPage = window.parent.document;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let px=0, py=0, yaw=0, pitch=0, move="", gesture=0, last=0;
+  function follow(event) {
+    px=Math.max(-1,Math.min(1,(event.clientX/window.parent.innerWidth-.5)*2));
+    py=Math.max(-1,Math.min(1,(event.clientY/window.parent.innerHeight-.45)*2));
+  }
+  parentPage.addEventListener("pointermove",follow,{passive:true});
+  window.addEventListener("pagehide",()=>parentPage.removeEventListener("pointermove",follow),{once:true});
+  canvas.addEventListener("pointermove",event=>{
+    px=(event.offsetX/canvas.clientWidth-.5)*2;
+    py=(event.offsetY/canvas.clientHeight-.5)*2;
+  },{passive:true});
+  function frame(ms) {
+    requestAnimationFrame(frame);
+    if (document.hidden || ms-last<31) return;
+    last=ms;
+    const w=Math.round(canvas.clientWidth*Math.min(2,devicePixelRatio));
+    const h=Math.round(canvas.clientHeight*Math.min(2,devicePixelRatio));
+    if (!w || !h) return;
+    if (canvas.width!==w || canvas.height!==h) {canvas.width=w; canvas.height=h;}
+    gl.viewport(0,0,w,h);
+    gl.clearColor(0,0,0,0);
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    gl.uniform1f(u.aspect,w/h);
+    const status=parentPage.querySelector(".guardian-avatar");
+    const next=status?.dataset.movimento || "centro";
+    if (next!==move || status!==frame.status) {move=next;gesture=ms;frame.status=status;}
+    const speaking=parentPage.body.classList.contains("g-parla");
+    const listening=Boolean(status?.classList.contains("ascolto"));
+    const t=reduced.matches?0:ms/1000, age=(ms-gesture)/1000;
+    const gaze={destra:[1,0],sinistra:[-1,0],su:[0,-1],giu:[0,1]};
+    const [gx,gy]=gaze[move] || (reduced.matches?[0,0]:[px,py]);
+    yaw+=(gx*.43-yaw)*.22;
+    pitch+=(gy*.24-pitch)*.22;
+    const nod=move==="annuisci" && age<.75 && !reduced.matches?Math.sin(age*10)*.16:0;
+    const cx=Math.cos(yaw),sx=Math.sin(yaw),cy=Math.cos(pitch+nod),sy=Math.sin(pitch+nod);
+    const basis=[cx,0,-sx,sx*sy,cy,cx*sy,sx*cy,-sy,cx*cy];
+    const rise=Math.sin(t*1.5)*.023;
+    function head(x,y,z,a,b,c,m,finish) {
+      const offset=[basis[0]*x+basis[3]*y+basis[6]*z,basis[1]*x+basis[4]*y+basis[7]*z,basis[2]*x+basis[5]*y+basis[8]*z];
+      part(add([0,2.10+rise,0],offset),[a,b,c],m,basis,finish);
+    }
+    part([0,-.13,0],[.67,.41,.39],carbon);
+    for (const side of [-1,1]) {
+      part([side*.32,-.60,.01],[.31,.69,.33],shell);
+      part([side*.38,-.47,.24],[.24,.48,.16],pearl);
+    }
+    part([0,.40,0],[.52,.56,.32],carbon);
+    for (let i=0;i<4;i++) part([0,.20+i*.13,.29],[.30+i*.025,.065,.086],alloy);
+    part([0,1.02+rise,0],[.69,.51,.40],alloy);
+    for (const side of [-1,1]) {
+      part([side*.28,1.04+rise,.21],[.37,.41,.29],pearl);
+      part([side*.43,1.28+rise,.19],[.31,.16,.17],shell);
+    }
+    part([0,1.03+rise,.49],[.058,.17,.026],carbon);
+    part([0,1.09+rise,.52],[.025,.077,.016],jade);
+    part([0,1.58+rise,0],[.16,.26,.17],carbon);
+    part([0,1.63+rise,.08],[.18,.115,.18],alloy);
+    for (const side of [-1,1]) {
+      const a=[side*.72,1.26+rise,0];
+      const wave=side===1 && move==="saluta" && age<1.6 && !reduced.matches;
+      const motion=speaking&&!reduced.matches?Math.sin(t*3+side)*.5:0;
+      const e=[side*(.88+motion*.12),.62+rise,.07];
+      const h=[side*(wave?1.04+Math.sin(t*9)*.14:.79+motion*.18),wave?1.45:.05+motion*.46,.24+Math.abs(motion)*.37];
+      part(a,[.23,.23,.25],shell);
+      joint(a,e,.17,.19,pearl);
+      part(e,[.13,.14,.14],carbon);
+      joint(e,h,.137,.15,shell);
+      part(h,[.11,.16,.088],alloy);
+      for(let i=0;i<4;i++) {
+        const f=[h[0]+side*(i-1.5)*.052,h[1]-.15+Math.sin(i+t*6)*(speaking?.025:0),h[2]+.022];
+        part(f,[.026,.094-(i===3?.02:0),.029],pearl);
+      }
+      part([h[0]-side*.105,h[1]-.042,h[2]+.026],[.033,.08,.033],pearl);
+    }
+    head(0,.03,0,.43,.52,.36,carbon);
+    head(0,.10,.015,.435,.47,.345,pearl,.27);
+    head(0,-.22,.11,.30,.29,.24,shell);
+    head(0,-.06,.19,.356,.35,.246,pearl);
+    for (const side of [-1,1]) {
+      head(side*.40,-.02,0,.10,.17,.17,alloy);
+      head(side*.455,-.02,.048,.045,.105,.107,jade);
+      head(side*.154,.028,.369,.119,.062,.052,carbon);
+      head(side*.154+gx*.019,.029-gy*.007,.414,.038,.026,.016,listening?[.68,1,.85]:jade);
+      head(side*.20,-.105,.342,.095,.047,.035,shell);
+    }
+    head(0,-.072,.398,.060,.101,.065,pearl);
+    head(0,-.208,.350,.100,speaking&&!reduced.matches?.025+.024*Math.abs(Math.sin(t*13)):.016,.031,carbon);
+    canvas.dataset.ready="true";
+  }
+  requestAnimationFrame(frame);
+}
+</script></html>

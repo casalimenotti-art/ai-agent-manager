@@ -605,9 +605,9 @@ def sez_guardian():
         st.session_state["voce_on"] = cmd["valore"]
     if not fonte.nome.startswith("DEMO") and not chat.agente_installato(config.MANAGER_AGENT):
         st.caption(f"⚠️ L'agente `{config.MANAGER_AGENT}` non è installato (pannello Squadra): rispondo come un normale Claude Code.")
+    html_frame(avatar.modello(), height=345)
     reattore = st.empty()
     st.session_state["_rx_ph"] = reattore
-    html_frame(avatar.insegui_puntatore(), height=0)
     with st.container(key="g_barra"):
         c_mic, c_riass, c_voce, c_imp = st.columns(4, vertical_alignment="center")
         with c_mic.popover("Mic", icon=":material/mic:", use_container_width=True, help="Microfono", key="mic_pop"):

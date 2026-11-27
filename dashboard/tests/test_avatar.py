@@ -12,3 +12,10 @@ def test_visuale_stato_e_movimento():
     assert 'data-movimento="destra"' in avatar.visuale("ascolto", {"dir": "destra"})
     assert "In ascolto" in avatar.visuale("ascolto")
     assert "onload" not in avatar.visuale("onload", {"dir": "onload"})
+
+
+def test_modello_webgl_locale():
+    html = avatar.modello()
+    assert 'getContext("webgl"' in html
+    assert 'g-parla' in html
+    assert '<script src=' not in html
