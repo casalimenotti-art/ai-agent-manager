@@ -70,10 +70,15 @@ pannelli con URL `?p=&id=&f=`, conversazione) · `src/ui/` (Shell, CommandCenter
 | Nuovo task (stanza) | testata stanza | apre il form | drawer Task | `creaTask` | "Task creato" | vincolo DB |
 | Comandi "apri vendite / sviluppo / amministrazione", "torna al centro" | barra di Guardian | apre/chiude la stanza | stanza/orbita | — | "Apro la stanza …" | non riconosciuto → risposta normale |
 | Colori stanze Accesa/Soft | Impostazioni | preferenza locale | colori | localStorage | toast | — |
+| Conversazione (hero e dock) | centro, dock | avvia/termina la modalità conversazione (microfono, VAD, risposta a voce frase per frase) | barra dei sottotitoli | `useRispondi` | fase "Ti ascolto" | permesso negato / microfono assente: messaggio |
+| Silenzio / Termina | barra conversazione | zittisce Guardian / chiude | — | motore | — | — |
+| Voce: «basta», «silenzio», «apri …», «approva …», domande | conversazione | come la chat; «approva» apre solo il pannello | pannello/stanza | `useRispondi` | risposta parlata | "non ho una risposta dai dati" |
+| Parlare sopra Guardian (barge-in) | conversazione | interrompe la voce e ascolta | — | livello reale del microfono | — | — |
 
 ### Controlli disabilitati (con motivo)
 | Controllo | Quando | Perché / cosa serve | Tooltip |
 |---|---|---|---|
+| Conversazione | browser senza riconoscimento o sintesi vocale | API non supportate (usare Chrome o Edge) | tooltip esplicativo |
 | Microfono | browser senza `SpeechRecognition` | API non supportata | "Voce non disponibile: questo browser non supporta il riconoscimento vocale" |
 | Voce (checkbox) | browser senza `speechSynthesis` | API non supportata | nota nel pannello |
 | Invia | input vuoto | niente da inviare | — |

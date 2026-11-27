@@ -1,10 +1,11 @@
 import { Activity, ArrowLeft, Bell, Bot, BookOpen, Building2, Cpu, GitBranchPlus, HeartPulse, LayoutDashboard, ListTodo, LogOut, Mic,
   MicOff, Search, Send, Settings, ShieldCheck, Shuffle, Square, X, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as KE } from 'react';
-import { comandoStanza, DOMANDE_ESEMPIO, rispondiConContesto } from '../logic/intents';
 import { fa } from '../logic/status';
 import { leggiPreferenze, useG, type Pannello } from '../state';
 import { CommandCenter } from './CommandCenter';
+import { BarraConversazione, PulsanteConversazione, useConversazione } from './Conversazione';
+import { useRispondi } from './useRispondi';
 import { PANNELLI, titoloPannello } from './panels';
 import { ascolta, inSilenzio, parla, smettiDiAscoltare, supportoAscolto, supportoParlato, useVoce, zitto } from './voce';
 
@@ -15,7 +16,6 @@ export const NAV: { p: string; nome: string; icona: LucideIcon }[] = [
   { p: 'statistiche', nome: 'Statistiche', icona: HeartPulse }, { p: 'workflow', nome: 'Workflow', icona: GitBranchPlus },
   { p: 'dispositivi', nome: 'PC', icona: Cpu }, { p: 'impostazioni', nome: 'Impostazioni', icona: Settings },
 ];
-const CLASSICO = import.meta.env.VITE_GUARDIAN_CLASSICO_URL as string | undefined;
 
 function Header() {
   const { user, snap, diretta, pingOk, pingMs, pingAl, caricato, apri, setPalette, esci, source } = useG();
@@ -89,31 +89,20 @@ function DrawerHost() {
 }
 
 function Dock() {
-  const { snap, pannello, messaggi, aggiungiMessaggio, setPensa, apri, stanza, apriStanza, chiudi } = useG();
+  const { pannello, messaggi, stanza } = useG();
   const voce = useVoce();
   const [testo, setTesto] = useState('');
   const [aperta, setAperta] = useState(false);
   const fine = useRef<HTMLDivElement>(null);
   useEffect(() => { fine.current?.scrollIntoView({ block: 'end' }); }, [messaggi.length]);
 
-  const chiedi = (q: string) => {
-    const domanda = q.trim(); if (!domanda) return;
-    setAperta(true); setTesto(''); aggiungiMessaggio({ da: 'user', testo: domanda });
-    if (!snap) { aggiungiMessaggio({ da: 'guardian', testo: 'I dati non sono ancora caricati: riprova tra un istante.' }); return; }
-    const cmd = comandoStanza(domanda, snap);
-    if (cmd) { chiudi(); apriStanza(cmd.stanza); aggiungiMessaggio({ da: 'guardian', testo: cmd.testo, fonte: 'comando' });
-      if (leggiPreferenze().voce) parla(cmd.testo); return; }
-    setPensa(true);
-    const r = rispondiConContesto(domanda, snap, pannello ?? (stanza ? { p: 'stanza', id: stanza } : null));
-    setPensa(false);
-    if (r) {
-      aggiungiMessaggio({ da: 'guardian', testo: r.testo, fonte: r.fonte });
-      if (r.apri) apri({ p: r.apri.p, filtro: r.apri.filtro });
-      if (leggiPreferenze().voce) parla(r.testo);
-    } else {
-      aggiungiMessaggio({ da: 'guardian', testo: `Non ho una risposta dai dati per questa richiesta. Per piani e richieste aperte serve il planner AI` +
-        `${CLASSICO ? ', disponibile nel Guardian classico' : ' (non configurato)'}. Prova: «${DOMANDE_ESEMPIO.slice(0, 3).join('», «')}».`, fonte: 'router di intenti' });
-    }
+  const rispondi = useRispondi();
+  const conv = useConversazione();
+  const chiedi = async (q: string) => {
+    if (!q.trim()) return;
+    setAperta(true); setTesto('');
+    const t = await rispondi(q);
+    if (t && conv.fase === 'spento' && leggiPreferenze().voce) parla(t);
   };
   useEffect(() => {
     const f = (e: Event) => chiedi((e as CustomEvent<string>).detail);
@@ -122,6 +111,7 @@ function Dock() {
 
   return (
     <div className="dock">
+      <BarraConversazione />
       {aperta && messaggi.length > 0 && (
         <div className="convo" role="log" aria-label="Conversazione con Guardian">
           {messaggi.map((m, i) => <div key={i} className={`msg ${m.da}`}>{m.testo}{m.fonte && <span className="src">Fonte: {m.fonte}</span>}</div>)}
@@ -133,6 +123,7 @@ function Dock() {
         {messaggi.length > 0 && <button type="button" className="btn ghost sm" onClick={() => setAperta((a) => !a)} aria-expanded={aperta}>
           {aperta ? 'Nascondi' : `Conversazione (${messaggi.length})`}</button>}
         {voce.parla && <button type="button" className="btn ghost icon" onClick={zitto} aria-label="Interrompi la voce"><Square size={16} aria-hidden /></button>}
+        <PulsanteConversazione compatto />
         <button type="button" className={`btn icon ${voce.ascolta ? 'mic-on' : ''}`} disabled={!supportoAscolto}
           title={supportoAscolto ? (voce.ascolta ? 'Smetti di ascoltare' : 'Parla con Guardian (il riconoscimento può passare dai server del browser)')
             : 'Voce non disponibile: questo browser non supporta il riconoscimento vocale'}

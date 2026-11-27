@@ -11,6 +11,7 @@ import { GuardianCore } from './GuardianCore';
 import { Gravita, Scheletro, Sezione, StatoAgente, StatoTask, Vuoto } from './kit';
 import { OrbitaStanze, VistaStanza } from './Stanze';
 import { useVoce } from './voce';
+import { PulsanteConversazione, useConversazione } from './Conversazione';
 
 const ORDINE: Task['stato'][] = ['running', 'needs_approval', 'blocked', 'failed', 'waiting', 'ready'];
 const PESO_PRIO = { urgente: 0, alta: 1, media: 2, bassa: 3 };
@@ -23,14 +24,17 @@ export function taskImportanti(tasks: Task[], n = 7) {
 
 export function CommandCenter() {
   const { snap, pingOk, pensa, apri, errore, stanza, apriStanza } = useG();
-  const { ascolta } = useVoce();
-  const stato = statoNucleo(snap, { pingOk, ascolta, pensa });
+  const { ascolta: pushToTalk } = useVoce();
+  const conv = useConversazione();
+  const ascolta = pushToTalk || conv.fase === 'ascolto';
+  const opz = { pingOk, ascolta, pensa: pensa || conv.fase === 'elaborazione', parla: conv.fase === 'parla' };
+  const stato = statoNucleo(snap, opz);
   useEffect(() => { window.scrollTo({ top: 0 }); }, [stanza]);
   if (stanza) return (
     <div className="stack">
       <button className="nucleo-compatto" onClick={() => apriStanza(null)} aria-label="Guardian: torna al centro">
         <GuardianCore stato={stato} />
-        <span><b>Guardian</b><span className="stato-c" aria-live="polite">{testoStato(snap, { pingOk, ascolta, pensa })}</span></span>
+        <span><b>Guardian</b><span className="stato-c" aria-live="polite">{testoStato(snap, opz)}</span></span>
       </button>
       <VistaStanza id={stanza} />
     </div>
@@ -45,7 +49,8 @@ export function CommandCenter() {
         <GuardianCore stato={stato} />
         <div>
           <h1>Guardian</h1>
-          <p className="stato" aria-live="polite">{testoStato(snap, { pingOk, ascolta, pensa })}</p>
+          <p className="stato" aria-live="polite">{testoStato(snap, opz)}</p>
+          <div className="row" style={{ marginBottom: 16 }}><PulsanteConversazione /></div>
           {errore && <p className="err" role="alert">{errore}</p>}
           <div className="kpis">
             {snap ? (<>

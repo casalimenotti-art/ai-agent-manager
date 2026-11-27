@@ -113,6 +113,43 @@ ok(await p.locator('.drawer table.data').count() >= 1, 'grafico → vista tabell
   await q.close();
 }
 
+
+// 8c. conversazione a voce (microfono simulato SOLO nel test: build demo + ?voce=finta)
+{
+  const q = await b.newPage({ viewport: { width: 1440, height: 1000 } });
+  const err3 = []; q.on('pageerror', (e) => err3.push(e.message)); q.on('console', (m) => m.type() === 'error' && err3.push(m.text()));
+  await q.goto(URL + '?voce=finta'); await q.fill('input', 'menotti'); await q.click('button[type=submit]'); await q.waitForSelector('text=Prossime azioni');
+  await q.click('.conv-btn'); await q.waitForSelector('.conv-barra:has-text("Ti ascolto")');
+  ok((await q.locator('.core').getAttribute('data-stato')) === 'listening', 'conversazione: nucleo in ascolto');
+  const dici = async (t) => { await q.waitForSelector('.conv-barra[data-fase="ascolto"]', { timeout: 6000 }); await q.evaluate((x) => window.__guardianDici(x), t); };
+  await dici('quanti agenti sono attivi?');
+  await q.waitForFunction(() => (window.__guardianParlato || []).length > 0);
+  ok((await q.evaluate(() => window.__guardianParlato.join(' '))).includes('agenti al lavoro'), 'conversazione: risponde a voce dai dati');
+  await q.click('.dock button:has-text("Conversazione (")');
+  ok(await q.locator('.msg.user:has-text("quanti agenti")').count() === 1, 'conversazione: anche nel registro della chat');
+  await q.click('.dock button:has-text("Nascondi")');
+  await q.waitForSelector('.conv-barra[data-fase="ascolto"]', { timeout: 5000 }); ok(true, 'conversazione: dopo la risposta torna ad ascoltare');
+  await q.evaluate(() => { window.__guardianParlato = []; });
+  await dici('cosa mi consigli di fare?');
+  await q.waitForSelector('.conv-barra[data-fase="parla"]');
+  ok((await q.locator('.core').getAttribute('data-stato')) === 'speaking', 'conversazione: nucleo in modalità parla');
+  await q.evaluate(() => { window.__guardianLivello = 0.3; }); await q.waitForSelector('.conv-barra[data-fase="ascolto"]', { timeout: 2000 });
+  await q.evaluate(() => { window.__guardianLivello = 0; });
+  ok((await q.evaluate(() => window.__guardianParlato.length)) < 4, 'barge-in: parlandogli sopra si zittisce e ascolta');
+  await dici('Guardian, apri vendite'); await q.waitForSelector('.stanza h2:has-text("Vendite")'); ok(true, 'voce: «apri vendite» apre la stanza');
+  await dici('approva il preventivo'); await q.waitForSelector('.drawer h2:has-text("Approvazione #1")');
+  ok(await q.locator('.drawer .pill.warn:has-text("richiesta")').count() === 1, 'voce: «approva» apre il pannello ma NON approva (serve il clic)');
+  await q.keyboard.press('Escape'); ok(await q.locator('.conv-barra').count() === 1, 'Esc chiude prima il pannello, la conversazione resta');
+  await dici('silenzio'); await q.waitForTimeout(300); ok(await q.locator('.conv-barra').count() === 1, '«silenzio» non chiude la conversazione');
+  await dici('basta'); await q.waitForTimeout(100); await q.waitForSelector('.conv-barra', { state: 'detached', timeout: 4000 }); ok(true, '«basta» chiude la conversazione');
+  await q.click('.rail button:has-text("Impostazioni")');
+  ok((await q.locator('.drawer:has-text("Diagnostica voce")').textContent()).includes('Testo → prima frase'), 'diagnostica voce con misure');
+  await q.click('.rail button:has-text("Centro")'); await q.click('.conv-btn'); await q.waitForSelector('.conv-barra');
+  await q.click('.conv-barra button:has-text("Termina")'); ok(await q.locator('.conv-barra').count() === 0, 'pulsante Termina');
+  ok(err3.length === 0, `conversazione: nessun errore in console ${err3.slice(0, 2).join(' | ')}`);
+  await q.close();
+}
+
 // 9. accessibilità (axe) sulla vista centrale
 await p.keyboard.press('Escape');
 await p.addScriptTag({ content: axe });

@@ -9,6 +9,8 @@ import { TASK_TERMINALI, type AgentLog, type Severita } from '../../types';
 import { GraficoBarre, GraficoLinee } from '../charts';
 import { Gravita, Scheletro, StatoAgente, StatoTask, Vuoto } from '../kit';
 import { supportoAscolto, supportoParlato } from '../voce';
+import { useConversazione } from '../Conversazione';
+import { conversazioneSupportata } from '../../voce/motore';
 
 export function AgentiPanel() {
   const { snap, apri } = useG();
@@ -215,6 +217,24 @@ export function SalutePanel() {
     <tbody>{righe.map(([n, c, t, q]) => <tr key={n}><td>{n}</td><td><span className={`pill ${c}`}>{t}</span></td><td className="dim">{q}</td></tr>)}</tbody></table>);
 }
 
+function DiagnosticaVoce() {
+  const s = useConversazione();
+  const media = (v: number[]) => (v.length ? `${Math.round(v.reduce((a, b) => a + b, 0) / v.length)} ms (${v.length} misure)` : 'nessuna misura');
+  return (
+    <div className="card stack">
+      <h3 className="section-title" style={{ margin: 0 }}>Diagnostica voce</h3>
+      <dl className="kv">
+        <dt>Conversazione</dt><dd>{conversazioneSupportata() ? 'disponibile in questo browser' : 'non disponibile in questo browser'}</dd>
+        <dt>Ascolto in uso</dt><dd>{s.trascrittore || '—'}{s.privato ? ' (privato, sul PC)' : s.trascrittore ? ' (audio al browser)' : ''}</dd>
+        <dt>Fine frase → testo</dt><dd className="mono">{media(s.misure.fineToTesto)} · obiettivo &lt; 1200 ms</dd>
+        <dt>Testo → prima frase</dt><dd className="mono">{media(s.misure.testoToVoce)} · obiettivo &lt; 1500 ms</dd>
+        <dt>Interruzione → silenzio</dt><dd className="mono">{media(s.misure.bargeInToSilenzio)} · obiettivo &lt; 200 ms</dd>
+      </dl>
+      <p className="dim" style={{ fontSize: 12, margin: 0 }}>Misure di questa sessione, prese durante le conversazioni reali.</p>
+    </div>
+  );
+}
+
 export function ImpostazioniPanel() {
   const { toast } = useG();
   const [p, setP] = useState<Preferenze>(leggiPreferenze());
@@ -227,6 +247,7 @@ export function ImpostazioniPanel() {
         Guardian legge ad alta voce risposte e annunci</label>
       <p className="dim" style={{ fontSize: 12, margin: 0 }}>Microfono: {supportoAscolto ? 'disponibile (il riconoscimento può passare dai server del browser).' : 'non supportato da questo browser.'}</p>
     </div>
+    <DiagnosticaVoce />
     <div className="card stack">
       <h3 className="section-title" style={{ margin: 0 }}>Annunci</h3>
       <label className="field">Livello<select className="input" value={p.livello} onChange={(e) => salva({ ...p, livello: e.target.value as Preferenze['livello'] })}>

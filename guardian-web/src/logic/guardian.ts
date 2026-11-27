@@ -2,11 +2,12 @@
 import type { Snapshot } from '../types';
 import { statoAgente } from './status';
 
-export type StatoNucleo = 'offline' | 'error' | 'listening' | 'thinking' | 'approval' | 'working' | 'idle';
+export type StatoNucleo = 'offline' | 'error' | 'listening' | 'speaking' | 'thinking' | 'approval' | 'working' | 'idle';
 
-export function statoNucleo(s: Snapshot | null, o: { pingOk: boolean | null; ascolta: boolean; pensa: boolean }, ora?: number): StatoNucleo {
+export function statoNucleo(s: Snapshot | null, o: { pingOk: boolean | null; ascolta: boolean; pensa: boolean; parla?: boolean }, ora?: number): StatoNucleo {
   if (o.pingOk === false) return 'error';
   if (!s) return 'offline';
+  if (o.parla) return 'speaking';
   if (o.ascolta) return 'listening';
   if (o.pensa) return 'thinking';
   if (s.approvals.some((a) => a.status === 'richiesta')) return 'approval';
@@ -14,9 +15,10 @@ export function statoNucleo(s: Snapshot | null, o: { pingOk: boolean | null; asc
   return 'idle';
 }
 
-export function testoStato(s: Snapshot | null, o: { pingOk: boolean | null; ascolta: boolean; pensa: boolean }, ora?: number): string {
+export function testoStato(s: Snapshot | null, o: { pingOk: boolean | null; ascolta: boolean; pensa: boolean; parla?: boolean }, ora?: number): string {
   if (o.pingOk === false) return 'Database non raggiungibile: i dati mostrati potrebbero non essere aggiornati.';
   if (!s) return 'Collegamento ai dati in corso…';
+  if (o.parla) return 'Ti sto rispondendo.';
   if (o.ascolta) return 'Ti ascolto.';
   if (o.pensa) return 'Sto elaborando la richiesta…';
   const lav = s.agents.filter((a) => statoAgente(a, ora) === 'working').length;

@@ -295,3 +295,28 @@ table.data th { color: var(--text-3); font-weight: 600; font-size: var(--fs-xs);
   .stanza-titolo { flex: 1 1 calc(100% - 56px); }
   .stanza-testa .btn:not(.icon) { flex: 1 1 40%; }
 }
+
+/* ---------- conversazione a voce ---------- */
+:root { --livello: 0; }
+.conv-btn { min-height: 44px; padding: 0 18px; font-size: var(--fs-md); border-radius: var(--r-pill); }
+.conv-on { background: var(--crit-soft) !important; color: #fecaca !important; border-color: rgba(248, 113, 113, 0.5) !important; }
+.conv-barra { margin-bottom: var(--s-2); padding: var(--s-3); background: var(--glass); backdrop-filter: blur(18px); border: 1px solid var(--accent);
+  border-radius: var(--r-3); box-shadow: var(--glow), var(--shadow-2); display: flex; flex-direction: column; gap: var(--s-2); }
+.conv-barra[data-fase='parla'] { border-color: var(--accent-2); }
+.conv-sub { min-height: 1.6em; font-size: var(--fs-md); display: flex; flex-direction: column; gap: 4px; }
+.conv-sub .tu { color: var(--text-1); }
+.conv-sub .lui { color: var(--accent-2); }
+.conv-onde { display: inline-flex; align-items: center; gap: 2px; height: 18px; }
+.conv-onde i { width: 3px; border-radius: 2px; background: var(--accent); height: calc(4px + var(--livello) * 14px); transition: height 80ms linear; }
+.conv-onde i:nth-child(2) { height: calc(4px + var(--livello) * 18px); } .conv-onde i:nth-child(3) { height: calc(4px + var(--livello) * 10px); }
+.conv-barra[data-fase='parla'] .conv-onde i { animation: onda 0.9s ease-in-out infinite; } .conv-barra[data-fase='parla'] .conv-onde i:nth-child(2) { animation-delay: 0.15s; }
+.conv-barra[data-fase='parla'] .conv-onde i:nth-child(3) { animation-delay: 0.3s; } .conv-barra[data-fase='parla'] .conv-onde i:nth-child(4) { animation-delay: 0.45s; }
+@keyframes onda { 50% { height: 16px; } }
+.core[data-stato='listening'] .nucleo { transform: scale(calc(1 + var(--livello) * 0.35)); transition: transform 90ms linear; animation: none; }
+.core[data-stato='speaking'] .nucleo { animation: parla 1.1s ease-in-out infinite; fill: #e0fbff; }
+.core[data-stato='speaking'] .r2 { animation: spin 10s linear infinite; }
+@keyframes parla { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.14); } 60% { transform: scale(0.96); } }
+@media (prefers-reduced-motion: reduce) {
+  .core[data-stato='speaking'] .nucleo, .conv-barra .conv-onde i { animation: none !important; }
+  .core[data-stato='listening'] .nucleo { transform: none; opacity: calc(0.7 + var(--livello) * 0.3); }
+}

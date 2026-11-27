@@ -1,7 +1,7 @@
 // Nucleo visivo di Guardian: anelli concentrici SVG. Le animazioni dipendono solo dallo stato reale.
 import type { StatoNucleo } from '../logic/guardian';
 
-const NOMI: Record<StatoNucleo, string> = { offline: 'Non collegato', error: 'Errore', listening: 'In ascolto', thinking: 'Sto pensando',
+const NOMI: Record<StatoNucleo, string> = { offline: 'Non collegato', error: 'Errore', listening: 'In ascolto', speaking: 'Sta parlando', thinking: 'Sto pensando',
   approval: 'In attesa di approvazione', working: 'Coordino gli agenti', idle: 'Online' };
 
 export function GuardianCore({ stato }: { stato: StatoNucleo }) {
