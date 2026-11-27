@@ -95,7 +95,7 @@ class Nodi:
         return presa(m, "Result_Color")
 
 
-def materiale_vernice(nome, colore, colore2, ruggine=True):
+def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, colate=False):
     """Vernice su acciaio: usura sugli spigoli (AO interno), graffi, sporco e ruggine nelle cavità, ammaccature nella normale."""
     m = bpy.data.materials.new(nome)
     N = Nodi(m)
@@ -129,7 +129,14 @@ def materiale_vernice(nome, colore, colore2, ruggine=True):
     sporco = N.mat("MULTIPLY", cavita, 0.75)
     colore_f = N.mix(sporco, colore_f, (0.025, 0.02, 0.015))
     if ruggine:
-        rug = N.mat("MULTIPLY", N.mat("MULTIPLY", cavita, macchie), 1.4)
+        rug = N.mat("MULTIPLY", N.mat("MULTIPLY", cavita, macchie), forza_ruggine)
+        if colate:  # colature di ruggine verso il basso e chiazze sparse: lamiera esposta per anni
+            giu = N.n("ShaderNodeMapping")
+            giu.inputs["Scale"].default_value = (28.0, 28.0, 1.2)
+            N.l(coord, giu.inputs["Vector"])
+            col = N.rampa(N.rumore(3.0, 6, 0.6, giu.outputs[0]), 0.55, 0.75)
+            sparse = N.rampa(N.rumore(1.6, 12, 0.75, coord), 0.50, 0.68)
+            rug = N.mat("MAXIMUM", rug, N.mat("MAXIMUM", N.mat("MULTIPLY", col, 0.8), N.mat("MULTIPLY", sparse, 0.9)))
         colore_f = N.mix(rug, colore_f, N.mix(N.rumore(40.0), (0.18, 0.06, 0.02), (0.32, 0.12, 0.04)))
     N.l(colore_f, bsdf.inputs["Base Color"])
     N.l(scoperto, bsdf.inputs["Metallic"])
@@ -305,6 +312,38 @@ def testo(nome, frase, centro, rot, misura, mat, gen):
     return o
 
 
+def parete(sc, mat, mat_rivetti):
+    """Parete di lamiere d'acciaio chiodate, leggermente sfalsate, dietro la testa (niente fondo nero)."""
+    import random
+    random.seed(7472)
+    W, H, Y = 1.55, 1.15, 1.75
+    rivetti = bmesh.new()
+    for i in range(-4, 5):
+        for j in range(-3, 4):
+            cx, cz = i * W, 0.1 + j * H
+            dy = random.uniform(-0.012, 0.012)
+            scatola(f"Lamiera_{i}_{j}", (cx, Y + dy, cz), (W - 0.012, 0.05, H - 0.012),
+                    rot=(random.uniform(-0.4, 0.4), random.uniform(-0.25, 0.25), random.uniform(-0.3, 0.3)), mat=mat, bevel=0.012)
+            # file di rivetti lungo i bordi della lamiera
+            for k in range(13):
+                for zz in (cz - H / 2 + 0.07, cz + H / 2 - 0.07):
+                    p = Vector((cx - W / 2 + 0.07 + k * (W - 0.14) / 12, Y - 0.03 + dy, zz))
+                    bmesh.ops.create_uvsphere(rivetti, u_segments=10, v_segments=6, radius=0.024,
+                                              matrix=__import__("mathutils").Matrix.Translation(p) @ __import__("mathutils").Matrix.Diagonal((1, 0.55, 1, 1)))
+            for k in range(1, 9):
+                for xx in (cx - W / 2 + 0.07, cx + W / 2 - 0.07):
+                    p = Vector((xx, Y - 0.03 + dy, cz - H / 2 + 0.07 + k * (H - 0.14) / 9))
+                    bmesh.ops.create_uvsphere(rivetti, u_segments=10, v_segments=6, radius=0.024,
+                                              matrix=__import__("mathutils").Matrix.Translation(p) @ __import__("mathutils").Matrix.Diagonal((1, 0.55, 1, 1)))
+    me = bpy.data.meshes.new("Rivetti")
+    rivetti.to_mesh(me)
+    rivetti.free()
+    oggetto("Rivetti", me, mat_rivetti)
+    # una lamiera rattoppata e una trave orizzontale per spezzare la griglia
+    scatola("Toppa", (-2.6, Y - 0.04, 0.85), (0.7, 0.03, 0.5), rot=(0, 0, 3), mat=mat, bevel=0.01)
+    scatola("Trave", (0, Y - 0.08, -0.95), (14, 0.14, 0.22), mat=mat, bevel=0.02)
+
+
 # ------------------------------------------------------------------ scena
 def costruisci(v):
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -435,8 +474,13 @@ def costruisci(v):
     bg.inputs[0].default_value = (0.004, 0.006, 0.009, 1)
     bg.inputs[1].default_value = 1.0
     # pavimento appena visibile per un po' di profondità
-    pav = scatola("Pavimento", (0, 0, -1.3), (20, 20, 0.02), mat=materiale_semplice("Mat_Pavimento", (0.01, 0.012, 0.014), 0.3, 0.35), bevel=0)
+    luce("Radente_parete", "AREA", (0.0, 0.7, 3.4), 650, (0.95, 0.9, 0.85), 4.0, mira=(0, 1.6, -0.6))
+    luce("Radente_lato", "AREA", (-4.0, 0.6, 0.3), 260, (0.75, 0.85, 1.0), 2.0, mira=(0, 1.6, 0.3))
 
+    parete(sc, materiale_vernice("Mat_Parete", (0.05, 0.05, 0.048), (0.075, 0.07, 0.062), forza_ruggine=2.2, colate=True),
+           materiale_vernice("Mat_Rivetti", (0.06, 0.058, 0.055), (0.08, 0.075, 0.07), forza_ruggine=2.0))
+    if False:  # vecchio fondale scuro, sostituito dalla parete
+        pass
     # alone freddo dietro la testa (sfondo da studio, non piatto)
     fondo = materiale_semplice("Mat_Fondo", (0, 0, 0), 0, 1, (0.03, 0.07, 0.12), 1.0)
     N = Nodi(fondo)
@@ -449,17 +493,15 @@ def costruisci(v):
     N.l(mp.outputs[0], grad.inputs["Vector"])
     N.l(N.mat("POWER", grad.outputs["Fac"], 2.2), em.inputs["Strength"])
     N.l(em.outputs[0], N.out.inputs[0])
-    sf = scatola("Fondale", (-1.2, 6.0, 0.4), (14, 0.02, 9), mat=fondo, bevel=0)
-    sf.visible_shadow = False
 
     cam = bpy.data.cameras.new("Camera")
-    cam.lens = 85
+    cam.lens = 70
     cam.dof.use_dof = True
-    cam.dof.aperture_fstop = 4.0
+    cam.dof.aperture_fstop = 5.6
     co = bpy.data.objects.new("Camera", cam)
     sc.collection.objects.link(co)
-    co.location = (2.7, -6.9, -0.35)
-    bersaglio = Vector((0.12, -0.5, 0.18))
+    co.location = (1.55, -5.55, -0.05)
+    bersaglio = Vector((0.08, -0.5, 0.06))
     co.rotation_euler = (bersaglio - co.location).to_track_quat("-Z", "Y").to_euler()
     cam.dof.focus_object = oc
     sc.camera = co
@@ -476,7 +518,7 @@ def renderizza(sc, file, campioni, larghezza):
     except Exception:
         pass
     sc.render.resolution_x = larghezza
-    sc.render.resolution_y = int(larghezza * 0.625)
+    sc.render.resolution_y = int(larghezza * 0.5625)  # 16:9, come uno schermo
     sc.render.film_transparent = False
     try:
         sc.view_settings.view_transform = "AgX"
