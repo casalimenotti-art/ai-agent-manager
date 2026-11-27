@@ -7,7 +7,7 @@ Memoria del ciclo continuo descritto in `prompts/GUARDIAN_HQ_MASTER_V3.md`. Ogni
 | 0 | Allineamento: inventario dei branch, passaggio di amico1, PR #2 | 🟡 in parte | Inventario fatto (27/11 sera). **Da decidere (titolare):** (a) cosa fare della PR #2 di Niko, cioè busto WebGL + plancia team: unirla o tenerla sul PC; (b) dare a Francesco (`salisfrancesco19-stack`) l'accesso al repo su GitHub, come chiede il passaggio `passaggi/20261127T1641-amico1.md` |
 | 1 | **Tre stanze**: migrazione 005 `stanze` + `projects.stanza_id`, vista orbita, stanza espansa con nucleo compatto, kanban vero (trascina o "Sposta in…"), comandi "apri vendite"/"torna al centro", contesto della stanza in chat, palette, colori Accesa/Soft | ✅ fatto | Colori: **Accesa** (dal DB, predefinita) o **Soft** in Impostazioni; nomi dal DB (l'admin li cambia). E2E verdi, 4 larghezze |
 | 2 | Conversazione vocale livello B (browser): modalità conversazione, VAD, frase per frase, barge-in, sottotitoli, comandi vocali, diagnostica | ✅ fatto | Voce: preferisce in automatico una voce italiana **locale** (es. «Microsoft Elsa»); serve Chrome o Edge |
-| 3 | Voce livello A: servizio vocale locale del bridge (sherpa-onnx + Parakeet già sul PC) | da fare | Ok a far girare il servizio sul PC |
+| 3 | Voce livello A: servizio vocale locale del bridge (sherpa-onnx + Parakeet già sul PC) | ✅ fatto | Si attiva con `guardian_bridge.py voce` (serve il modello sul PC); l'HQ lo sceglie da solo, altrimenti usa il browser |
 | 4 | Cervello sul PC (`guardian_richieste` / `guardian_risposte`, `claude -p` in sola risposta) | ✅ fatto | Si attiva con `guardian_bridge.py cervello` sul PC del titolare (usa il suo abbonamento) |
 | 5 | Stanza Vendite completa (pipeline senza dati personali, bozze con approvazione) | da fare | Migrazione `vendite_pipeline` |
 | 6 | Smistamento del lavoro alle IA dalla conversazione | da fare | Modello di minaccia |
@@ -22,6 +22,10 @@ Memoria del ciclo continuo descritto in `prompts/GUARDIAN_HQ_MASTER_V3.md`. Ogni
 - Nucleo compatto: piccolo indicatore di quanti agenti sono al lavoro **in quella stanza**, oltre al totale.
 
 ## Registro delle ondate
+- **27/11 · Ondata 3**: `bridge/voce_locale.py` + comando `voce` (solo 127.0.0.1, solo le origini dell'HQ in `GUARDIAN_HQ_ORIGINI`,
+  preflight Private-Network, `GET /stato`, `POST /trascrivi` WAV 16 kHz → sherpa-onnx Parakeet), web: `voce/wav.ts`,
+  `LocaleTrascrittore` (VAD + pre-roll + WAV) scelto in automatico se il servizio è pronto, pill «Ascolto locale · privato».
+  Test: pytest voce 5, vitest 14, E2E `e2e/voce-locale.mjs` (microfono finto di Chromium da file WAV → servizio reale con riconoscitore di prova) verde.
 - **27/11 · Ondata 4**: migrazione 006 (richieste, risposte, battito; solo il PC dell'admin risponde; ognuno vede le sue domande),
   `bridge/cervello.py` + comando `cervello` (claude -p in plan, strumenti di scrittura vietati, risposta a frasi, segreti rimossi),
   SqliteStore allineato, web: stato «Cervello online/offline», domande aperte → cervello con contesto minimo, risposta a voce mentre arriva.

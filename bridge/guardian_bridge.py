@@ -322,6 +322,11 @@ def cmd_cervello(client, args):
     return servi(client, intervallo=args.intervallo, giri=args.giri)
 
 
+def cmd_voce(args):
+    from bridge.voce_locale import main as voce_main
+    return voce_main()
+
+
 def cmd_claim(client, args):
     t = client.call("bridge_claim_task", agent_id=args.agent, task_id=args.id)
     print(f"Task #{t['id']} preso da {args.agent}: {t['titolo']} → running. Ora passalo tu al tuo agente.")
@@ -389,6 +394,7 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--ogni", type=int, default=30, help="Secondi tra un giro e l'altro (min 15)")
     r.add_argument("--giri", type=int, default=0, help="Fermati dopo N giri (0 = mai; utile per i test)")
     sub.add_parser("agent-register", help="Registra gli agenti configurati in bridge/.env")
+    sub.add_parser("voce", help="Servizio vocale locale (sherpa-onnx) solo su 127.0.0.1 per la conversazione dell'HQ")
     cv = sub.add_parser("cervello", help="Fa da cervello di Guardian con Claude Code (solo PC dell'admin, sola risposta)")
     cv.add_argument("--intervallo", type=float, default=1.5)
     cv.add_argument("--giri", type=int, default=0, help=argparse.SUPPRESS)
@@ -414,6 +420,8 @@ def main(argv=None) -> int:
     carica_env()
     args = parser().parse_args(argv)
     try:
+        if args.cmd == "voce":
+            return cmd_voce(args)
         if args.cmd == "init-local":
             if not args.local:
                 raise SystemExit("init-local richiede --local")

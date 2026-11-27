@@ -77,6 +77,21 @@ modalità plan, nessuno strumento di scrittura, cartella vuota `~/.guardian/cerv
 Usa il tuo abbonamento Claude Code. Funziona solo mentre il PC è acceso e il comando gira; l'HQ mostra "Cervello online/offline".
 Solo il PC di un admin può fare da cervello (regola nel database). Le domande restano 7 giorni (`pulisci_cervello()`).
 
+## 3c. Voce locale e privata (facoltativa, su ogni PC)
+Senza questo, la conversazione dell'HQ usa il riconoscimento vocale del browser (Chrome lo manda ai server Google).
+Con questo, l'audio resta sul tuo PC:
+```
+pip install sherpa-onnx numpy
+python bridge/guardian_bridge.py voce
+```
+Il modello va scaricato una volta in `~/.claude/guardian/modelli/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8`
+(se la plancia locale lo ha già scaricato non serve rifarlo; altro percorso: variabile `GUARDIAN_VOCE_MODELLO=CARTELLA`).
+Il servizio ascolta solo su `127.0.0.1:8765` e risponde solo alle pagine dell'HQ autorizzate:
+di default `http://localhost:5173` e `http://localhost:4173`. Per l'HQ pubblicato aggiungi il suo indirizzo:
+`GUARDIAN_HQ_ORIGINI=https://tuo-hq.pages.dev,http://localhost:5173` (sostituisce l'elenco di default; più indirizzi separati da virgola).
+L'HQ se ne accorge da solo e nella barra della conversazione mostra "Ascolto locale · privato".
+Senza modello il servizio risponde "non pronto" e l'HQ torna al riconoscimento del browser.
+
 ## 4. Verifica finale (smoke test, una volta)
 Dal tuo PC, dopo i punti 1–3:
 ```

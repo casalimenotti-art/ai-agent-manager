@@ -41,3 +41,4 @@
 - **2026-11-27 · PC ≠ agente**: la presenza del PC viene dagli heartbeat; lo stato dell'agente solo da eventi reali (hook, notify, comandi). Senza eventi: `unknown`.
 - **2026-11-27 · Hub nuovo partendo da main** (titolare): `dashboard/` e la PR #2 non si toccano; gli hook Claude esistenti si riusano dal bridge.
 - **2026-11-27 · Bridge**: solo HTTPS in uscita, token per PC salvato come hash, RPC `SECURITY DEFINER`; nessuna esecuzione di comandi remoti.
+- **2026-11-27 · Voce locale senza token**: il servizio `voce` ascolta solo su 127.0.0.1 e accetta solo le origini dell'HQ (`GUARDIAN_HQ_ORIGINI`); nessun token da copiare nel browser. Solo trascrizione: non esegue comandi né salva l'audio. Se manca, l'HQ usa il riconoscimento del browser.

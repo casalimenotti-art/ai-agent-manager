@@ -2,7 +2,14 @@
 import { AudioLines, Brain, Lock, PhoneOff, Square } from 'lucide-react';
 import { cervelloOnline } from '../logic/status';
 import { useEffect, useSyncExternalStore } from 'react';
-import { conversazioneSupportata, motore } from '../voce/motore';
+import { LocaleTrascrittore } from '../voce/adattatori';
+import { conversazioneSupportata, motore, segnaLocaleDisponibile } from '../voce/motore';
+
+// Livello A prima del browser: se il servizio vocale del bridge risponde su questo PC, l'audio resta qui.
+motore.preferisci(async () => {
+  const ok = await LocaleTrascrittore.disponibile(); segnaLocaleDisponibile(ok);
+  return ok ? new LocaleTrascrittore() : null;
+});
 import { perLaVoce } from '../voce/vad';
 import { useG } from '../state';
 import { useRispondi } from './useRispondi';

@@ -76,6 +76,7 @@ pannelli con URL `?p=&id=&f=`, conversazione) · `src/ui/` (Shell, CommandCenter
 | Voce: «basta», «silenzio», «apri …», «approva …», domande | conversazione | come la chat; «approva» apre solo il pannello | pannello/stanza | `useRispondi` | risposta parlata | "non ho una risposta dai dati" |
 | Domanda aperta (chat o voce) con cervello online | dock / conversazione | va al cervello sul PC; risposta a frasi | conversazione | `chiediCervello` | risposta con fonte «cervello sul PC» | timeout 60 s: «forse il PC è spento» |
 | Parlare sopra Guardian (barge-in) | conversazione | interrompe la voce e ascolta | — | livello reale del microfono | — | — |
+| Ascolto locale e privato | barra conversazione | se il servizio `guardian_bridge.py voce` risponde su 127.0.0.1:8765 lo usa al posto del browser | pill «Ascolto locale · privato» | `LocaleTrascrittore` → `POST /trascrivi` | testo capito | servizio spento/non pronto: si usa il browser |
 
 ### Controlli disabilitati (con motivo)
 | Controllo | Quando | Perché / cosa serve | Tooltip |

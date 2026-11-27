@@ -1,6 +1,7 @@
 // Adattatori della conversazione: ascolto (trascrittori), parlato (TTS) e livello del microfono.
 // Livello A (locale, privato) arriva con il bridge (ondata 3); livello B = Web Speech del browser; "finto" solo per i test in demo.
-import { rms } from './vad';
+import { rms, Vad } from './vad';
+import { ricampiona, unisci, wav16 } from './wav';
 
 export interface Trascrittore {
   readonly nome: string; readonly privato: boolean;
@@ -40,6 +41,47 @@ export class WebSpeechTrascrittore implements Trascrittore {
   pausa() { this.inPausa = true; try { this.rec?.abort(); } catch { /* */ } }
   riprendi() { this.inPausa = false; if (this.attivo) { try { this.rec?.start(); } catch { /* */ } } }
   ferma() { this.attivo = false; try { this.rec?.abort(); } catch { /* */ } this.rec = null; }
+}
+
+/** Livello A: trascrizione sul PC con il servizio del bridge (sherpa-onnx + Parakeet). L'audio non lascia il computer. */
+export class LocaleTrascrittore implements Trascrittore {
+  readonly nome = 'Ascolto locale (sherpa-onnx)'; readonly privato = true;
+  static url = (import.meta.env.VITE_GUARDIAN_VOCE_URL as string | undefined) || 'http://127.0.0.1:8765';
+  private ctx: AudioContext | null = null; private stream: MediaStream | null = null; private nodo: ScriptProcessorNode | null = null;
+  private inPausa = false; private vad = new Vad(); private preRoll: Float32Array[] = []; private frase: Float32Array[] = [];
+  static async disponibile(): Promise<boolean> {
+    try {
+      const c = new AbortController(); const t = setTimeout(() => c.abort(), 600);
+      const r = await fetch(`${LocaleTrascrittore.url}/stato`, { signal: c.signal }); clearTimeout(t);
+      return !!(await r.json()).pronto;
+    } catch { return false; }
+  }
+  async avvia(cb: Parameters<Trascrittore['avvia']>[0]) {
+    this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    this.ctx = new AudioContext(); const sr = this.ctx.sampleRate;
+    this.nodo = this.ctx.createScriptProcessor(4096, 1, 1);
+    this.nodo.onaudioprocess = (e) => {
+      if (this.inPausa) return;
+      const x = new Float32Array(e.inputBuffer.getChannelData(0));
+      const ev = this.vad.passo(rms(x), performance.now());
+      if (ev === 'inizio') { this.frase = [...this.preRoll]; }
+      if (this.vad.attivo || ev === 'fine') this.frase.push(x);
+      this.preRoll = [...this.preRoll.slice(-3), x]; // ~300 ms prima della voce
+      if (ev === 'fine') { const audio = unisci(this.frase); this.frase = []; void this.invia(audio, sr, cb); }
+    };
+    this.ctx.createMediaStreamSource(this.stream).connect(this.nodo); this.nodo.connect(this.ctx.destination);
+  }
+  private async invia(audio: Float32Array, sr: number, cb: Parameters<Trascrittore['avvia']>[0]) {
+    cb.parziale('…');
+    try {
+      const r = await fetch(`${LocaleTrascrittore.url}/trascrivi`, { method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: wav16(ricampiona(audio, sr)) });
+      const d = await r.json();
+      if (!r.ok) { cb.errore(d.errore || 'Errore della voce locale'); return; }
+      if (d.testo) cb.finale(d.testo); else cb.parziale('');
+    } catch { cb.errore('Servizio vocale locale non raggiungibile.'); }
+  }
+  pausa() { this.inPausa = true; this.frase = []; } riprendi() { this.inPausa = false; }
+  ferma() { this.nodo?.disconnect(); this.stream?.getTracks().forEach((t) => t.stop()); void this.ctx?.close(); this.ctx = null; this.nodo = null; this.stream = null; }
 }
 
 export class ParlatoreWeb implements Parlatore {

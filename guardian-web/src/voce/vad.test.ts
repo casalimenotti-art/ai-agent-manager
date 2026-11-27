@@ -39,3 +39,17 @@ describe('frasi e comandi', () => {
   });
   it('rms', () => { expect(rms([0.5, -0.5])).toBeCloseTo(0.5); expect(rms([])).toBe(0); });
 });
+
+describe('wav per la voce locale', () => {
+  it('ricampiona a 16 kHz e scrive un WAV mono 16 bit valido', async () => {
+    const { ricampiona, unisci, wav16 } = await import('./wav');
+    const x = new Float32Array(48000).fill(0.5);
+    const r = ricampiona(x, 48000);
+    expect(r.length).toBe(16000); expect(r[100]).toBeCloseTo(0.5);
+    const w = wav16(unisci([r.subarray(0, 8), r.subarray(8, 16)]));
+    const v = new DataView(w.buffer);
+    expect(String.fromCharCode(...w.subarray(0, 4))).toBe('RIFF');
+    expect(v.getUint32(24, true)).toBe(16000); expect(v.getUint16(22, true)).toBe(1); expect(v.getUint16(34, true)).toBe(16);
+    expect(w.length).toBe(44 + 16 * 2); expect(v.getInt16(44, true)).toBe(16383); // 0.5 * 32767 troncato
+  });
+});

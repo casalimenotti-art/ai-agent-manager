@@ -11,6 +11,9 @@ export interface StatoConv { fase: Fase; parziale: string; detto: string; fraseG
 export type Risponditore = (testo: string) => Promise<string | AsyncIterable<string>>;
 
 export const SILENZIO_FINE_MS = 60_000;
+let localeVisto = false;
+/** La UI lo segnala quando il servizio vocale locale risponde (abilita la conversazione anche senza Web Speech). */
+export function segnaLocaleDisponibile(v: boolean) { localeVisto = v; }
 const VUOTO: StatoConv = { fase: 'spento', parziale: '', detto: '', fraseGuardian: '', livello: 0, errore: '', trascrittore: '', privato: false,
   misure: { fineToTesto: [], testoToVoce: [], bargeInToSilenzio: [] } };
 
@@ -19,7 +22,7 @@ class Motore {
   private subs = new Set<() => void>();
   private tr: Trascrittore | null = null; private voce: Parlatore | null = null; private mic: Microfono | FintoMicrofono | null = null;
   private rispondi: Risponditore | null = null; private raf = 0; private turno = 0; private ultimaAttivita = 0;
-  private barge = new BargeIn(); private tParziale = 0; private trascrittoreScelto: (() => Trascrittore | null) | null = null;
+  private barge = new BargeIn(); private tParziale = 0; private trascrittoreScelto: (() => Promise<Trascrittore | null>) | null = null;
 
   iscrivi = (f: () => void) => { this.subs.add(f); return () => { this.subs.delete(f); }; };
   private spento() { return this.stato.fase === 'spento'; }
@@ -27,15 +30,16 @@ class Motore {
   private misura(k: keyof Misure, v: number) { const m = { ...this.stato.misure, [k]: [...this.stato.misure[k].slice(-9), Math.round(v)] }; this.set({ misure: m }); }
 
   /** Permette all'ondata 3 di proporre un trascrittore migliore (locale e privato) prima del browser. */
-  preferisci(f: () => Trascrittore | null) { this.trascrittoreScelto = f; }
+  preferisci(f: () => Promise<Trascrittore | null>) { this.trascrittoreScelto = f; }
 
-  static supportata() { return vocaFintaAttiva() || (WebSpeechTrascrittore.disponibile() && ParlatoreWeb.disponibile()); }
+  // con la voce locale serve solo la sintesi; senza, anche il riconoscimento del browser
+  static supportata() { return vocaFintaAttiva() || (ParlatoreWeb.disponibile() && (WebSpeechTrascrittore.disponibile() || localeVisto)); }
 
   async avvia(rispondi: Risponditore) {
     if (this.stato.fase !== 'spento') return;
     this.rispondi = rispondi; this.set({ ...VUOTO, misure: this.stato.misure, fase: 'avvio' });
     const finto = vocaFintaAttiva();
-    this.tr = (finto ? new FintoTrascrittore() : this.trascrittoreScelto?.()) ?? new WebSpeechTrascrittore();
+    this.tr = (finto ? new FintoTrascrittore() : await this.trascrittoreScelto?.()) ?? new WebSpeechTrascrittore();
     this.voce = finto ? new FintoParlatore() : new ParlatoreWeb();
     this.mic = finto ? new FintoMicrofono() : new Microfono();
     try {
