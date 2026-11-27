@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parent.parent.parent
 
 TASK_STATI = ("in attesa", "in corso", "bloccato", "completato")
 PRIORITA = ("bassa", "media", "alta", "urgente")

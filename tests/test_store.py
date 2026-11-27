@@ -2,8 +2,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from guardian_hub.models import Handoff, ValidazioneError, stato_dispositivo
-from guardian_hub.store import SqliteStore, seed_users_da_registro
+from guardian.core.models import Handoff, ValidazioneError, stato_dispositivo
+from guardian.core.store import seed_users_da_registro
+from guardian.core.store_sqlite import SqliteStore
 
 
 @pytest.fixture

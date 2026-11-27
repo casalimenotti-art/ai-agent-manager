@@ -1,11 +1,11 @@
 # Guardian Hub — messa in funzione (una volta sola)
 
-Guardian Hub = dashboard condivisa in cloud (`guardian_hub/app.py`) + database Supabase + Guardian Bridge su ogni PC.
+Guardian Hub = dashboard condivisa in cloud (`guardian/app.py`) + database Supabase + Guardian Bridge su ogni PC.
 Non sostituisce la plancia locale `dashboard/` (branch `claude/dashboard-pc` / `codex/dashboard`): è il punto comune dei tre.
 
 ```
 PC (bridge, solo HTTPS in uscita) ──RPC con token del PC──► Supabase (Postgres + RLS)
-Telefono / PC (browser) ──login email+password──► Streamlit Cloud: guardian_hub/app.py ──► Supabase
+Telefono / PC (browser) ──login email+password──► Streamlit Cloud: guardian/app.py ──► Supabase
 registro/*.jsonl su GitHub ──bridge sync-registro──► timeline Attività
 ```
 
@@ -25,7 +25,7 @@ registro/*.jsonl su GitHub ──bridge sync-registro──► timeline Attivit�
 5. *Project Settings* → *API*: copia **Project URL** e **anon public key** (mai la `service_role`).
 
 ## 2. Streamlit Community Cloud (Menotti, ~5 min)
-1. https://share.streamlit.io → *Create app* → repo `casalimenotti-art/ai-agent-manager`, branch (dopo il merge: `main`), file **`guardian_hub/app.py`**.
+1. https://share.streamlit.io → *Create app* → repo `casalimenotti-art/ai-agent-manager`, branch (dopo il merge: `main`), file **`guardian/app.py`**.
 2. *Advanced settings* → *Secrets*: incolla il contenuto di `.streamlit/secrets.toml.example` con URL e anon key veri.
 3. Se il repo è privato, l'app chiede di autorizzare Streamlit su GitHub. L'indirizzo `https://….streamlit.app`
    si può aprire da PC e telefono; senza login non mostra nulla.
@@ -58,6 +58,6 @@ Il registro (`registro/scrivi.py`, AGENTS.md) resta obbligatorio: è la traccia 
 - Le azioni esterne passano da *Approvazioni*: Guardian registra la decisione, non esegue invii/pagamenti.
 
 ## Sviluppo locale (senza Supabase)
-`streamlit run guardian_hub/app.py` → modalità locale su `~/.guardian/hub.db` (dati NON condivisi).
+`streamlit run guardian/app.py` → modalità locale su `~/.guardian/hub.db` (dati NON condivisi).
 Bridge locale: `python bridge/guardian_bridge.py --local ~/.guardian/hub.db init-local --user menotti --nome PC`.
 Test: `python -m pytest -q tests`.

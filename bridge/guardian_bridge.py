@@ -31,7 +31,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
-from guardian_hub.models import Handoff, ValidazioneError, pulisci, pulisci_file  # noqa: E402
+from guardian.core.models import Handoff, ValidazioneError, pulisci, pulisci_file  # noqa: E402
 
 CASA = Path(os.environ.get("GUARDIAN_HOME", Path.home() / ".guardian"))
 
@@ -81,7 +81,7 @@ class LocalClient:
 def crea_client(args):
     token = os.environ.get("GUARDIAN_DEVICE_TOKEN", "")
     if args.local:
-        from guardian_hub.store import SqliteStore
+        from guardian.core.store_sqlite import SqliteStore
         return LocalClient(SqliteStore(args.local), args.token or token)
     url, key = os.environ.get("GUARDIAN_SUPABASE_URL", ""), os.environ.get("GUARDIAN_SUPABASE_ANON_KEY", "")
     if not (url and key and (args.token or token)):
@@ -220,9 +220,8 @@ def cmd_sync_registro(client, args):
 
 def cmd_init_local(args):
     """Solo modalità locale: crea collaboratori da persone.json e un dispositivo, stampa il token."""
-    from guardian_hub.store import SqliteStore, seed_users_da_registro
-    s = SqliteStore(args.local)
-    seed_users_da_registro(s)
+    from guardian.core.store import crea_store_locale
+    s = crea_store_locale(args.local)
     d, token = s.register_device(args.user, args.nome, os.environ.get("GUARDIAN_AGENT", ""))
     print(f"Dispositivo #{d['id']} creato. Token (mostrato una volta): {token}")
     return 0

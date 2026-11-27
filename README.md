@@ -1,6 +1,6 @@
 # AI Agent Manager — Streamlit Starter
 
-> **Guardian Hub** (dashboard condivisa dei 3 collaboratori): `guardian_hub/app.py` + `bridge/` + Supabase.
+> **Guardian — NEXO AI Command Center** (dashboard condivisa dei 3 collaboratori): `guardian/app.py` + `bridge/` + Supabase.
 > Setup: [docs/guardian-setup.md](docs/guardian-setup.md) · stato: [GUARDIAN_STATUS.md](GUARDIAN_STATUS.md).
 
 Starter project for a central chat + multi-agent planning dashboard. It can generate a structured plan using the OpenAI API, or run in demo mode without an API key.

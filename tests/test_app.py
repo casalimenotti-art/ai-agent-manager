@@ -8,16 +8,16 @@ PAGINE = ["Overview", "Agenti", "Task", "Attività", "Handoff", "Approvazioni", 
 def at(tmp_path, monkeypatch):
     monkeypatch.setenv("GUARDIAN_DB", str(tmp_path / "hub.db"))
     monkeypatch.delenv("SUPABASE_URL", raising=False)
-    from guardian_hub.store import SqliteStore
+    from guardian.core.store_sqlite import SqliteStore
     s = SqliteStore(tmp_path / "hub.db")
-    from guardian_hub.store import seed_users_da_registro
+    from guardian.core.store import seed_users_da_registro
     seed_users_da_registro(s)
     t = s.create_task("Task di prova", responsabile="menotti")
     _, tok = s.register_device("menotti", "PC", "Claude Code")
     s.bridge_heartbeat(tok, "occupato", current_task=t["id"])
     s.bridge_checkpoint(tok, task_id=t["id"], summary="stato", next_step="passo")
     s.request_approval("Inviare email", requested_by="amico1")
-    a = AppTest.from_file("../guardian_hub/app.py", default_timeout=30)
+    a = AppTest.from_file("../guardian/app.py", default_timeout=30)
     return a
 
 

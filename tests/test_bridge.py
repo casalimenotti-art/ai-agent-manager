@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from bridge import guardian_bridge as gb
-from guardian_hub.store import SqliteStore
+from guardian.core.store_sqlite import SqliteStore
 
 BRIDGE = Path(gb.__file__)
 
@@ -57,7 +57,7 @@ def test_sync_registro(tmp_path):
     lette = gb.righe_registro(repo)
     assert [r["azione"] for r in lette] == ["A"]  # riga con segreto e riga rotta scartate
     s = SqliteStore(":memory:")
-    from guardian_hub.store import seed_users_da_registro
+    from guardian.core.store import seed_users_da_registro
     seed_users_da_registro(s)
     _, token = s.register_device("menotti", "PC")
     c = gb.LocalClient(s, token)

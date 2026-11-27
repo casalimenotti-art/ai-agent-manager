@@ -14,8 +14,8 @@ Dashboard unica in cloud per i 3 collaboratori (PC + telefono): agenti, PC onlin
 - Formato handoff: `models.Handoff.markdown()` (sezioni: obiettivo/stato, completato, decisioni, problemi, test, file, prossimo passo).
 
 ## File
-guardian_hub/{__init__,app,store,models,adapters}.py · bridge/guardian_bridge.py · supabase/migrations/001_guardian.sql ·
-tests/{conftest,test_store,test_bridge,test_hub_app}.py · docs/guardian-setup.md · .streamlit/{config.toml,secrets.toml.example} ·
+guardian/app.py · guardian/core/{models,store,store_sqlite,store_supabase,adapters}.py · guardian/ui/*.py · bridge/guardian_bridge.py · supabase/migrations/001_guardian.sql ·
+tests/{conftest,test_store,test_bridge,test_app}.py · docs/guardian-setup.md · .streamlit/{config.toml,secrets.toml.example} ·
 .env.example · bridge/.env.example · .gitignore · requirements.txt · app.py (fix) · GUARDIAN_STATUS.md · GUARDIAN_HANDOFF.md
 
 ## Test eseguiti
@@ -28,5 +28,8 @@ tests/{conftest,test_store,test_bridge,test_hub_app}.py · docs/guardian-setup.m
 - La timeline si aggiorna con un polling di 20 s, non con un push realtime (la pubblicazione realtime è già abilitata nel DB per il futuro).
 
 ## Prossimo passo preciso
-Con URL e anon key: creare `.streamlit/secrets.toml`, eseguire `streamlit run guardian_hub/app.py`, fare il login con un utente
+Con URL e anon key: creare `.streamlit/secrets.toml`, eseguire `streamlit run guardian/app.py`, fare il login con un utente
 presente in `public.users`, creare un task, registrare un PC, poi `python bridge/guardian_bridge.py heartbeat` → il PC deve risultare online.
+
+## Aggiornamento M0 (27/11)
+Rinominato `guardian_hub/` → `guardian/`; store diviso in `store.py` (comuni + factory), `store_sqlite.py`, `store_supabase.py`; UI divisa in `guardian/ui/` (un modulo per pagina, `render(ctx)`). Test: 21 passati. Prossimo passo: M1 (vedi GUARDIAN_TASKS.md).
