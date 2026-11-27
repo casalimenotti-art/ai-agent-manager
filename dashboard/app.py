@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # import dei moduli ac
 
 import streamlit as st
 
+import avatar
 import catalogo
 import chat
 import clienti
@@ -36,7 +37,9 @@ try:
         st._config.set_option(f"theme.{chiave}", valore)
 except Exception:
     pass
-st.markdown(theme.CSS + theme.CSS_EXTRA + theme.CSS_PLANCIA, unsafe_allow_html=True)
+st.markdown(theme.CSS + theme.CSS_EXTRA + theme.CSS_PLANCIA + "<style>"
+            + (Path(__file__).parent / "componenti/avatar/stile.css").read_text(encoding="utf-8") + "</style>",
+            unsafe_allow_html=True)
 
 import accesso
 accesso.richiedi_pin(st)  # da remoto (Host non locale) serve il PIN; dal PC no
@@ -121,7 +124,7 @@ def esegui_e_mostra(prompt: str, cwd: str, resume: str | None, agente: str | Non
     r = chat.Risposta()
     st.session_state["_rx"] = "pensiero"
     if (rx := st.session_state.get("_rx_ph")) is not None:
-        rx.markdown(theme.reattore("pensiero"), unsafe_allow_html=True)
+        rx.markdown(avatar.visuale("pensiero"), unsafe_allow_html=True)
     box, info, voce_slot, lavora_slot = st.empty(), st.empty(), st.empty(), st.empty()
     box.markdown("⏳ _Claude sta lavorando…_")
     with lavora_slot:
@@ -602,10 +605,10 @@ def sez_guardian():
         st.session_state["voce_on"] = cmd["valore"]
     if not chat.agente_installato(config.MANAGER_AGENT):
         st.caption(f"⚠️ L'agente `{config.MANAGER_AGENT}` non è installato (pannello Squadra): rispondo come un normale Claude Code.")
+    reattore = st.empty()
+    st.session_state["_rx_ph"] = reattore
     with st.container(key="g_barra"):
-        c_mic, c_riass, c_voce, c_imp, c_rx = st.columns([1.15, 1.2, 1.1, 1.15, 1.35], vertical_alignment="center")
-        reattore = c_rx.empty()
-        st.session_state["_rx_ph"] = reattore
+        c_mic, c_riass, c_voce, c_imp = st.columns(4, vertical_alignment="center")
         with c_mic.popover("Mic", icon=":material/mic:", use_container_width=True, help="Microfono", key="mic_pop"):
             testo_voce = microfono()
             st.toggle("Conversazione a voce (mani libere)", key="conv_voce", help="Parli, Guardian risponde a voce e ti riascolta. Serve il permesso del microfono nel browser.")
@@ -659,8 +662,12 @@ def sez_guardian():
         invio = (testo_voce, testo_voce)
     elif riassunto or (cmd and cmd["tipo"] == "riassunto"):
         invio = (plancia.domanda_riassunto(dati_sessioni(fonte), dati_attivita(fonte, 200)), "📋 Riassunto agenti (dati correnti allegati)")
-    reattore.markdown(theme.reattore("ascolto" if ((st.session_state.get("mic") is not None or st.session_state.get("conv_voce")) and not invio) else "riposo"),
-                      unsafe_allow_html=True)
+    gesto = avatar.comando_da_testo(invio[0]) if invio and (domanda or testo_voce) else None
+    if gesto:
+        invio = None
+        st.session_state["_avatar_gesto"] = gesto
+    stato_avatar = "ascolto" if st.session_state.get("conv_voce") or st.session_state.get("mic") is not None else "riposo"
+    reattore.markdown(avatar.visuale(stato_avatar, st.session_state.pop("_avatar_gesto", None)), unsafe_allow_html=True)
     if vuota is not None and invio:
         vuota.empty()
     if storico is None and invio:   # prima domanda dal chat_input/voce: i suggerimenti sono già stati disegnati, mostro lo storico sotto
@@ -698,7 +705,7 @@ def sez_guardian():
                     conv["sid"] = r.session_id
                 conv["msgs"].append(msg)
                 salva_storico({"ruolo": "assistant", "testo": msg["testo"]})
-                reattore.markdown(theme.reattore("riposo"), unsafe_allow_html=True)
+                reattore.markdown(avatar.visuale("errore" if r.errore else "felice"), unsafe_allow_html=True)
 
 
 def salva_storico(msg: dict) -> bool:
