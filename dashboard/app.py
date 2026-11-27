@@ -12,6 +12,7 @@ import clienti
 import config
 import fonte as fonte_mod
 import hashlib
+import lavori
 import monitor
 import siti_demo
 import skill
@@ -338,69 +339,149 @@ def scegli_cartella(chiave: str) -> str:
     return scelta
 
 
-def sez_guardian():
-    st.session_state.setdefault("chat", {})  # cwd -> {"sid": ..., "msgs": [...]}
-    if chat.agente_installato(config.MANAGER_AGENT):
-        st.caption(f"Parli con **Guardian**, il manager: coordina gli altri agenti (agente `{config.MANAGER_AGENT}`).")
-    else:
-        st.warning(f"L'agente `{config.MANAGER_AGENT}` non è installato: installa la squadra dalla sezione Agenti. "
-                   "Intanto rispondo come un normale Claude Code.")
-    cwd = scegli_cartella("chat")
-    conv = st.session_state["chat"].setdefault(cwd, {"sid": None, "msgs": []})
-    c1, c2 = st.columns([4, 1])
-    c1.caption(f"Contesto: {'sessione ' + conv['sid'][:8] if conv['sid'] else 'nuova conversazione'}")
-    if c2.button("Nuova conversazione", disabled=not conv["msgs"]):
-        st.session_state["chat"][cwd] = {"sid": None, "msgs": []}
-        st.rerun()
-    for m in conv["msgs"]:
-        with st.chat_message(m["ruolo"]):
-            st.markdown(m["testo"])
-            if m.get("nota"):
-                st.caption(m["nota"])
-            if m["ruolo"] == "assistant" and parla and st.button("Ascolta", key=f"asc_{id(m)}"):
-                parla_ora(voce_out.spezza(voce_out.pulisci_per_voce(m["testo"])), st.empty())
-    cv1, cv2 = st.columns([1, 3])
-    parla = cv1.toggle("Guardian parla", value=True, key="parla")
-    with cv2.expander("Voce di Guardian (femminile, italiana)"):
-        st.caption("Uso le voci del tuo sistema: su Windows una voce italiana **locale** (il testo non esce dal PC). "
-                   "Le voci «online» mandano il testo al servizio del browser: il pannello le segnala.")
-        html_frame(voce_out.html_impostazioni(), height=230)
-    st.markdown("#### Conversazione a voce")
-    st.caption("Un clic su «Avvia conversazione», poi parli e fai una pausa: capisco in locale, rispondo a voce e ti riascolto. "
-               "Vedi sempre il testo che ho capito qui sotto.")
-    voce_in = mic.mic_continuo("mic_cont")
-    if voce_in and voce_in["id"] != st.session_state.get("_mic_id"):
-        st.session_state["_mic_id"] = voce_in["id"]
-        dati_wav = mic.decodifica(voce_in)
-        if not voce.disponibile():
-            st.warning("Per capire la voce serve il riconoscimento locale: installalo qui sotto (una volta).")
+@st.cache_resource
+def get_lavori():
+    """Le chat vivono nel server, non nella pagina: i lavori continuano anche se chiudi o ricarichi il browser."""
+    demo = fonte.nome.startswith("DEMO")
+    return lavori.Lavori(fonte, None if demo else config.VISITE_DIR / "chat.json", iniziali=3, cwd_default=(fonte.progetti() or [""])[0])
+
+
+ALTRA = "➕ Altra cartella…"
+SENZA_AGENTE = "Claude Code (normale)"
+
+
+@st.fragment(run_every=1.2)
+def pannello_chat(cid: str):
+    L = get_lavori()
+    s = L.istantanea(cid)
+    if not s:
+        return
+    st.markdown(theme.chat_testata(s["nome"], "lavora" if s["in_corso"] else "pronta", s["durata"]), unsafe_allow_html=True)
+    with st.expander("Cartella, agente e voce"):
+        opz = fonte.progetti()
+        if s["cwd"] and s["cwd"] not in opz:
+            opz = [s["cwd"]] + opz
+        sel = st.selectbox("Cartella progetto", opz + [ALTRA], index=opz.index(s["cwd"]) if s["cwd"] in opz else 0, key=f"cwd_{cid}")
+        nuova_cwd = st.text_input("Percorso", key=f"cwdt_{cid}").strip() if sel == ALTRA or not opz else sel
+        installati = [m["nome"] for m in fonte.squadra() if m["installata"]]
+        scelte = [SENZA_AGENTE] + installati
+        attuale = s["agente"] if s["agente"] in installati else SENZA_AGENTE
+        ag = st.selectbox("Agente", scelte, index=scelte.index(attuale), key=f"ag_{cid}", disabled=s["in_corso"],
+                          help="Chi risponde in questa chat. Il manager `guardian-manager` coordina gli altri agenti.")
+        pl = st.toggle("Parla a voce", value=s["parla"], key=f"pl_{cid}")
+        if (nuova_cwd and nuova_cwd != s["cwd"]) or (ag if ag != SENZA_AGENTE else None) != s["agente"] or pl != s["parla"]:
+            if not s["in_corso"]:
+                L.imposta(cid, cwd=nuova_cwd or s["cwd"], agente=None if ag == SENZA_AGENTE else ag, parla=pl)
+        c1, c2 = st.columns(2)
+        if c1.button("Azzera", key=f"az_{cid}", disabled=s["in_corso"], use_container_width=True):
+            L.reset(cid)
+        if c2.button("Chiudi chat", key=f"ch_{cid}", disabled=s["in_corso"] or len(L.ids()) <= 1, use_container_width=True):
+            L.chiudi(cid)
+            st.rerun()
+    with st.container(height=400, border=True):
+        if not s["msgs"] and not s["in_corso"]:
+            st.caption("Scrivi un compito qui sotto. Questa chat lavora in parallelo alle altre.")
+        for m in s["msgs"]:
+            with st.chat_message(m["ruolo"]):
+                st.markdown(m["testo"])
+                if m.get("nota"):
+                    st.caption(m["nota"])
+        if s["in_corso"]:
+            with st.chat_message("assistant"):
+                st.markdown(s["testo"] or "⏳ _al lavoro…_")
+                if s["strumenti"]:
+                    st.caption("🔧 " + " → ".join(s["strumenti"][-5:]))
+    if s["parla"] and s["da_leggere"]:                       # voce: solo frasi complete, man mano che arrivano
+        c = L.get(cid)
+        frasi, c.parlato = voce_out.prossimo_pezzo(voce_out.pulisci_per_voce(s["testo"]), s["parlato"], finale=s["fatto"] and not s["in_corso"])
+        parla_ora(frasi, st.empty())
+        if s["fatto"] and not s["in_corso"] and not s["errore"]:
+            L.segna_letto(cid)
+    with st.form(f"f_{cid}", clear_on_submit=True, border=False):
+        testo = st.text_area("Messaggio", key=f"t_{cid}", height=80, label_visibility="collapsed", placeholder="Scrivi il compito…")
+        inv = st.form_submit_button("Invia", type="primary", disabled=s["in_corso"], use_container_width=True)
+    if inv:
+        res = L.invia(cid, testo)
+        if res["ok"]:
+            st.rerun(scope="fragment")
         else:
-            with st.spinner("Ascolto…"):
-                rv = voce.trascrivi(dati_wav)
-            if rv["ok"]:
-                st.session_state["_invio_voce"] = rv["testo"]
+            st.warning(res["messaggio"])
+    if s["in_corso"] and st.button("Stop", key=f"stop_{cid}", use_container_width=True):
+        L.ferma(cid)
+
+
+@st.fragment(run_every=1.5)
+def barra_chat():
+    """Quante chat lavorano; avvisa che il consumo cresce; segnala al microfono a mani libere quando tacere."""
+    L = get_lavori()
+    n = L.in_corso()
+    st.caption(f"{n} su {len(L.ids())} chat al lavoro" + (f" · attenzione: {n} lavori in parallelo consumano il limite {n} volte più in fretta" if n >= 2 else ""))
+    voce_attiva = any(L.istantanea(i)["in_corso"] and L.get(i).parla for i in L.ids())
+    if st.session_state.get("_flag_lavora") != voce_attiva:
+        st.session_state["_flag_lavora"] = voce_attiva
+        html_frame(voce_out.js_lavora(voce_attiva), height=0)
+
+
+def sez_guardian():
+    L = get_lavori()
+    if chat.agente_installato(config.MANAGER_AGENT):
+        st.caption(f"Fino a {lavori.MAX_CHAT} chat nello stesso momento, ognuna con la sua cartella e il suo agente. "
+                   f"La prima è **Guardian**, il manager (`{config.MANAGER_AGENT}`): coordina gli altri agenti.")
+    else:
+        st.warning(f"L'agente `{config.MANAGER_AGENT}` non è installato: installa la squadra dalla sezione Agenti. Intanto le chat rispondono come Claude Code normale.")
+    b1, b2 = st.columns([4, 1])
+    with b1:
+        barra_chat()
+    if b2.button("＋ Nuova chat", disabled=len(L.ids()) >= lavori.MAX_CHAT, use_container_width=True, help=f"Massimo {lavori.MAX_CHAT}"):
+        L.nuova(cwd=(fonte.progetti() or [""])[0])
+        st.rerun()
+    ids = L.ids()
+    for k in range(0, len(ids), 3):
+        righe = ids[k:k + 3]
+        for col, cid in zip(st.columns(len(righe)), righe):
+            with col:
+                pannello_chat(cid)
+    with st.expander("Voce e microfono (parlano con la prima chat, Guardian)"):
+        cv1, cv2 = st.columns([1, 1])
+        with cv1:
+            st.caption("Uso le voci del tuo sistema: su Windows una voce italiana **locale** (il testo non esce dal PC). Le voci «online» "
+                       "mandano il testo al servizio del browser: il pannello le segnala. Ogni chat ha il suo interruttore «Parla a voce».")
+        with cv2:
+            html_frame(voce_out.html_impostazioni(), height=230)
+        st.markdown("#### Conversazione a voce")
+        st.caption("Un clic su «Avvia conversazione», poi parli e fai una pausa: capisco in locale e mando il testo a Guardian. "
+                   "Tace mentre Guardian lavora o parla.")
+        prima = L.ids()[0]
+        voce_in = mic.mic_continuo("mic_cont")
+        if voce_in and voce_in["id"] != st.session_state.get("_mic_id"):
+            st.session_state["_mic_id"] = voce_in["id"]
+            dati_wav = mic.decodifica(voce_in)
+            if not voce.disponibile():
+                st.warning("Per capire la voce serve il riconoscimento locale: installalo qui sotto (una volta).")
             else:
-                st.caption(f"Non ho capito: {rv['messaggio']}")
-    with st.expander("Parla a Guardian (microfono, un messaggio alla volta)"):
-        st.caption("L'audio resta sul tuo PC: il riconoscimento è locale. Vedi sempre cosa ho capito e confermi tu prima dell'invio.")
-        audio = st.audio_input("Premi per registrare, premi di nuovo per fermare", key="mic")
-        if audio is not None:
-            dati = audio.getvalue()
-            h = hashlib.sha1(dati).hexdigest()
-            if st.session_state.get("_voce_h") != h:
-                if voce.disponibile():
-                    with st.spinner("Ascolto…"):
-                        r = voce.trascrivi(dati)
+                with st.spinner("Ascolto…"):
+                    rv = voce.trascrivi(dati_wav)
+                if rv["ok"]:
+                    res = L.invia(prima, rv["testo"])
+                    st.caption(f"Ho capito: «{rv['testo']}»" + ("" if res["ok"] else f" — non inviato: {res['messaggio']}"))
                 else:
-                    r = {"ok": False, "testo": "", "messaggio": "Riconoscimento vocale non installato (vedi sotto)."}
-                st.session_state.update(_voce_h=h, _voce_r=r)
-            r = st.session_state["_voce_r"]
-            if r["ok"]:
-                testo_voce = st.text_area("Ho capito (puoi correggere):", value=r["testo"], key=f"voce_t_{h}")
-                if st.button("Invia a Guardian", type="primary", key=f"voce_i_{h}"):
-                    st.session_state["_invio_voce"] = testo_voce
-            else:
-                st.warning(r["messaggio"])
+                    st.caption(f"Non ho capito: {rv['messaggio']}")
+        with st.expander("Un messaggio alla volta (con conferma)"):
+            audio = st.audio_input("Premi per registrare, premi di nuovo per fermare", key="mic")
+            if audio is not None:
+                dati = audio.getvalue()
+                h = hashlib.sha1(dati).hexdigest()
+                if st.session_state.get("_voce_h") != h:
+                    r0 = voce.trascrivi(dati) if voce.disponibile() else {"ok": False, "testo": "", "messaggio": "Riconoscimento vocale non installato (vedi sotto)."}
+                    st.session_state.update(_voce_h=h, _voce_r=r0)
+                r = st.session_state["_voce_r"]
+                if r["ok"]:
+                    testo_voce = st.text_area("Ho capito (puoi correggere):", value=r["testo"], key=f"voce_t_{h}")
+                    if st.button("Invia a Guardian", type="primary", key=f"voce_i_{h}"):
+                        res = L.invia(prima, testo_voce)
+                        st.caption("Inviato." if res["ok"] else res["messaggio"])
+                else:
+                    st.warning(r["messaggio"])
         if not voce.disponibile():
             st.caption(f"Serve il pacchetto {voce.PACCHETTO} {voce.VERSIONE} (versione fissata, solo wheel). Il primo riconoscimento scarica "
                        "il modello (~140 MB) da Hugging Face; l'audio non viene mai inviato.")
@@ -408,21 +489,6 @@ def sez_guardian():
                 with st.spinner("Installazione in corso (alcuni minuti)…"):
                     res = voce.installa()
                 (st.success if res["ok"] else st.error)(res["messaggio"])
-    domanda = st.chat_input("Scrivi o detta un messaggio per Guardian…", key="chat_in") or st.session_state.pop("_invio_voce", None)
-    if domanda:
-        if not cwd:
-            st.warning("Scegli una cartella progetto.")
-        else:
-            conv["msgs"].append({"ruolo": "user", "testo": domanda})
-            with st.chat_message("user"):
-                st.markdown(domanda)
-            with st.chat_message("assistant"):
-                r = esegui_e_mostra(domanda, cwd, conv["sid"], config.MANAGER_AGENT, parla)
-            if r.session_id and not r.errore:
-                conv["sid"] = r.session_id
-            nota = " · ".join(x for x in (("🔧 " + ", ".join(r.strumenti)) if r.strumenti else "",
-                                          f"≈${r.costo:.3f}" if r.costo else "") if x)
-            conv["msgs"].append({"ruolo": "assistant", "testo": r.testo or (r.errore or ""), "nota": nota})
 
 
 # ---------------------------------------------------------------- 4/5. Skill

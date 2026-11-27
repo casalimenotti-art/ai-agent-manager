@@ -88,7 +88,7 @@ class Fonte(ABC):
     def scheda_visita(self, slug: str) -> str: ...
 
     @abstractmethod
-    def esegui(self, prompt: str, cwd: str, resume: str | None = None, agente: str | None = None) -> Iterator[dict]: ...  # eventi stream-json
+    def esegui(self, prompt: str, cwd: str, resume: str | None = None, agente: str | None = None, ctrl: dict | None = None) -> Iterator[dict]: ...  # eventi stream-json
 
     @abstractmethod
     def installa_skill(self, url: str) -> dict: ...  # {ok, messaggio}
@@ -128,8 +128,8 @@ class FonteLocale(Fonte):
     def skill_elenco(self):
         return skill.elenca_skill()
 
-    def esegui(self, prompt, cwd, resume=None, agente=None):
-        return chat.esegui_locale(prompt, cwd, resume, agente)
+    def esegui(self, prompt, cwd, resume=None, agente=None, ctrl=None):
+        return chat.esegui_locale(prompt, cwd, resume, agente, ctrl)
 
     def installa_skill(self, url):
         return skill.installa_locale(url)
@@ -211,7 +211,7 @@ class FonteRemota(Fonte):
             return json.load(r)
     def skill_elenco(self): return self._json("/api/skill")
 
-    def esegui(self, prompt, cwd, resume=None, agente=None):
+    def esegui(self, prompt, cwd, resume=None, agente=None, ctrl=None):
         try:
             with self._req("/api/chat", {"prompt": prompt, "cwd": cwd, "resume": resume, "agente": agente}, timeout=config.CHAT_TIMEOUT_S) as r:
                 for riga in r:
@@ -372,7 +372,7 @@ class FonteDemo(FonteLocale):
     def imposta_azienda(self, testo): return dict(self._OFF)
     def azienda(self): return "Profilo azienda (esempio): siti web immediati e software su misura a Cagliari."
 
-    def esegui(self, prompt, cwd, resume=None, agente=None):
+    def esegui(self, prompt, cwd, resume=None, agente=None, ctrl=None):
         yield {"type": "guardian_end", "returncode": -1, "stderr": "La chat è disattivata in modalità demo."}
 
 

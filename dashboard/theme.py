@@ -381,6 +381,7 @@ button[data-variant="segmented_control"][data-selected="true"] { color:#00f0ff !
 .tag.dice, .tag.altro { color:#a3aecb; border-color:#2a3566; }
 .g-ev .corpo { color:#e8f1ff; word-break:break-word; } .g-ev .sub { grid-column:2; color:#a3aecb; font-size:.76rem; }
 .g-ev .sub b { color:#00d4f2; font-weight:600; } .g-ev a { color:#00d4f2; }
+.g-chat-t { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1c2340; padding:.3rem 0 .5rem; margin-bottom:.4rem; }
 .g-ev.nuovo { animation:g-nuovo 1.2s ease-out; }
 @keyframes g-nuovo { from { background:rgba(0,240,255,.18); } to { background:transparent; } }
 @media (prefers-reduced-motion: reduce) { .g-ev.nuovo { animation:none; } }
@@ -421,3 +422,11 @@ def feed_attivita(righe: list[dict], fa, ora: float, nuovi_da: float = 0.0) -> s
                    f"<div><span class='tag {classe}'>{etichetta}</span><span class='corpo'>{corpo}</span> "
                    f"<span class='chi'>· {esc(e.get('chi', ''))}</span></div>{sub}</div>")
     return f"<div class='g-feed'>{''.join(out)}</div>"
+
+
+def chat_testata(nome: str, stato: str, secondi: float | None = None) -> str:
+    """Testata di una chat: nome e stato (lavora / pronta) con testo, non solo colore."""
+    on = stato == "lavora"
+    tempo = f" · {int(secondi)} s" if (on and secondi is not None) else ""
+    return (f"<div class='g-chat-t'><b>{esc(nome)}</b><span class='pill {'on' if on else 'off'}'><i class='{'g-dot' if on else ''}'></i>"
+            f"{'LAVORA' if on else 'PRONTA'}{tempo}</span></div>")

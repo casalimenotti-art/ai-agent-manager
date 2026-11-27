@@ -26,7 +26,7 @@ def costruisci_comando(resume: str | None = None, agente: str | None = None) -> 
     return cmd
 
 
-def esegui_locale(prompt: str, cwd: str, resume: str | None = None, agente: str | None = None) -> Iterator[dict]:
+def esegui_locale(prompt: str, cwd: str, resume: str | None = None, agente: str | None = None, ctrl: dict | None = None) -> Iterator[dict]:
     """Lancia claude e produce gli eventi stream-json (dict).
 
     Il prompt va su stdin (equivale a `claude -p "<domanda>"` ma evita problemi con
@@ -46,6 +46,8 @@ def esegui_locale(prompt: str, cwd: str, resume: str | None = None, agente: str 
         yield {"type": "guardian_end", "returncode": -1,
                "stderr": f"Comando '{config.CLAUDE_BIN}' non trovato (imposta CLAUDE_BIN nel .env)"}
         return
+    if ctrl is not None:
+        ctrl["proc"] = proc          # permette a chi chiama di interrompere il lavoro (kill) da un altro thread
     timer = threading.Timer(config.CHAT_TIMEOUT_S, proc.kill)
     timer.start()
     stderr_buf: list[str] = []

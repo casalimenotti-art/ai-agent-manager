@@ -32,6 +32,7 @@ Sono una stima: con un abbonamento a tariffa fissa non è ciò che paghi. Overri
 senza sovrascrivere nulla e con il commit di origine registrato in `.guardian-source.json`.
 
 **Modalità demo (dati finti).** Per mostrare Guardian a soci e clienti senza esporre i progetti veri: doppio clic su `avvia-demo.bat` (Windows) o `avvia-demo.sh`. Chat, installazioni e foto sono disattivate.
+**Chat in parallelo.** Sezione Guardian: da 3 a 5 chat che lavorano nello stesso momento (pulsante «＋ Nuova chat»), ognuna con la sua cartella, il suo agente, la sua cronologia e il suo Stop.
 **Voce.** Sezione Guardian: «Guardian parla» (voce italiana femminile del sistema, frase per frase) e «Conversazione a voce» a mani libere (ascolto locale con faster-whisper). Dettagli e limiti in `docs/decisioni.md`.
 **Spazi.** Centro · Consumi · Costi · Agenti (feed live: deleghe, ricerche, pagine aperte) · Clienti · Siti demo · Guardian (chat col manager + microfono) · Skill · Store.
 **Documenti.** `PROMPT_30_CLIENTI.md` (operazione di oggi), `PROMPT_FINALE.md` (finire la dashboard), `PROMPT_OBIETTIVO_10K.md` (attività commerciale), `SETUP_PC.md` (browser e PC in sicurezza), `docs/spec/` (specifiche), `docs/graph/GRAPH_REPORT.md` (grafico del codice).
