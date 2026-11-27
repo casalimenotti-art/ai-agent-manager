@@ -19,3 +19,10 @@ def test_modello_webgl_locale():
     assert 'getContext("webgl"' in html
     assert 'g-parla' in html
     assert '<script src=' not in html
+
+
+def test_ritratto_locale_con_pointer_e_motion_ridotto():
+    html = avatar.ritratto()
+    assert "data:image/jpeg;base64,/9j/" in html
+    assert "__PORTRAIT__" not in html
+    assert "pointermove" in html and "prefers-reduced-motion" in html

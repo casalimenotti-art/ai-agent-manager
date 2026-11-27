@@ -1,14 +1,14 @@
-:root { --guardian-ink:#e9ede5; --guardian-mint:#a4d9bf; }
+:root { --guardian-ink:#f2f4ff; --guardian-mint:#a4d9bf; }
 .guardian-avatar { display:grid; justify-items:center; padding:.05rem 0 .5rem; color:var(--guardian-ink); text-align:center; }
 .guardian-avatar strong { font:600 1.05rem system-ui; }
-.guardian-avatar span { color:#b5c9bc; font-size:.85rem; }
+.guardian-avatar span { color:#c3ccef; font-size:.85rem; }
 .guardian-avatar.errore span { color:#ffb7a2; }
 .guardian-avatar .guardian-speaking { display:none; }
 body.g-parla .guardian-avatar > span { display:none; }
-body.g-parla .guardian-avatar .guardian-speaking { display:inline; color:#b5e9ce; }
-.st-key-plancia_guardian { background:#222b26 !important; border:1px solid #52645a !important; border-radius:18px !important; }
+body.g-parla .guardian-avatar .guardian-speaking { display:inline; color:#9af2ff; }
+.st-key-plancia_guardian { background:#0e1226 !important; border:1px solid #363765 !important; border-radius:18px !important; }
 .st-key-plancia_guardian iframe { border-radius:13px; }
-.st-key-plancia_guardian::before, .st-key-plancia_utilizzo::before { color:#c5dbc9 !important; }
+.st-key-plancia_guardian::before, .st-key-plancia_utilizzo::before { color:#bbc8ff !important; }
 .st-key-plancia_posta, .st-key-plancia_utilizzo { overflow-wrap:anywhere; }
 .st-key-plancia_guardian button { letter-spacing:normal !important; }
 @media (prefers-reduced-motion: no-preference) {
@@ -17,9 +17,13 @@ body.g-parla .guardian-avatar .guardian-speaking { display:inline; color:#b5e9ce
 }
 
 :root {
-  --bg:#191e1b; --surface:#242b26; --surface2:#2d3730; --line:#47564c;
-  --acc:#b0d9bf; --pink:#d8c3a1; --ink:#eef0e7; --ink2:#c8cec4; --mute:#a3afa4;
+  --bg:#090b16; --surface:#13172c; --surface2:#1d2341; --line:#383f69;
+  --acc:#88e4ff; --pink:#c39aff; --ink:#f0f3ff; --ink2:#d0d7f4; --mute:#a5b0d7;
   --r:12px;
 }
-.g-ev .tag.web, .g-ev .tag.delega, .g-ev .sub b { color:#b0d9bf; border-color:#688b76; }
-.g-ev.nuovo { border-left-color:#b0d9bf; }
+.g-ev .tag.web, .g-ev .tag.delega, .g-ev .sub b { color:#88e4ff; border-color:#655cc1; }
+.g-ev.nuovo { border-left-color:#88e4ff; }
+
+.g-logomark, .g-logomark * { animation:none !important; }
+.g-head-logo .g-logo { letter-spacing:.13em; }
+.st-key-plancia_motori [data-testid="stExpander"] details { margin:.4rem 0; border-color:#4b4c86; }

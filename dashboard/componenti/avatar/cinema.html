@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+html,body{height:100%;margin:0;overflow:hidden}
+.stage{position:relative;isolation:isolate;display:grid;place-items:center;height:100%;overflow:hidden;background:#080d15}
+.portrait{display:block;width:100%;height:100%;object-fit:contain;transform:translate3d(var(--x,0px),var(--y,0px),0) scale(1.02);
+  transition:transform 180ms cubic-bezier(.2,.7,.3,1);mask-image:linear-gradient(0deg,transparent,#000 6%,#000 98%,transparent)}
+.light{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at var(--lx,50%) var(--ly,45%),#7db8fc26,transparent 55%);
+  mix-blend-mode:screen;opacity:.65;transition:opacity .3s}
+.voice{position:absolute;inset:auto 24% 2%;height:2px;opacity:0;transform:scaleX(.25);
+  background:linear-gradient(90deg,transparent,#9ce8ff,transparent);box-shadow:0 0 16px #6bd5ff;transition:opacity .25s}
+.stage[data-state="ascolto"] .voice{opacity:.5;transform:scaleX(.65)}
+.stage[data-state="parla"] .voice{opacity:1;animation:speech .68s ease-in-out infinite alternate}
+.stage[data-state="parla"] .light{opacity:1}
+@keyframes speech{from{transform:scaleX(.35)}to{transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){.portrait{transform:none;transition:none}.voice,.light{transition:none}.stage[data-state="parla"] .voice{animation:none;transform:scaleX(.65)}}
+</style>
+<main class="stage" aria-label="Guardian, ritratto di un’androide">
+  <img class="portrait" src="data:image/jpeg;base64,__PORTRAIT__" alt="Androide femminile con volto umano e corazza scura in titanio">
+  <div class="light" aria-hidden="true"></div><div class="voice" aria-hidden="true"></div>
+</main>
+<script>
+const stage = document.querySelector(".stage");
+const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+function move(x,y) {
+  if (reduced.matches) return;
+  const a=Math.max(-1,Math.min(1,x)), b=Math.max(-1,Math.min(1,y));
+  stage.style.setProperty("--x", (a*6)+"px");
+  stage.style.setProperty("--y", (b*4)+"px");
+  stage.style.setProperty("--lx", (50+a*15)+"%");
+  stage.style.setProperty("--ly", (45+b*11)+"%");
+}
+const parentPage=window.parent.document;
+function follow(event) { move(event.clientX/window.parent.innerWidth*2-1,event.clientY/window.parent.innerHeight*2-1); }
+parentPage.addEventListener("pointermove",follow,{passive:true});
+stage.addEventListener("pointermove",event=>move(event.clientX/stage.clientWidth*2-1,event.clientY/stage.clientHeight*2-1),{passive:true});
+const statusHost=window.frameElement?.closest(".st-key-plancia_guardian");
+let lastGesture="";
+function updateState() {
+  const avatar=statusHost?.querySelector(".guardian-avatar");
+  stage.dataset.state=parentPage.body.classList.contains("g-parla")?"parla":avatar?.classList.contains("ascolto")?"ascolto":"pronto";
+  const gesto=avatar?.dataset.movimento || "centro";
+  if (gesto===lastGesture) return;
+  lastGesture=gesto;
+  const vector={destra:[1,0],sinistra:[-1,0],su:[0,-1],giu:[0,1],centro:[0,0]}[gesto];
+  if(vector) move(...vector);
+}
+const voiceObserver=new MutationObserver(updateState);
+voiceObserver.observe(parentPage.body,{attributes:true,attributeFilter:["class"]});
+const statusObserver=new MutationObserver(updateState);
+if(statusHost) statusObserver.observe(statusHost,{subtree:true,childList:true,attributes:true,attributeFilter:["class","data-movimento"]});
+window.addEventListener("pagehide",()=>{
+  parentPage.removeEventListener("pointermove",follow);
+  voiceObserver.disconnect();
+  statusObserver.disconnect();
+},{once:true});
+updateState();
+</script></html>

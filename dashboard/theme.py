@@ -164,8 +164,8 @@ def logo_svg(stato: str = "riposo", px: int = 56) -> str:
 
 def intestazione(sorgente: str, permessi: str, ogni_s: int) -> str:
     return (
-        f"<div class='g-head'><div class='g-head-logo'>{logo_svg('riposo', 52)}<div><div class='g-logo'>GUARD<b>I</b>AN</div>"
-        "<div class='g-tag'>claude code // control room</div></div></div>"
+        f"<div class='g-head'><div class='g-head-logo'>{logo_svg('riposo', 66)}<div><div class='g-logo'>GUARD<b>I</b>AN</div>"
+        "<div class='g-tag'>AI Control Room</div></div></div>"
         "<div class='g-chips'>"
         f"<span class='g-chip'><i></i>link: {esc(sorgente)}</span>"
         f"<span class='g-chip'>refresh {ogni_s}s</span>"

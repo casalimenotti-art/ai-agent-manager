@@ -1,4 +1,5 @@
 """Comandi locali e visuale dell’avatar Guardian."""
+import base64
 import re
 from pathlib import Path
 
@@ -34,3 +35,10 @@ def modello() -> str:
     cartella = Path(__file__).parent / "componenti/avatar"
     html = (cartella / "modello.html").read_text(encoding="utf-8")
     return html.replace("__FACE_DATA__", (cartella / "volto.b64").read_text(encoding="ascii").strip())
+
+
+def ritratto() -> str:
+    cartella = Path(__file__).parent / "componenti/avatar"
+    pagina = (cartella / "cinema.html").read_text(encoding="utf-8")
+    immagine = base64.b64encode((cartella / "guardian-cinema.jpg").read_bytes()).decode("ascii")
+    return pagina.replace("__PORTRAIT__", immagine)

@@ -15,3 +15,7 @@ Riferimenti estetici e tecnici: [Electra, SideFX](https://www.sidefx.com/tutoria
 per corazza e articolazioni, [MetaHuman Animator, Epic](https://www.youtube.com/watch?v=doax4FU1-t0)
 per l'animazione facciale da audio, [asset anatomici Blender](https://www.blender.org/download/demo-files/)
 per una futura mesh con rig completo. La mandibola attuale segue l'attivazione della voce.
+
+Il ritratto cinematografico è un asset originale creato con ImageGen per Guardian.
+La vista predefinita lo anima con un lieve spostamento e luce al puntatore e
+lo stato della voce. In Opzioni si può aprire il modello WebGL con articolazioni.

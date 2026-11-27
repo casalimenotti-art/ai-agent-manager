@@ -32,8 +32,8 @@ st.set_page_config(page_title="Guardian", page_icon=str(_FAVICON) if _FAVICON.ex
 
 # Tema scuro: .streamlit/config.toml vale solo se si avvia da dashboard/, quindi forzo anche da qui.
 try:
-    for chiave, valore in (("base", "dark"), ("primaryColor", "#00F0FF"), ("backgroundColor", "#080A12"),
-                           ("secondaryBackgroundColor", "#0D1020"), ("textColor", "#E8F1FF")):
+    for chiave, valore in (("base", "dark"), ("primaryColor", "#89DEFF"), ("backgroundColor", "#090B16"),
+                           ("secondaryBackgroundColor", "#13172C"), ("textColor", "#F0F3FF")):
         st._config.set_option(f"theme.{chiave}", valore)
 except Exception:
     pass
@@ -558,6 +558,9 @@ def dialog_guida():
 
 @st.dialog("Conversazioni passate", width="large")
 def dialog_conversazioni():
+    if fonte.nome.startswith("DEMO"):
+        st.info("In demo le conversazioni restano soltanto nella sessione corrente.")
+        return
     giorni = storico_conv.elenco_giorni()
     if not giorni:
         st.info("Nessuna conversazione salvata.")
@@ -605,7 +608,10 @@ def sez_guardian():
         st.session_state["voce_on"] = cmd["valore"]
     if not fonte.nome.startswith("DEMO") and not chat.agente_installato(config.MANAGER_AGENT):
         st.caption(f"⚠️ L'agente `{config.MANAGER_AGENT}` non è installato (pannello Squadra): rispondo come un normale Claude Code.")
-    html_frame(avatar.modello(), height=345)
+    if st.session_state.get("guardian_3d"):
+        html_frame(avatar.modello(), height=365)
+    else:
+        html_frame(avatar.ritratto(), height=400)
     reattore = st.empty()
     st.session_state["_rx_ph"] = reattore
     with st.container(key="g_barra"):
@@ -620,6 +626,7 @@ def sez_guardian():
                                    help="Manda a Guardian un riassunto (max 2000 caratteri) di agenti e attività correnti")
         voce_on = c_voce.toggle("Voce", value=True, key="voce_on", help=NOTA_PARLA)
         with c_imp.popover("Opzioni", icon=":material/tune:", use_container_width=True, help="Impostazioni"):
+            st.toggle("Modello 3D articolato", key="guardian_3d", help="Mostra il modello con testa e mani articolate al posto del ritratto cinematografico.")
             cwd = scegli_cartella("chat")
             conv_tmp = st.session_state["chat"].get(cwd)
             if (cmd and cmd["tipo"] == "nuova") or st.button("Nuova conversazione", disabled=not (conv_tmp and conv_tmp["msgs"]), key="nuova_conv"):
@@ -637,7 +644,7 @@ def sez_guardian():
     caricati = st.session_state.setdefault("_stor_caricato", set())
     if cwd not in caricati:   # una sola volta per sessione e cartella: «Nuova conversazione» non ricarica
         caricati.add(cwd)
-        if not conv["msgs"]:
+        if not conv["msgs"] and not fonte.nome.startswith("DEMO"):
             conv["msgs"] = [{"ruolo": m["ruolo"], "testo": m["testo"]} for m in storico_conv.carica_oggi()]
     vuota = None
     if not conv["msgs"] and "_invio_guardian" not in st.session_state:
@@ -711,6 +718,8 @@ def sez_guardian():
 
 def salva_storico(msg: dict) -> bool:
     """Salva nello storico; se la cartella non è scrivibile la chat continua e l'avviso compare una sola volta."""
+    if fonte.nome.startswith("DEMO"):
+        return True
     try:
         ok = storico_conv.aggiungi(msg)
     except Exception:
@@ -1121,6 +1130,19 @@ else:
 if not OSPITE and (_ag := st.session_state.pop("_lancia_da_catalogo", None)):
     dialog_lancia_agente(_ag, chiave="cat")
 
+def pannello_motori():
+    with st.container(border=True, key="plancia_motori"):
+        st.subheader("Motori")
+        with st.expander("Codex · Nicola"):
+            st.caption("Console personale, con il tuo account ChatGPT.")
+            st.link_button("Apri il tuo Codex", "https://chatgpt.com/codex")
+        with st.expander("Codex · Francesco"):
+            st.caption("Sessione remota non collegata. L’esecuzione richiederà l’approvazione di Francesco.")
+        with st.expander("Claude Code · Menotti"):
+            st.caption("Sessione remota non collegata. L’esecuzione richiederà l’approvazione di Menotti.")
+            st.link_button("Apri Claude Code con il tuo account", "https://claude.ai/code")
+
+
 # Panoramica operativa e passaggi rapidi per il titolare
 if not OSPITE:
     scorciatoie = st.columns(5)
@@ -1130,6 +1152,7 @@ if not OSPITE:
                    on_click=st.session_state.update, args=({"spazio": spazio},))
     posta, centro, consumi = st.columns([1, 2.7, 1.35], gap="medium")
     with posta:
+        pannello_motori()
         with st.container(border=True, key="plancia_posta"):
             st.subheader("Posta")
             st.caption("Conteggio non letti non collegato")

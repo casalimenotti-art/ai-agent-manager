@@ -15,3 +15,10 @@ La plancia riusa i dati Guardian e renderizza un avatar originale con CSS locale
 - [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill), consultata per gerarchia, leggibilità, motion ridotto e accesso ai comandi.
 - [Three.js Character Controls](https://www.youtube.com/watch?v=C3s0UHpwlf8) e [demo RobotExpressive](https://www.youtube.com/watch?v=GfWjGYcqYfs), riferimenti per gerarchia di articolazioni e stati. I risultati di ricerca descrivono le demo. La riproduzione dei video non è stata verificata.
 - Rendering WebGL locale con geometria procedurale, materiali ceramica e titanio, testa e mani animate. La bocca segue lo stato di sintesi vocale. La scena non richiede asset, CDN o pacchetti grafici.
+
+## Direzione costrutto d’energia
+
+- [Dark Polygon Queen](https://www.behance.net/gallery/248331883/Dark-Polygon-Queen-LowPoly-Character-Design): uso di piani sfaccettati e gamme indaco e viola.
+- [RUTZ, Low Poly Sci-Fi Female Character Pack](https://rutz-llc.itch.io/low-poly-sci-fi-female-character-pack): accenti emissivi sui volumi pieni.
+- [Lumo Drift](https://www.jabali.ai/game/dd1726db-3fca-4fe1-9110-63ae328c8ca9/character-life-simulation/lumo-drift/): contrasto dei colori e luce leggibile sulla silhouette.
+- Guardian riusa la geometria locale e applica ombreggiatura a bande, sguardo frontale e accenti luminosi. Le immagini sono riferimenti visivi.

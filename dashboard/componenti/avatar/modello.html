@@ -2,7 +2,7 @@
 <html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 html,body{height:100%;margin:0;overflow:hidden;background:transparent}
-canvas{display:block;width:100%;height:100%;background:radial-gradient(ellipse at 48% 43%,#43534c,#272f2b 53%,#1e2421 85%)}
+canvas{display:block;width:100%;height:100%;background:radial-gradient(ellipse at 48% 43%,#272861,#10142e 53%,#080a18 85%)}
 p{margin:1rem;color:#e8e6dd;font:15px system-ui;text-align:center}
 </style>
 <canvas aria-hidden="true"></canvas><p hidden>Modello 3D non disponibile in questo browser.</p>
@@ -41,9 +41,10 @@ function renderGuardian(gl) {
       vec3 n = normalize(normal);
       vec3 key = normalize(vec3(-0.58, 0.83, 0.75));
       float light = max(0.0, dot(n, key));
+      light = floor(light * 4.0 + 0.45) / 4.0;
       float edge = pow(1.0 - max(0.0,n.z), 2.3);
       float shine = pow(max(0.0,dot(n,normalize(key+vec3(0.,0.,1.)))),25.0);
-      gl_FragColor = vec4(paint*(0.39+0.61*light)+vec3(0.23,0.31,0.30)*edge+finish*shine, 1.0);
+      gl_FragColor = vec4(paint*(0.60+0.72*light)+vec3(0.26,0.31,0.68)*edge+finish*shine, 1.0);
     }`;
   const program = gl.createProgram();
   for (const [type, source] of [[gl.VERTEX_SHADER,vertex],[gl.FRAGMENT_SHADER,fragment]]) {
@@ -92,7 +93,7 @@ function renderGuardian(gl) {
   }
   const u = Object.fromEntries(["basis","center","radii","aspect","paint","finish","jaw"].map(name=>[name,gl.getUniformLocation(program,name)]));
   gl.enable(gl.DEPTH_TEST);
-  const pearl=[0.83,0.84,0.76], shell=[0.63,0.69,0.63], carbon=[0.16,0.21,0.19], alloy=[0.37,0.46,0.41], jade=[0.50,0.97,0.75];
+  const pearl=[0.37,0.48,0.91], shell=[0.49,0.29,0.83], carbon=[0.11,0.10,0.31], alloy=[0.26,0.42,0.77], jade=[0.39,0.94,0.99];
   const identity=[1,0,0,0,1,0,0,0,1];
   const add=(a,b)=>a.map((x,i)=>x+b[i]);
   const scale=(a,k)=>a.map(x=>x*k);
@@ -115,7 +116,7 @@ function renderGuardian(gl) {
   }
   const parentPage = window.parent.document;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-  let px=0, py=0, yaw=0, pitch=0, move="", gesture=0, last=0;
+  let px=0, py=0, move="", gesture=0, last=0;
   function follow(event) {
     px=Math.max(-1,Math.min(1,(event.clientX/window.parent.innerWidth-.5)*2));
     py=Math.max(-1,Math.min(1,(event.clientY/window.parent.innerHeight-.45)*2));
@@ -146,11 +147,9 @@ function renderGuardian(gl) {
     const t=reduced.matches?0:ms/1000, age=(ms-gesture)/1000;
     const gaze={destra:[1,0],sinistra:[-1,0],su:[0,-1],giu:[0,1]};
     const [gx,gy]=gaze[move] || (reduced.matches?[0,0]:[px,py]);
-    yaw+=(gx*.43-yaw)*.22;
-    pitch+=(gy*.24-pitch)*.22;
     const nod=move==="annuisci" && age<.75 && !reduced.matches?Math.sin(age*10)*.16:0;
-    const cx=Math.cos(yaw),sx=Math.sin(yaw),cy=Math.cos(pitch+nod),sy=Math.sin(pitch+nod);
-    const basis=[cx,0,-sx,sx*sy,cy,cx*sy,sx*cy,-sy,cx*cy];
+    const cy=Math.cos(nod),sy=Math.sin(nod);
+    const basis=[1,0,0,0,cy,sy,0,-sy,cy];
     const rise=Math.sin(t*1.5)*.023;
     function head(x,y,z,a,b,c,m,finish) {
       const offset=[basis[0]*x+basis[3]*y+basis[6]*z,basis[1]*x+basis[4]*y+basis[7]*z,basis[2]*x+basis[5]*y+basis[8]*z];
@@ -167,6 +166,8 @@ function renderGuardian(gl) {
     part([0,1.02+rise,0],[.69,.47,.34],carbon);
     part([0,1.01+rise,.21],[.61,.40,.23],pearl);
     part([0,1.29+rise,.16],[.62,.14,.25],alloy);
+    joint([-.43,1.20+rise,.34],[0,.93+rise,.48],.013,.022,jade);
+    joint([.43,1.20+rise,.34],[0,.93+rise,.48],.013,.022,jade);
     for (const side of [-1,1]) {
       joint([side*.51,.85+rise,.32],[side*.27,.67+rise,.31],.026,.028,alloy);
     }
@@ -191,19 +192,22 @@ function renderGuardian(gl) {
       }
       part([h[0]-side*.105,h[1]-.042,h[2]+.026],[.033,.08,.033],pearl);
     }
-    head(0,.08,-.17,.39,.415,.29,carbon);
+    head(0,.13,-.19,.42,.44,.31,carbon);
+    head(-.10,.30,-.072,.35,.26,.27,shell);
+    head(.17,.25,-.10,.23,.29,.27,alloy);
     for (const side of [-1,1]) {
-      head(side*.37,.03,-.07,.075,.17,.15,alloy);
+      head(side*.36,.05,-.08,.10,.25,.17,alloy);
+      head(side*.27,.22,-.11,.16,.23,.235,shell);
       head(side*.423,.03,-.052,.018,.082,.081,jade);
-      head(side*.147,-.021,.348,.066,.013,.012,[.19,.19,.16],.03);
-      head(side*.14,-.074,.283,.078,.065,.076,[.69,.72,.66],.21);
-      head(side*.14+gx*.017,-.074-gy*.009,.355,.027,.029,.011,[.19,.31,.24],.36);
-      head(side*.14+gx*.017,-.074-gy*.009,.364,.011,.013,.006,[.03,.05,.04],.25);
+      head(side*.147,-.021,.348,.066,.013,.012,[.13,.11,.36],.03);
+      head(side*.14,-.074,.283,.078,.065,.076,[.74,.84,1],.21);
+      head(side*.14+gx*.017,-.074-gy*.009,.355,.027,.029,.011,[.29,.95,1],.36);
+      head(side*.14+gx*.017,-.074-gy*.009,.364,.011,.013,.006,[.065,.08,.25],.25);
     }
     bindMesh(face);
     gl.uniform3fv(u.center,[0,2.06+rise,0]);
     gl.uniform3fv(u.radii,[1,1,1]);
-    gl.uniform3fv(u.paint,[.79,.72,.62]);
+    gl.uniform3fv(u.paint,[.57,.59,.94]);
     gl.uniformMatrix3fv(u.basis,false,basis);
     gl.uniform1f(u.finish,.11);
     gl.uniform1f(u.jaw,speaking&&!reduced.matches?.052*Math.abs(Math.sin(t*12)):0);
