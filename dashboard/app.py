@@ -17,7 +17,9 @@ import siti_demo
 import skill
 import theme
 import voce
-import streamlit.components.v1 as components
+import mic
+import voce_out
+from frame import html_frame
 
 st.set_page_config(page_title="Guardian", page_icon="🛡️", layout="wide")
 
@@ -48,16 +50,34 @@ def fa(ts: float) -> str:
     return f"{s}s fa" if s < 60 else f"{s // 60}m fa" if s < 3600 else f"{s // 3600}h {s % 3600 // 60}m fa"
 
 
-def esegui_e_mostra(prompt: str, cwd: str, resume: str | None, agente: str | None = None) -> chat.Risposta:
-    """Esegue sulla fonte e aggiorna in streaming l'interfaccia."""
+def parla_ora(frasi: list[str], slot) -> None:
+    """Accoda le frasi nella sintesi vocale del browser (la coda vive nella finestra principale)."""
+    if frasi:
+        with slot:
+            html_frame(voce_out.js_parla(frasi), height=0)
+
+
+def esegui_e_mostra(prompt: str, cwd: str, resume: str | None, agente: str | None = None, parla: bool = False) -> chat.Risposta:
+    """Esegue sulla fonte e aggiorna in streaming l'interfaccia; con `parla` Guardian dice le frasi man mano che arrivano."""
     r = chat.Risposta()
-    box, info = st.empty(), st.empty()
+    box, info, voce_slot, lavora_slot = st.empty(), st.empty(), st.empty(), st.empty()
     box.markdown("⏳ _Claude sta lavorando…_")
+    with lavora_slot:
+        html_frame(voce_out.js_lavora(True), height=0)       # il microfono a mani libere aspetta
+    parlato = ""
     for ev in fonte.esegui(prompt, cwd, resume, agente):
         if r.aggiungi(ev):
             box.markdown(r.testo or "⏳ _Claude sta lavorando…_")
             if r.strumenti:
                 info.caption("🔧 " + " → ".join(r.strumenti[-6:]))
+            if parla and not r.errore:
+                frasi, parlato = voce_out.prossimo_pezzo(voce_out.pulisci_per_voce(r.testo), parlato)
+                parla_ora(frasi, voce_slot)
+    if parla and not r.errore:                                  # ciò che resta (l'ultima frase)
+        frasi, parlato = voce_out.prossimo_pezzo(voce_out.pulisci_per_voce(r.testo), parlato, finale=True)
+        parla_ora(frasi, voce_slot)
+    with lavora_slot:
+        html_frame(voce_out.js_lavora(False), height=0)
     if r.errore:
         box.error(r.errore if not r.testo else r.testo)
         if r.testo:
@@ -337,7 +357,31 @@ def sez_guardian():
             st.markdown(m["testo"])
             if m.get("nota"):
                 st.caption(m["nota"])
-    with st.expander("Parla a Guardian (microfono)"):
+            if m["ruolo"] == "assistant" and parla and st.button("Ascolta", key=f"asc_{id(m)}"):
+                parla_ora(voce_out.spezza(voce_out.pulisci_per_voce(m["testo"])), st.empty())
+    cv1, cv2 = st.columns([1, 3])
+    parla = cv1.toggle("Guardian parla", value=True, key="parla")
+    with cv2.expander("Voce di Guardian (femminile, italiana)"):
+        st.caption("Uso le voci del tuo sistema: su Windows una voce italiana **locale** (il testo non esce dal PC). "
+                   "Le voci «online» mandano il testo al servizio del browser: il pannello le segnala.")
+        html_frame(voce_out.html_impostazioni(), height=230)
+    st.markdown("#### Conversazione a voce")
+    st.caption("Un clic su «Avvia conversazione», poi parli e fai una pausa: capisco in locale, rispondo a voce e ti riascolto. "
+               "Vedi sempre il testo che ho capito qui sotto.")
+    voce_in = mic.mic_continuo("mic_cont")
+    if voce_in and voce_in["id"] != st.session_state.get("_mic_id"):
+        st.session_state["_mic_id"] = voce_in["id"]
+        dati_wav = mic.decodifica(voce_in)
+        if not voce.disponibile():
+            st.warning("Per capire la voce serve il riconoscimento locale: installalo qui sotto (una volta).")
+        else:
+            with st.spinner("Ascolto…"):
+                rv = voce.trascrivi(dati_wav)
+            if rv["ok"]:
+                st.session_state["_invio_voce"] = rv["testo"]
+            else:
+                st.caption(f"Non ho capito: {rv['messaggio']}")
+    with st.expander("Parla a Guardian (microfono, un messaggio alla volta)"):
         st.caption("L'audio resta sul tuo PC: il riconoscimento è locale. Vedi sempre cosa ho capito e confermi tu prima dell'invio.")
         audio = st.audio_input("Premi per registrare, premi di nuovo per fermare", key="mic")
         if audio is not None:
@@ -373,7 +417,7 @@ def sez_guardian():
             with st.chat_message("user"):
                 st.markdown(domanda)
             with st.chat_message("assistant"):
-                r = esegui_e_mostra(domanda, cwd, conv["sid"], config.MANAGER_AGENT)
+                r = esegui_e_mostra(domanda, cwd, conv["sid"], config.MANAGER_AGENT, parla)
             if r.session_id and not r.errore:
                 conv["sid"] = r.session_id
             nota = " · ".join(x for x in (("🔧 " + ", ".join(r.strumenti)) if r.strumenti else "",
@@ -499,7 +543,7 @@ def sez_siti():
     tema = c2.selectbox("Stile", list(siti_demo.TEMI), key="siti_tema")
     c = next(x for x in leads if x["azienda"] == nome)
     pagina = siti_demo.genera_sito(c["azienda"], c.get("categoria", ""), c.get("zona", ""), tema, c.get("opportunita", ""))
-    components.html(pagina, height=720, scrolling=True)
+    html_frame(pagina, height=720, scrolling=True)
     b1, b2 = st.columns(2)
     b1.download_button("Scarica questo sito (HTML)", data=pagina, file_name=f"{siti_demo.slug_file(nome)}.html", mime="text/html",
                        use_container_width=True)
