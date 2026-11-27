@@ -18,3 +18,5 @@ P=(psql -h "$D" -p 55433 -U postgres -v ON_ERROR_STOP=1 -q -X)
 "${P[@]}" -d g -f "$QUI/dati_v1.sql"
 for i in 1 2; do "${P[@]}" -d g -f "$REPO/supabase/migrations/002_command_center.sql" 2>&1 | sed -E "/NOTICE|already exists|does not exist/d"; done
 "${P[@]}" -d g -t -A -f "$QUI/check_002.sql"
+for i in 1 2; do "${P[@]}" -d g -f "$REPO/supabase/migrations/003_bridge_agenti.sql" 2>&1 | sed -E "/NOTICE|already exists|does not exist/d"; done
+"${P[@]}" -d g -t -A -f "$QUI/check_003.sql"

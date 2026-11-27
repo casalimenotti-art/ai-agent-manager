@@ -480,6 +480,101 @@ class SqliteStore:
         return self._q(f"SELECT * FROM tasks WHERE responsabile=? AND stato IN ({aperti}) "
                        f"ORDER BY {ORDINE_PRIORITA}, updated_at DESC", (d["user_id"],))
 
+    # --- Bridge v2: agenti (specchio di supabase/migrations/003_bridge_agenti.sql) -------------
+    def _agente_del_device(self, d: dict, agent_id: str) -> dict:
+        a = self.agent((agent_id or "").lower())
+        if not a:
+            raise ValidazioneError(f"Agente non registrato: {agent_id}")
+        if a["user_id"] != d["user_id"]:
+            raise PermissionError("Agente di un altro collaboratore.")
+        return a
+
+    def bridge_agent_register(self, token, agent_id, nome, tipo, capabilities=()) -> dict:
+        d = self._device_by_token(token)
+        a = self.agent((agent_id or "").lower())
+        if a and a["user_id"] != d["user_id"]:
+            raise PermissionError("Agente di un altro collaboratore.")
+        caps = list(capabilities or []) or (a["capabilities"] if a else [])
+        return self.upsert_agent(agent_id, d["user_id"], nome, tipo, device_id=d["id"], capabilities=caps,
+                                 disponibile=a["disponibile"] if a else True)
+
+    def bridge_agent_state(self, token, agent_id, stato, current_task=None, error=None, usage=None) -> dict:
+        d = self._device_by_token(token)
+        a = self._agente_del_device(d, agent_id)
+        stato = scegli(stato, AGENT_STATI, "Stato agente")
+        prima, ora = a["stato"], adesso()
+        attivita = ora if (stato in ("working", "waiting", "needs_approval") or prima != stato) else a["last_activity"]
+        self._x("UPDATE agents SET stato=?, current_task_id=?, error=?, usage=COALESCE(?, usage), last_heartbeat=?, "
+                "device_id=?, last_activity=? WHERE id=?",
+                (stato, current_task, pulisci(error, 500, nome="errore") or None,
+                 json.dumps(usage) if usage is not None else None, ora, d["id"], attivita, a["id"]))
+        if prima != stato:
+            tipo = ("agent_disconnected" if stato == "offline" else "agent_connected" if prima in ("offline", "unknown")
+                    else "error" if stato == "error" else "agent_state")
+            sev = "error" if stato == "error" else "warning" if stato in ("needs_approval", "waiting") else "info"
+            self.add_event(tipo, f"{a['nome']}: {prima} → {stato}" + (f" — {error}" if error else ""),
+                           user_id=d["user_id"], agent_id=a["id"], agent_name=a["nome"], device_id=d["id"],
+                           task_id=current_task, severity=sev)
+            if stato == "error":
+                self._notifica("agent_error", f"Agente {a['nome']} in errore: {error or 'senza dettagli'}",
+                               [a["user_id"]], "agents", a["id"])
+        return self.agent(a["id"])
+
+    def bridge_agent_logs(self, token, agent_id, rows: list[dict]) -> int:
+        d = self._device_by_token(token)
+        a = self._agente_del_device(d, agent_id)
+        if len(rows or []) > 500:
+            raise ValidazioneError("Troppi log in una chiamata (max 500).")
+        n = 0
+        for r in rows or []:
+            msg = (r.get("message") or "")[:400]
+            if not msg:
+                continue
+            level = r.get("level") if r.get("level") in ("debug", "info", "warning", "error") else "info"
+            self._insert("agent_logs", {"agent_id": a["id"], "device_id": d["id"], "task_id": r.get("task_id"),
+                                        "level": level, "source": (r.get("source") or "bridge")[:20], "message": msg,
+                                        "ts": r.get("ts") or adesso()})
+            n += 1
+        return n
+
+    def bridge_claim_task(self, token, agent_id, task_id) -> dict:
+        d = self._device_by_token(token)
+        a = self._agente_del_device(d, agent_id)
+        t = self.task(task_id)
+        if not t:
+            raise ValidazioneError("Task inesistente.")
+        if t["responsabile"] != d["user_id"]:
+            raise ValidazioneError("Task non assegnato a questo collaboratore.")
+        if t["assigned_agent_id"] and t["assigned_agent_id"] != a["id"]:
+            raise ValidazioneError("Task assegnato a un altro agente.")
+        if t["stato"] != "ready":
+            raise ValidazioneError(f"Il task deve essere ready per essere preso (ora: {t['stato']}).")
+        self._x("UPDATE tasks SET stato='running', assigned_agent_id=?, updated_at=? WHERE id=?",
+                (a["id"], adesso(), task_id))
+        self._x("UPDATE agents SET current_task_id=?, stato='working', last_activity=? WHERE id=?",
+                (task_id, adesso(), a["id"]))
+        self.add_event("task_started", f"{a['nome']} ha preso il task #{task_id}: {t['titolo']}", user_id=d["user_id"],
+                       agent_id=a["id"], agent_name=a["nome"], device_id=d["id"], task_id=task_id,
+                       project_id=t.get("project_id"))
+        return self.task(task_id)
+
+    def agent_logs(self, agent_id=None, device_id=None, project_id=None, task_id=None, level=None, dal=None, al=None,
+                   limit: int = 200) -> list[dict]:
+        where, args = [], []
+        for col, val in (("agent_id", agent_id), ("device_id", device_id), ("project_id", project_id),
+                         ("task_id", task_id), ("level", level)):
+            if val not in (None, ""):
+                where.append(f"{col}=?")
+                args.append(val)
+        if dal:
+            where.append("ts>=?")
+            args.append(dal)
+        if al:
+            where.append("ts<=?")
+            args.append(al)
+        w = (" WHERE " + " AND ".join(where)) if where else ""
+        return self._q(f"SELECT * FROM agent_logs{w} ORDER BY ts DESC, id DESC LIMIT ?", (*args, limit))
+
     def bridge_import_registro(self, token, rows: list[dict]) -> int:
         self._device_by_token(token)
         utenti = {u["id"] for u in self.users()}

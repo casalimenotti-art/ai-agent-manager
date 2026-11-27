@@ -133,3 +133,16 @@ class Handoff:
         return (f"# Handoff{f' task #{self.task_id}' if self.task_id else ''} — {self.agent_name}\n\n"
                 f"- creato: {self.timestamp}\n\n{corpo}\n\n## File modificati\n{files}\n\n"
                 f"## Prossimo passo\n{self.next_step}\n")
+
+
+AGENTE_HEARTBEAT_SECONDI = 180  # oltre: il bridge non sta riferendo, lo stato dell'agente non è noto
+
+
+def stato_agente(agent: dict, ora: datetime | None = None) -> str:
+    """Stato mostrato: quello riferito dal bridge, ma 'unknown' se il bridge non lo aggiorna da troppo tempo.
+    La presenza del PC non rende 'online' un agente."""
+    eta = eta_secondi(agent.get("last_heartbeat"), ora)
+    if eta is None or eta > AGENTE_HEARTBEAT_SECONDI:
+        return "unknown" if agent.get("stato") != "offline" else "offline"
+    s = agent.get("stato") or "unknown"
+    return s if s in AGENT_STATI else "unknown"

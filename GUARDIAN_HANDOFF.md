@@ -39,3 +39,9 @@ Rinominato `guardian_hub/` → `guardian/`; store diviso in `store.py` (comuni +
 - Test: 28 passati; `bash tests/pg/run.sh` → CHECK 002 OK.
 - Da sapere: le tabelle `plans`, `agent_logs` e `memory` esistono già, ma i metodi dello store arrivano in M2 (log), M4 (memoria) e M6 (piani).
 - Prossimo passo: M2. In `bridge/collectors/` va un collector che legge `~/.claude/guardian/events.jsonl` (formato dell'hook in `origin/claude/dashboard-pc:dashboard/hooks/guardian_hook.py`) e `usage.json`; poi le RPC `bridge_agent_*` in una migrazione 003 e i metodi specchio in SqliteStore.
+
+## Aggiornamento M2 (27/11)
+- Fatto: `supabase/migrations/003_bridge_agenti.sql` (RPC bridge_agent_register/state/logs, bridge_claim_task); specchi in SqliteStore + `agent_logs()` in entrambi gli store; `bridge/collectors/` (base, claude_code, codex), `bridge/hooks/` (claude_hook.py, codex_notify.py), `bridge/install_hooks.py`, comandi `run`, `agent-register`, `claim`; `avvia-bridge.bat/.sh`; pagina Agenti separata dai PC (`models.stato_agente`).
+- Test: 37 passati; `tests/pg/run.sh` → CHECK 002 OK + CHECK 003 OK.
+- Non verificato dal vivo: hook installati su un PC reale e il formato di Codex notify.
+- Prossimo passo: M3. Stato del sistema (`store.ping`, modalità, polling, numero di bridge vivi), Task Manager v2 (progetto, dipendenze, agente assegnato, risultato/errore, 10 stati), pagina Log (`store.agent_logs` con filtri), Notifiche (`store.notifications` / `mark_read`), Approvazioni v2 (action_type, reason, impact, data_involved, agente), Progetti.

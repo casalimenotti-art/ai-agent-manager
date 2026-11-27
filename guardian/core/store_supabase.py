@@ -146,6 +146,19 @@ class SupabaseStore:
                            severity="error" if stato == "error" else "info")
         return r
 
+    def agent_logs(self, agent_id=None, device_id=None, project_id=None, task_id=None, level=None, dal=None, al=None,
+                   limit=200):
+        q = self._t("agent_logs").select("*")
+        for col, val in (("agent_id", agent_id), ("device_id", device_id), ("project_id", project_id),
+                         ("task_id", task_id), ("level", level)):
+            if val not in (None, ""):
+                q = q.eq(col, val)
+        if dal:
+            q = q.gte("ts", dal)
+        if al:
+            q = q.lte("ts", al)
+        return self._ex(q.order("ts", desc=True).limit(limit))
+
     # --- task -----------------------------------------------------------------------
     def tasks(self, stato=None, project_id=None):
         q = self._t("tasks").select("*")

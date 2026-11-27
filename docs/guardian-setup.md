@@ -11,7 +11,7 @@ registro/*.jsonl su GitHub ──bridge sync-registro──► timeline Attivit�
 
 ## 1. Supabase (Menotti, ~10 min, piano gratuito)
 1. https://supabase.com → *New project* (regione EU, es. Frankfurt). Salva la password del DB nel tuo gestore password.
-2. *SQL Editor* → incolla ed esegui, in ordine, `supabase/migrations/001_guardian.sql` e poi `002_command_center.sql`
+2. *SQL Editor* → incolla ed esegui, in ordine, `supabase/migrations/001_guardian.sql` poi `002_command_center.sql` e `003_bridge_agenti.sql`
    (ogni migrazione è rieseguibile; prima del commit è provata su PostgreSQL con `bash tests/pg/run.sh`).
 3. Sempre nel SQL Editor, crea i 3 collaboratori con le **loro** email (blocco commentato in fondo al file SQL):
    ```sql
@@ -36,11 +36,21 @@ registro/*.jsonl su GitHub ──bridge sync-registro──► timeline Attivit�
 ## 3. Ogni PC (ognuno sul proprio)
 1. `git pull` del repo, Python 3.10+ (il bridge usa solo la libreria standard).
 2. Hub → *Dispositivi* → *Registra un PC* → copia il token (mostrato una volta).
-3. `cp bridge/.env.example bridge/.env` e compila URL, anon key, token, `GUARDIAN_AGENT` (Claude Code / Codex).
-4. Prova: `python bridge/guardian_bridge.py heartbeat` → nell'Hub il PC diventa *online*.
-5. Lasciare acceso mentre si lavora: `python bridge/guardian_bridge.py heartbeat --loop 60 --status-file ~/.guardian/stato.json`
-   (Ctrl+C → offline). Il file di stato, facoltativo, si aggiorna a mano o da script:
-   `{"stato":"occupato","current_task":4,"model":"…","limit_reached":false,"error":null}`.
+3. `cp bridge/.env.example bridge/.env` e compila URL, anon key e token. Poi l'agente di quel PC:
+   - Menotti: `GUARDIAN_CLAUDE_AGENT_ID=menotti-claude` e `python bridge/install_hooks.py claude` (mostra le modifiche) →
+     `python bridge/install_hooks.py claude --apply` (chiede conferma e fa una copia di `~/.claude/settings.json`).
+     Se c'è già l'hook della plancia locale (`guardian_hook.py`), per quegli eventi non ne aggiunge un secondo.
+     L'utilizzo 5h/7g arriva dalla statusline della plancia (`usage.json`), se è attiva.
+   - Amici con Codex: `GUARDIAN_CODEX_AGENT_ID=amico1-codex` (o `amico2-codex`) e `python bridge/install_hooks.py codex`
+     → aggiungere la riga `notify = [...]` in `~/.codex/config.toml`. **Da verificare**: dopo un turno di Codex deve
+     comparire una riga in `~/.guardian/codex-events.jsonl`. Senza questa riga lo stato resta `unknown`.
+   - Facoltativo: `GUARDIAN_CAPABILITIES=python,siti,test` e `GUARDIAN_SHARE_PROMPTS=0` per non condividere le richieste.
+4. Avvio: `bridge/avvia-bridge.bat` (Windows) o `bridge/avvia-bridge.sh` (un giro ogni 30 s; Ctrl+C = tutto offline).
+   Per avviarlo all'accensione: Utilità di pianificazione di Windows → "All'accesso" → `avvia-bridge.bat`.
+5. Nell'Hub: *Dispositivi* mostra il PC online, *Agenti* lo stato reale dell'agente (working/idle/needs_approval/unknown).
+
+Cosa viene condiviso: tipo di evento, nome dello strumento, orario, utilizzo % e, se `GUARDIAN_SHARE_PROMPTS=1`,
+i primi 200 caratteri delle richieste all'agente (con le chiavi riconosciute sostituite da `[rimosso]`). Mai l'output degli strumenti.
 
 ## Comandi del bridge per gli agenti (Claude Code / Codex)
 | Quando | Comando |
@@ -50,6 +60,7 @@ registro/*.jsonl su GitHub ──bridge sync-registro──► timeline Attivit�
 | limite vicino / pausa | `python bridge/guardian_bridge.py checkpoint --task 4 --summary "obiettivo + stato" --done "…" --decisions "…" --errors "…" --tests "…" --next "passo preciso" --file a.py` |
 | fine task | `python bridge/guardian_bridge.py task-update 4 --stato completed` |
 | task assegnati a me | `python bridge/guardian_bridge.py pull` (scrive `~/.guardian/inbox.json`, **non** esegue nulla) |
+| prendere un task ready | `python bridge/guardian_bridge.py claim 7 --agent menotti-claude` (→ running) |
 | importare il registro git | `python bridge/guardian_bridge.py sync-registro --branches` |
 
 Il registro (`registro/scrivi.py`, AGENTS.md) resta obbligatorio: è la traccia in git; il bridge è la vista live.

@@ -9,6 +9,8 @@ Configurazione (variabili d'ambiente o file bridge/.env, escluso da git):
 Modalità locale (test/sviluppo, nessuna rete):  --local percorso.db
 
 Esempi:
+  python bridge/guardian_bridge.py run            # PC + agenti (hook Claude Code / notify Codex), consigliato
+  python bridge/guardian_bridge.py claim 7 --agent menotti-claude
   python bridge/guardian_bridge.py heartbeat --loop 60 --status-file ~/.guardian/stato.json
   python bridge/guardian_bridge.py event nota "Finiti i test del sito" --task 4 --file siti-demo/x.html
   python bridge/guardian_bridge.py task-update 4 --stato completed --next "Revisione di amico1"
@@ -218,6 +220,83 @@ def cmd_sync_registro(client, args):
     return 0
 
 
+def agenti_configurati(casa: Path = None) -> list[tuple[str, str, object]]:
+    """[(agent_id, nome, collector)] dagli env: GUARDIAN_CLAUDE_AGENT_ID / GUARDIAN_CODEX_AGENT_ID."""
+    from bridge.collectors.claude_code import ClaudeCodeCollector
+    from bridge.collectors.codex import CodexCollector
+    casa = casa or CASA
+    condividi = os.environ.get("GUARDIAN_SHARE_PROMPTS", "1") != "0"
+    out = []
+    if os.environ.get("GUARDIAN_CLAUDE_AGENT_ID"):
+        out.append((os.environ["GUARDIAN_CLAUDE_AGENT_ID"], os.environ.get("GUARDIAN_CLAUDE_AGENT_NAME", "Claude Code"),
+                    ClaudeCodeCollector(casa, os.environ.get("GUARDIAN_EVENTS_FILE", "~/.claude/guardian/events.jsonl"),
+                                        os.environ.get("GUARDIAN_USAGE_FILE", "~/.claude/guardian/usage.json"), condividi)))
+    if os.environ.get("GUARDIAN_CODEX_AGENT_ID"):
+        out.append((os.environ["GUARDIAN_CODEX_AGENT_ID"], os.environ.get("GUARDIAN_CODEX_AGENT_NAME", "Codex"),
+                    CodexCollector(casa, os.environ.get("GUARDIAN_CODEX_EVENTS_FILE", "~/.guardian/codex-events.jsonl"),
+                                   condividi)))
+    return out
+
+
+def capacita() -> list[str]:
+    return [c.strip() for c in os.environ.get("GUARDIAN_CAPABILITIES", "").split(",") if c.strip()]
+
+
+def giro_agenti(client, agenti, stati: dict, ora: float | None = None) -> None:
+    """Un giro: legge ogni collector e invia stato (sempre, per tenere vivo l'heartbeat dell'agente) e log nuovi."""
+    for agent_id, _nome, coll in agenti:
+        lettura = coll.leggi(ora)
+        if lettura.stato:
+            stati[agent_id] = lettura.stato
+        client.call("bridge_agent_state", agent_id=agent_id, stato=stati.get(agent_id, "unknown"),
+                    current_task=None, error=lettura.error, usage=lettura.usage)
+        for i in range(0, len(lettura.logs), 500):
+            client.call("bridge_agent_logs", agent_id=agent_id, rows=lettura.logs[i:i + 500])
+
+
+def cmd_agent_register(client, args):
+    for agent_id, nome, coll in agenti_configurati():
+        r = client.call("bridge_agent_register", agent_id=agent_id, nome=nome, tipo=coll.tipo, capabilities=capacita())
+        print(f"Agente registrato: {r['id']} ({r['tipo']})")
+    return 0
+
+
+def cmd_run(client, args):
+    """Ciclo continuo: heartbeat del PC + stato/log degli agenti dai collector. Ctrl+C -> tutto offline."""
+    agenti = agenti_configurati()
+    for agent_id, nome, coll in agenti:
+        client.call("bridge_agent_register", agent_id=agent_id, nome=nome, tipo=coll.tipo, capabilities=capacita())
+    print(f"Guardian Bridge attivo: PC + {len(agenti)} agenti ({', '.join(a[0] for a in agenti) or 'nessuno'}). "
+          f"Giro ogni {max(15, args.ogni)}s. Ctrl+C per fermare.")
+    stati: dict = {}
+    args.stato, args.task, args.error, args.limit, args.status_file = "online", None, None, False, None
+    giri = 0
+    try:
+        while True:
+            try:
+                heartbeat_once(client, args)
+                giro_agenti(client, agenti, stati)
+            except (RuntimeError, urllib.error.URLError, OSError) as e:
+                print(f"[guardian] giro non riuscito: {e}", file=sys.stderr)
+            giri += 1
+            if args.giri and giri >= args.giri:
+                return 0
+            time.sleep(max(15, args.ogni))
+    except KeyboardInterrupt:
+        for agent_id, _n, _c in agenti:
+            client.call("bridge_agent_state", agent_id=agent_id, stato="offline", current_task=None, error=None, usage=None)
+        args.stato = "offline"
+        heartbeat_once(client, args)
+        print("Offline.")
+    return 0
+
+
+def cmd_claim(client, args):
+    t = client.call("bridge_claim_task", agent_id=args.agent, task_id=args.id)
+    print(f"Task #{t['id']} preso da {args.agent}: {t['titolo']} → running. Ora passalo tu al tuo agente.")
+    return 0
+
+
 def cmd_init_local(args):
     """Solo modalità locale: crea collaboratori da persone.json e un dispositivo, stampa il token."""
     from guardian.core.store import crea_store_locale
@@ -260,6 +339,13 @@ def parser() -> argparse.ArgumentParser:
     c.add_argument("--next", required=True, help="Prossimo passo preciso")
     c.add_argument("--file", action="append", default=[])
     sub.add_parser("pull")
+    r = sub.add_parser("run", help="Ciclo continuo: PC + agenti configurati in bridge/.env")
+    r.add_argument("--ogni", type=int, default=30, help="Secondi tra un giro e l'altro (min 15)")
+    r.add_argument("--giri", type=int, default=0, help="Fermati dopo N giri (0 = mai; utile per i test)")
+    sub.add_parser("agent-register", help="Registra gli agenti configurati in bridge/.env")
+    cl = sub.add_parser("claim", help="Prendi in carico un task ready assegnato a te")
+    cl.add_argument("id", type=int)
+    cl.add_argument("--agent", required=True)
     s = sub.add_parser("sync-registro")
     s.add_argument("--repo", default=str(REPO))
     s.add_argument("--branches", action="store_true", help="Legge il registro anche da tutti i branch origin/*")
@@ -270,7 +356,8 @@ def parser() -> argparse.ArgumentParser:
 
 
 COMANDI = {"heartbeat": cmd_heartbeat, "event": cmd_event, "task-update": cmd_task_update,
-           "checkpoint": cmd_checkpoint, "pull": cmd_pull, "sync-registro": cmd_sync_registro}
+           "checkpoint": cmd_checkpoint, "pull": cmd_pull, "sync-registro": cmd_sync_registro, "run": cmd_run,
+           "agent-register": cmd_agent_register, "claim": cmd_claim}
 
 
 def main(argv=None) -> int:
