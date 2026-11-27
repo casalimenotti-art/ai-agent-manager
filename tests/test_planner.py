@@ -11,7 +11,7 @@ from guardian.planner.report import report
 from guardian.planner.report import testo_report as rendi_testo
 from guardian.planner.schema import da_dict
 from guardian.providers.router import Router
-from tests.test_providers import FintoLLM, prov, server  # noqa: F401  (fixture del server finto)
+from tests.test_providers import FintoLLM, prov
 
 PIANO = {"summary": "Offerta ai clienti", "tasks": [
     {"title": "Elenco clienti", "priority": "alta", "capabilities": ["dati"], "agent": "amico1-codex"},
@@ -55,7 +55,7 @@ def test_assegnazione_deterministica(s):
     assert suggerisci(["testi"], s.agents(), []) is None
 
 
-def test_make_plan_con_server_finto_e_senza_provider(s, server):  # noqa: F811
+def test_make_plan_con_server_finto_e_senza_provider(s, server):
     import json
     FintoLLM.risposte = {"llm": (200, json.dumps(PIANO))}
     piano, prov_nome, model = make_plan("Offerta", "", s.agents(), [], Router([prov(server, "llm")]))

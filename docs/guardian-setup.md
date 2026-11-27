@@ -67,6 +67,23 @@ i primi 200 caratteri delle richieste all'agente (con le chiavi riconosciute sos
 
 Il registro (`registro/scrivi.py`, AGENTS.md) resta obbligatorio: è la traccia in git; il bridge è la vista live.
 
+## 4. Verifica finale (smoke test, una volta)
+Dal tuo PC, dopo i punti 1–3:
+```
+SUPABASE_URL=https://….supabase.co SUPABASE_ANON_KEY=… GUARDIAN_DEVICE_TOKEN=… python scripts/smoke_supabase.py tua@email
+```
+Chiede la password, poi controlla login, database, utenti, creazione e chiusura di un task di prova, timeline,
+notifiche, memoria e (con il token) l'heartbeat del bridge. Ogni riga dice OK o FAIL con il motivo.
+Su Windows (PowerShell) imposta prima le variabili con `$env:SUPABASE_URL="…"` ecc.
+
+## 5. Planner AI (facoltativo)
+La sezione **Guardian** trasforma un obiettivo in un piano; il piano diventa task solo se lo confermi.
+Serve un provider con API compatibile OpenAI (FreeLLMAPI, OpenRouter con modelli gratuiti, Ollama sul tuo PC, OpenAI…):
+aggiungi nei Secrets di Streamlit le righe `GUARDIAN_PROVIDERS` / `GUARDIAN_PROVIDER_<NOME>_…` (esempio in
+`.streamlit/secrets.toml.example`). I provider con `COSTO = "paid"` restano esclusi finché `GUARDIAN_ALLOW_PAID = "1"`.
+Senza provider il planner dice «non disponibile»; **report e prossime azioni funzionano comunque** (calcolati dai dati).
+Gli abbonamenti personali Claude Code e Codex non si possono usare così, e Guardian non ci prova.
+
 ## Sicurezza
 - Nel repo nessuna credenziale: `.env`, `bridge/.env`, `.streamlit/secrets.toml`, `*.db` sono in `.gitignore`.
 - Il token del PC è salvato solo come hash sha256; *Revoca token* lo disattiva subito.

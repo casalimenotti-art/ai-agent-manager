@@ -64,3 +64,8 @@ Rinominato `guardian_hub/` → `guardian/`; store diviso in `store.py` (comuni +
 - Fatto: `guardian/planner/` (schema con validazione e controllo dei cicli, planner con prompt dallo starter, assign deterministico, report e prossime azioni); `plans` negli store + `store.conferma_piano`; sezione UI «Guardian» (`guardian/ui/intelligence.py`).
 - Test: 59 passati; Playwright sulla sezione Guardian a 1280/390 px: 0 eccezioni.
 - Prossimo passo: M7 (`scripts/smoke_supabase.py`, guida di deploy finale, checkpoint).
+
+## Aggiornamento M7 (27/11) — piano v2 completato nel codice
+- Fatto: `scripts/smoke_supabase.py` (+ test su SQLite), guida `docs/guardian-setup.md` punti 4 (smoke test) e 5 (planner AI), README, GUARDIAN_STATUS.md riscritto.
+- Test: 61 passati; `tests/pg/run.sh` → CHECK 002/003/004 OK.
+- Per riprendere: leggere GUARDIAN_STATUS.md («Prossimi passi»). Lo sviluppo che resta dipende dalle azioni del titolare (Supabase, Streamlit Cloud, PC) o da nuove richieste. Prima di nuove funzioni: eseguire lo smoke test e correggere eventuali FAIL di `SupabaseStore`.

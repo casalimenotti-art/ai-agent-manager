@@ -1,5 +1,7 @@
 # GUARDIAN — decisioni (la più recente in alto; non cancellare le vecchie, segnarle come superate)
 
+- **2026-11-27 · M7: smoke test con gli stessi passi testati su SQLite** (`scripts/smoke_supabase.py`): password chiesta a terminale e mai salvata; crea un solo task di prova e lo cancella (stato `cancelled`).
+
 - **2026-11-27 · M6: il piano è solo una proposta** (tabella `plans`, stato bozza): diventa task solo con «Conferma». La conferma controlla prima i titoli già aperti (niente piani creati a metà); i task senza dipendenze nascono `ready`, gli altri `planned`; i task con azioni esterne generano subito una richiesta di approvazione.
 - **2026-11-27 · M6: report e prossime azioni senza AI**: calcolati dal database con regole fisse (approvazioni, agenti in errore o in attesa di permesso, utilizzo ≥ 90%, task falliti/bloccati/fermi > 24 h, ready senza agente, planned con dipendenze completate).
 - **2026-11-27 · M6: assegnazione deterministica**: capacità in comune, poi carico minore; esclusi agenti non disponibili, in errore o offline. Il modello può suggerire solo agenti esistenti.

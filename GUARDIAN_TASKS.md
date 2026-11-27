@@ -9,4 +9,4 @@
 | M4 | Memoria condivisa + Handoff v2 + export dei file .md | ✅ fatto | 46 test; CHECK 004 su PostgreSQL |
 | M5 | Provider + router (nessun provider configurato: test con server finto) | ✅ fatto | 52 test; ALLOW_PAID=0 di default |
 | M6 | Planner + assegnazione + report e prossime azioni | ✅ fatto | 59 test; planner "non disponibile" senza provider |
-| M7 | Doc di deploy + smoke test live | ⏳ prossimo | smoke test eseguibile solo con le credenziali del titolare |
+| M7 | Doc di deploy + smoke test live | ✅ codice e guida | `scripts/smoke_supabase.py` testato su SQLite; da eseguire dal titolare su Supabase |
