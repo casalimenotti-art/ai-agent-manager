@@ -82,6 +82,37 @@ ok((await p.locator('.msg.guardian').last().textContent()).includes('dipende dal
 await p.click('.rail button:has-text("Statistiche")'); await p.click('.drawer button:has-text("Vista tabella") >> nth=0');
 ok(await p.locator('.drawer table.data').count() >= 1, 'grafico → vista tabella');
 
+
+// 8b. stanze dell'HQ (pagina nuova: dati demo freschi)
+{
+  const { p: q, errori: err2 } = await entra();
+  ok(await q.locator('.porta').count() === 3, 'orbita: tre stanze');
+  await q.click('.porta:has-text("Vendite")');
+  ok(await q.locator('.stanza h2').textContent() === 'Vendite' && await q.locator('.nucleo-compatto').isVisible(), 'stanza Vendite aperta, Guardian presente (compatto)');
+  ok(new globalThis.URL(q.url()).searchParams.get('s') === 'vendite', 'stanza nell\'URL condivisibile');
+  await q.selectOption('[data-task="2"] select', { label: 'In corso' });
+  await q.waitForSelector('.toast:has-text("Task #2")');
+  ok(await q.locator('[data-colonna="corso"] [data-task="2"]').count() === 1, 'kanban: task #2 spostato in corso (stato reale)');
+  await q.keyboard.press('Escape'); ok(await q.locator('.porta').count() === 3, 'Esc: ritorno all\'orbita');
+  await q.click('.porta:has-text("Sviluppo")');
+  await q.dragAndDrop('[data-task="4"]', '[data-colonna="corso"]');
+  await q.waitForSelector('.toast.err');
+  ok((await q.locator('.toast.err').last().textContent()).includes('dipendenze'), 'kanban: trascinamento rifiutato dal vincolo, messaggio chiaro');
+  ok(await q.locator('[data-colonna="coda"] [data-task="4"]').count() === 1, 'kanban: il task resta dov\'era');
+  await q.click('.nucleo-compatto'); ok(await q.locator('.porta').count() === 3, 'clic sul nucleo: ritorno all\'orbita');
+  await q.fill('.dock input', 'Guardian, apri amministrazione'); await q.press('.dock input', 'Enter');
+  ok(await q.locator('.stanza h2').textContent() === 'Amministrazione', 'comando "apri amministrazione"');
+  await q.fill('.dock input', 'cosa succede in questa stanza?'); await q.press('.dock input', 'Enter'); await q.waitForTimeout(200);
+  ok((await q.locator('.msg.guardian').last().textContent()).includes('Stanza Amministrazione'), 'chat con il contesto della stanza');
+  await q.keyboard.press('Control+k'); await q.keyboard.type('stanza vendite'); await q.keyboard.press('Enter');
+  ok(await q.locator('.stanza h2').textContent() === 'Vendite', 'palette → stanza');
+  await q.click('.scheda .link-t >> nth=0'); ok(await q.locator('.drawer').count() === 1 && await q.locator('.stanza').isVisible(), 'pannello sopra la stanza, stanza visibile');
+  await q.keyboard.press('Escape'); ok(await q.locator('.stanza').isVisible(), 'Esc chiude prima il pannello, poi la stanza');
+  await q.screenshot({ path: `${OUT}stanza-1440.png` });
+  ok(err2.length === 0, `stanze: nessun errore in console ${err2.slice(0, 2).join(' | ')}`);
+  await q.close();
+}
+
 // 9. accessibilità (axe) sulla vista centrale
 await p.keyboard.press('Escape');
 await p.addScriptTag({ content: axe });
@@ -95,7 +126,11 @@ ok(errori.length === 0, `nessun errore in console ${errori.slice(0, 2).join(' | 
 // 10. larghezze: nessuno scroll orizzontale, screenshot
 for (const [w, h] of [[390, 844], [768, 1024], [1280, 900], [1920, 1080]]) {
   const r = await entra(w, h);
-  await r.p.screenshot({ path: `${OUT}centro-${w}.png` });
+  await r.p.screenshot({ path: `${OUT}centro-${w}.png`, fullPage: w === 390 });
+  await r.p.click('.porta >> nth=1'); await r.p.waitForTimeout(450); await r.p.screenshot({ path: `${OUT}stanza-${w}.png` });
+  const swS = await r.p.evaluate(() => document.documentElement.scrollWidth);
+  ok(swS <= w, `${w}px: stanza senza scroll orizzontale (${swS})`);
+  await r.p.keyboard.press('Escape');
   await r.p.click('.kpi >> nth=1'); await r.p.waitForSelector('.drawer'); await r.p.waitForTimeout(500); await r.p.screenshot({ path: `${OUT}pannello-${w}.png` });
   const sw = await r.p.evaluate(() => document.documentElement.scrollWidth);
   ok(sw <= w && r.errori.length === 0, `${w}px: nessuno scroll orizzontale (${sw}) e nessun errore`);

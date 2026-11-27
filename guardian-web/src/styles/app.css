@@ -247,3 +247,51 @@ table.data th { color: var(--text-3); font-weight: 600; font-size: var(--fs-xs);
   .demo-banner { top: var(--header-h); font-size: 10px; padding: 1px 10px; }
   .drawer, .drawer.lg { background: rgba(12, 18, 28, 0.97); }
 }
+
+/* ---------- stanze dell'HQ ---------- */
+.orbita { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s-4); }
+.porta { --stanza: var(--accent); position: relative; text-align: left; color: inherit; cursor: pointer; padding: var(--s-4) var(--s-4) var(--s-3);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--stanza) 14%, var(--surface-1)), var(--surface-1) 60%);
+  border: 1px solid color-mix(in srgb, var(--stanza) 45%, var(--border-1)); border-radius: var(--r-3);
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+  display: flex; flex-direction: column; gap: var(--s-2); transition: transform var(--t-micro) var(--ease), border-color var(--t-micro); }
+.porta::before { content: ''; position: absolute; left: 0; top: 18px; bottom: 18px; width: 3px; background: var(--stanza); border-radius: 0 3px 3px 0; }
+.porta:hover { transform: translateY(-2px); border-color: var(--stanza); }
+.porta-nome { font-size: var(--fs-lg); font-weight: 700; letter-spacing: 0.02em; }
+.porta-agenti { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-sm); }
+.porta-numeri { display: flex; flex-wrap: wrap; gap: 4px var(--s-4); font-size: var(--fs-sm); color: var(--text-2); }
+.porta-numeri b { color: var(--text-1); font-size: 1.05rem; }
+.porta-numeri .warn-t b { color: var(--warn); }
+.porta-ultimo { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nucleo-compatto { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) var(--s-3); background: var(--surface-1); border: 1px solid var(--border-1);
+  border-radius: var(--r-3); color: inherit; cursor: pointer; text-align: left; width: 100%; animation: fade var(--t-panel) var(--ease); }
+.nucleo-compatto .core { width: 64px; max-width: 64px; margin: 0; }
+.nucleo-compatto b { display: block; }
+.nucleo-compatto .stato-c { color: var(--accent-2); font-size: var(--fs-sm); }
+.stanza { --stanza: var(--accent); display: flex; flex-direction: column; gap: var(--s-4); animation: slide var(--t-large) var(--ease); }
+.stanza-testa { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; padding: var(--s-3) var(--s-4); border-radius: var(--r-3);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--stanza) 18%, var(--surface-1)), var(--surface-1)); border: 1px solid color-mix(in srgb, var(--stanza) 40%, var(--border-1)); }
+.stanza-testa h2 { margin: 0; font-size: var(--fs-xl); }
+.kanban { display: grid; grid-template-columns: repeat(4, minmax(200px, 1fr)); gap: var(--s-3); overflow-x: auto; }
+.colonna { background: var(--bg-1); border: 1px solid var(--border-1); border-radius: var(--r-3); padding: var(--s-3); min-height: 180px;
+  display: flex; flex-direction: column; gap: var(--s-2); transition: border-color var(--t-micro), background var(--t-micro); }
+.colonna.sopra { border-color: var(--stanza); background: color-mix(in srgb, var(--stanza) 8%, var(--bg-1)); }
+.colonna .section-title { margin-bottom: 4px; }
+.scheda { background: var(--surface-2); border: 1px solid var(--border-1); border-left: 3px solid var(--stanza); border-radius: var(--r-2); padding: var(--s-2) var(--s-3); cursor: grab; }
+.scheda:active { cursor: grabbing; }
+.link-t { background: none; border: 0; padding: 0; color: var(--text-1); font-weight: 600; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
+.link-t:hover { color: var(--accent-2); }
+.sposta { min-height: 30px; margin-top: 6px; font-size: 12px; padding: 2px 6px; }
+@media (max-width: 1024px) { .kanban { grid-template-columns: repeat(4, minmax(230px, 80vw)); scroll-snap-type: x mandatory; } .colonna { scroll-snap-align: start; } }
+@media (max-width: 720px) { .orbita { grid-template-columns: 1fr; } .stanza-testa .btn { flex: 1; } }
+/* i contenitori flessibili non devono allargarsi oltre lo schermo */
+.stack, .stanza, .stanza > *, .porta, .orbita > * { min-width: 0; }
+.kanban { max-width: 100%; }
+@media (max-width: 720px) { .orbita { grid-template-columns: minmax(0, 1fr); } }
+.scheda, .kanban, .colonna { position: relative; }
+.sr-only { margin: -1px; padding: 0; border: 0; top: 0; left: 0; }
+.stanza-titolo { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 720px) {
+  .stanza-titolo { flex: 1 1 calc(100% - 56px); }
+  .stanza-testa .btn:not(.icon) { flex: 1 1 40%; }
+}

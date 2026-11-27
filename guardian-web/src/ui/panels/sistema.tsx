@@ -238,6 +238,13 @@ export function ImpostazioniPanel() {
       </div>
       <p className="dim" style={{ fontSize: 12, margin: 0 }}>Al massimo 6 annunci vocali all'ora. Le preferenze restano su questo dispositivo.</p>
     </div>
+    <div className="card stack">
+      <h3 className="section-title" style={{ margin: 0 }}>Colori delle stanze</h3>
+      <div className="row">{(['accesa', 'soft'] as const).map((v) => (
+        <button key={v} className={`btn sm ${p.coloriStanze === v ? 'primary' : ''}`} aria-pressed={p.coloriStanze === v}
+          onClick={() => salva({ ...p, coloriStanze: v })}>{v === 'accesa' ? 'Accesa (dal database)' : 'Soft (più chiara)'}</button>))}</div>
+      <p className="dim" style={{ fontSize: 12, margin: 0 }}>Solo su questo dispositivo. I colori «Accesa» li cambia l'admin nella tabella stanze.</p>
+    </div>
     <p className="note">Provider AI, utenti e chiavi non si gestiscono da qui: nessuna chiave viene mai mostrata nel browser.</p>
   </>);
 }

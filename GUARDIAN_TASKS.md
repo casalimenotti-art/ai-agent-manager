@@ -10,4 +10,5 @@
 | M5 | Provider + router (nessun provider configurato: test con server finto) | ✅ fatto | 52 test; ALLOW_PAID=0 di default |
 | M6 | Planner + assegnazione + report e prossime azioni | ✅ fatto | 59 test; planner "non disponibile" senza provider |
 | W | Command Center web (`guardian-web/`, opzione B del prompt master) | ✅ fatto | vitest 6, E2E tutti verdi, axe ok; messa online da fare (docs/guardian-web.md) |
+| HQ-1 | Tre stanze (prompt v3, Ondata 1) | ✅ fatto | migrazione 005; vedi guardian-web/ROADMAP.md |
 | M7 | Doc di deploy + smoke test live | ✅ codice e guida | `scripts/smoke_supabase.py` testato su SQLite; da eseguire dal titolare su Supabase |

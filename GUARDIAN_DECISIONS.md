@@ -1,5 +1,8 @@
 # GUARDIAN — decisioni (la più recente in alto; non cancellare le vecchie, segnarle come superate)
 
+- **2026-11-27 · HQ Ondata 1: stanze come dati** (tabella `stanze` + `projects.stanza_id`, migrazione 005), con un responsabile per stanza; gli agenti della stanza sono quelli del responsabile. Un task senza progetto va nella stanza del suo responsabile. Solo l'admin modifica le stanze. Scelta rispetto a `users.ruolo`: una quarta stanza o un cambio di responsabile non richiedono codice.
+- **2026-11-27 · HQ: stanza espansa nella vista centrale** (non una pagina): Guardian resta visibile in forma compatta e cliccarlo riporta all'orbita; URL `?s=`. Kanban: il trascinamento cambia lo stato reale, con un'alternativa accessibile da tastiera ("Sposta in…").
+
 - **2026-11-27 · Command Center web: opzione B** (titolare): nuova SPA `guardian-web/` (Vite + React + TypeScript + supabase-js) con lo stesso Supabase e le stesse RLS, nessun backend nuovo, hosting statico gratuito. Streamlit resta come riserva e per planner AI e registrazione dei PC finché non c'è parità. Supera la decisione "Streamlit resta" per l'interfaccia principale.
 - **2026-11-27 · Web: logica pura duplicata in TypeScript** (stati, report e prossime azioni, assegnazione, metriche) con test vitest specchio di quelli Python; da spostare in RPC SQL se le due versioni divergono.
 - **2026-11-27 · Web: pannelli non modali da 1280 px in su** (il centro resta cliccabile e si sposta), modali su schermi piccoli; la barra di Guardian sta sopra ai pannelli.

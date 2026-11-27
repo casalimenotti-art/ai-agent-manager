@@ -1,11 +1,14 @@
 # Guardian Web — Command Center (React)
 
 Nuova interfaccia del Command Center (opzione B del prompt master): `guardian-web/`.
-Usa **lo stesso Supabase** di Guardian (tabelle, RLS, trigger, migrazioni 001–004) e **non ha un backend proprio**.
+Usa **lo stesso Supabase** di Guardian (tabelle, RLS, trigger, migrazioni 001–005) e **non ha un backend proprio**.
 Il Guardian classico in Streamlit (`guardian/app.py`) resta online come riserva e per le funzioni non ancora portate:
 il planner AI (le chiavi dei provider non devono stare nel browser) e la registrazione o revoca dei PC.
 
 ## Cosa c'è
+- **Tre stanze** attorno a Guardian (Sviluppo & Siti, Vendite, Amministrazione): dati nella tabella `stanze`
+  (migrazione 005). Ognuna ha un kanban vero, i suoi agenti, le approvazioni e le attività. Si aprono senza cambiare pagina,
+  anche a voce o per iscritto ("apri vendite").
 - Vista centrale permanente: nucleo di Guardian con stati reali, KPI, prossime azioni, flotta agenti, task attivi,
   approvazioni, attività, aziende.
 - Pannelli laterali: su desktop non coprono il centro, su telefono salgono dal basso. Si chiudono con `Esc` e hanno un

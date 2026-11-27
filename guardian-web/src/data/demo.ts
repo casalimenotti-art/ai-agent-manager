@@ -1,12 +1,18 @@
 // DemoSource: dati di esempio IN MEMORIA, solo con VITE_DEMO=1 (sviluppo locale e test E2E).
 // Non scrive mai su Supabase. L'interfaccia mostra sempre il banner "Dati di esempio — solo locale".
 // Applica gli stessi vincoli del DB (titoli unici tra gli aperti, un running per agente, dipendenze, needs_approval).
-import type { Agent, AgentLog, Approval, Memory, Snapshot, Task, User } from '../types';
+import type { Agent, AgentLog, Approval, Memory, Snapshot, Stanza, Task, User } from '../types';
 import { TASK_TERMINALI } from '../types';
 import { eventiModificaTask } from './eventi';
 import { controllaTesto, type DataSource, type Diretta, ErroreDati, type ModificaTask, type NuovoTask } from './source';
 
 const min = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+
+const STANZE: Stanza[] = [
+  { id: 'sviluppo', nome: 'Sviluppo & Siti', descrizione: 'Siti, software, test e la dashboard', colore: '#338ced', responsabile: 'menotti', ordine: 1, attiva: true },
+  { id: 'vendite', nome: 'Vendite', descrizione: 'Solo vendite: lead, visite, bozze, preventivi, esiti', colore: '#e76624', responsabile: 'amico1', ordine: 2, attiva: true },
+  { id: 'amministrazione', nome: 'Amministrazione', descrizione: 'SRL, scadenze, documenti, costi, fornitori', colore: '#9887ef', responsabile: 'amico2', ordine: 3, attiva: true },
+];
 
 function seme(): Snapshot & { logs: AgentLog[]; memory: Memory[] } {
   const users: User[] = [
@@ -44,10 +50,11 @@ function seme(): Snapshot & { logs: AgentLog[]; memory: Memory[] } {
       { id: 2, user_id: 'amico1', nome: 'PC-Niko', agent_name: 'Codex', stato: 'online', limit_reached: false, last_seen: min(1) },
     ],
     projects: [
-      { id: 1, nome: 'Siti web', descrizione: 'Siti demo e siti dei clienti', stato: 'attivo', created_at: min(5000) },
-      { id: 2, nome: 'Agenzia AI · vendite', descrizione: 'Contatti e preventivi', stato: 'attivo', created_at: min(5000) },
-      { id: 3, nome: 'Amministrazione SRL', descrizione: null, stato: 'attivo', created_at: min(5000) },
+      { id: 1, nome: 'Siti web', descrizione: 'Siti demo e siti dei clienti', stato: 'attivo', created_at: min(5000), stanza_id: 'sviluppo' },
+      { id: 2, nome: 'Agenzia AI · vendite', descrizione: 'Contatti e preventivi', stato: 'attivo', created_at: min(5000), stanza_id: 'vendite' },
+      { id: 3, nome: 'Amministrazione SRL', descrizione: null, stato: 'attivo', created_at: min(5000), stanza_id: 'amministrazione' },
     ],
+    stanze: STANZE,
     events: [
       ev(1, 'task_started', 'Claude Code ha preso il task #1: Sito demo Ottica Ungari', 50, { task_id: 1, agent_id: 'menotti-claude', agent_name: 'Claude Code' }),
       ev(2, 'approval_requested', 'Richiesta approvazione: Invio preventivo a Bellini B&B', 35, { task_id: 3, severity: 'warning', user_id: 'amico1' }),

@@ -1,7 +1,7 @@
 import { Activity, ArrowLeft, Bell, Bot, BookOpen, Building2, Cpu, GitBranchPlus, HeartPulse, LayoutDashboard, ListTodo, LogOut, Mic,
   MicOff, Search, Send, Settings, ShieldCheck, Shuffle, Square, X, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as KE } from 'react';
-import { DOMANDE_ESEMPIO, rispondiConContesto } from '../logic/intents';
+import { comandoStanza, DOMANDE_ESEMPIO, rispondiConContesto } from '../logic/intents';
 import { fa } from '../logic/status';
 import { leggiPreferenze, useG, type Pannello } from '../state';
 import { CommandCenter } from './CommandCenter';
@@ -41,10 +41,14 @@ function Header() {
 }
 
 function Rail() {
-  const { pannello, apri, chiudi } = useG();
+  const { pannello, apri, chiudi, stanza, apriStanza } = useG();
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => { if (e.key === 'Escape' && !pannello && stanza && !document.querySelector('.palette')) apriStanza(null); };
+    window.addEventListener('keydown', f); return () => window.removeEventListener('keydown', f);
+  }, [pannello, stanza, apriStanza]);
   return (
     <nav className="rail" aria-label="Navigazione">
-      <button onClick={chiudi} aria-current={!pannello}><LayoutDashboard size={20} aria-hidden />Centro</button>
+      <button onClick={() => { chiudi(); apriStanza(null); }} aria-current={!pannello && !stanza}><LayoutDashboard size={20} aria-hidden />Centro</button>
       {NAV.map((n) => (
         <button key={n.p} onClick={() => apri({ p: n.p })} aria-current={pannello?.p === n.p}><n.icona size={20} aria-hidden />{n.nome}</button>
       ))}
@@ -85,7 +89,7 @@ function DrawerHost() {
 }
 
 function Dock() {
-  const { snap, pannello, messaggi, aggiungiMessaggio, setPensa, apri } = useG();
+  const { snap, pannello, messaggi, aggiungiMessaggio, setPensa, apri, stanza, apriStanza, chiudi } = useG();
   const voce = useVoce();
   const [testo, setTesto] = useState('');
   const [aperta, setAperta] = useState(false);
@@ -96,8 +100,11 @@ function Dock() {
     const domanda = q.trim(); if (!domanda) return;
     setAperta(true); setTesto(''); aggiungiMessaggio({ da: 'user', testo: domanda });
     if (!snap) { aggiungiMessaggio({ da: 'guardian', testo: 'I dati non sono ancora caricati: riprova tra un istante.' }); return; }
+    const cmd = comandoStanza(domanda, snap);
+    if (cmd) { chiudi(); apriStanza(cmd.stanza); aggiungiMessaggio({ da: 'guardian', testo: cmd.testo, fonte: 'comando' });
+      if (leggiPreferenze().voce) parla(cmd.testo); return; }
     setPensa(true);
-    const r = rispondiConContesto(domanda, snap, pannello);
+    const r = rispondiConContesto(domanda, snap, pannello ?? (stanza ? { p: 'stanza', id: stanza } : null));
     setPensa(false);
     if (r) {
       aggiungiMessaggio({ da: 'guardian', testo: r.testo, fonte: r.fonte });
@@ -121,7 +128,7 @@ function Dock() {
           <div ref={fine} />
         </div>)}
       <form className="bar" onSubmit={(e) => { e.preventDefault(); chiedi(testo); }}>
-        <input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder={pannello ? 'Chiedi a Guardian su questo pannello…' : 'Chiedi a Guardian: «cosa è bloccato?»'}
+        <input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder={pannello ? 'Chiedi a Guardian su questo pannello…' : stanza ? 'Chiedi a Guardian su questa stanza…' : 'Chiedi a Guardian: «apri vendite», «cosa è bloccato?»'}
           aria-label="Messaggio per Guardian" onFocus={() => setAperta(true)} />
         {messaggi.length > 0 && <button type="button" className="btn ghost sm" onClick={() => setAperta((a) => !a)} aria-expanded={aperta}>
           {aperta ? 'Nascondi' : `Conversazione (${messaggi.length})`}</button>}
@@ -141,7 +148,7 @@ function Dock() {
 
 interface Voce { gruppo: string; nome: string; azione: () => void; icona: LucideIcon }
 function Palette() {
-  const { snap, paletteAperta, setPalette, apri, chiudi } = useG();
+  const { snap, paletteAperta, setPalette, apri, chiudi, apriStanza } = useG();
   const [q, setQ] = useState(''); const [sel, setSel] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -151,13 +158,14 @@ function Palette() {
   useEffect(() => { if (paletteAperta) { setQ(''); setSel(0); } }, [paletteAperta]);
   const voci = useMemo<Voce[]>(() => {
     const v: Voce[] = [
-      { gruppo: 'Azioni', nome: 'Torna al Command Center', azione: chiudi, icona: LayoutDashboard },
+      { gruppo: 'Azioni', nome: 'Torna al Command Center', azione: () => { chiudi(); apriStanza(null); }, icona: LayoutDashboard },
       { gruppo: 'Azioni', nome: 'Nuovo task', azione: () => apri({ p: 'tasks', filtro: 'nuovo' }), icona: ListTodo },
       { gruppo: 'Azioni', nome: 'Task bloccati o falliti', azione: () => apri({ p: 'tasks', filtro: 'fermi' }), icona: ListTodo },
       { gruppo: 'Azioni', nome: 'Riepilogo di oggi', azione: () => window.dispatchEvent(new CustomEvent('guardian:chiedi', { detail: 'Fammi un riepilogo della giornata' })), icona: HeartPulse },
       ...NAV.map((n) => ({ gruppo: 'Sezioni', nome: n.nome === 'Approva' ? 'Approvazioni' : n.nome === 'PC' ? 'Dispositivi (PC)' : n.nome, azione: () => apri({ p: n.p }), icona: n.icona })),
     ];
     if (snap) {
+      v.push(...snap.stanze.map((st) => ({ gruppo: 'Stanze', nome: `Stanza ${st.nome}`, azione: () => { chiudi(); apriStanza(st.id); }, icona: LayoutDashboard })));
       v.push(...snap.agents.map((a) => ({ gruppo: 'Agenti', nome: `${a.nome} · ${a.id}`, azione: () => apri({ p: 'agente', id: a.id }), icona: Bot })));
       v.push(...snap.projects.map((p) => ({ gruppo: 'Aziende', nome: p.nome, azione: () => apri({ p: 'azienda', id: String(p.id) }), icona: Building2 })));
       v.push(...snap.tasks.slice(0, 200).map((t) => ({ gruppo: 'Task', nome: `#${t.id} ${t.titolo}`, azione: () => apri({ p: 'task', id: String(t.id) }), icona: ListTodo })));
@@ -165,7 +173,7 @@ function Palette() {
         azione: () => apri({ p: 'approvazione', id: String(a.id) }), icona: ShieldCheck })));
     }
     return v;
-  }, [snap, apri, chiudi]);
+  }, [snap, apri, chiudi, apriStanza]);
   if (!paletteAperta) return null;
   const parole = q.toLowerCase().split(/\s+/).filter(Boolean);
   const trovate = voci.filter((v) => parole.every((p) => `${v.gruppo} ${v.nome}`.toLowerCase().includes(p))).slice(0, 30);

@@ -1,5 +1,6 @@
 // Vista centrale permanente: non viene mai sostituita dai pannelli.
 import { Activity, Bot, Building2, ListTodo, ShieldCheck, Sparkles } from 'lucide-react';
+import { useEffect } from 'react';
 import { statoNucleo, testoStato } from '../logic/guardian';
 import { agentiAlLavoro, completatiOggi, errori24h } from '../logic/metrics';
 import { report } from '../logic/report';
@@ -8,6 +9,7 @@ import { useG } from '../state';
 import { TASK_TERMINALI, type Task } from '../types';
 import { GuardianCore } from './GuardianCore';
 import { Gravita, Scheletro, Sezione, StatoAgente, StatoTask, Vuoto } from './kit';
+import { OrbitaStanze, VistaStanza } from './Stanze';
 import { useVoce } from './voce';
 
 const ORDINE: Task['stato'][] = ['running', 'needs_approval', 'blocked', 'failed', 'waiting', 'ready'];
@@ -20,9 +22,19 @@ export function taskImportanti(tasks: Task[], n = 7) {
 }
 
 export function CommandCenter() {
-  const { snap, pingOk, pensa, apri, errore } = useG();
+  const { snap, pingOk, pensa, apri, errore, stanza, apriStanza } = useG();
   const { ascolta } = useVoce();
   const stato = statoNucleo(snap, { pingOk, ascolta, pensa });
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [stanza]);
+  if (stanza) return (
+    <div className="stack">
+      <button className="nucleo-compatto" onClick={() => apriStanza(null)} aria-label="Guardian: torna al centro">
+        <GuardianCore stato={stato} />
+        <span><b>Guardian</b><span className="stato-c" aria-live="polite">{testoStato(snap, { pingOk, ascolta, pensa })}</span></span>
+      </button>
+      <VistaStanza id={stanza} />
+    </div>
+  );
   const r = snap ? report(snap) : null;
   const nome = (uid?: string | null) => snap?.users.find((u) => u.id === uid)?.nome ?? uid ?? '—';
   const agente = (id?: string | null) => snap?.agents.find((a) => a.id === id)?.nome;
@@ -52,6 +64,8 @@ export function CommandCenter() {
           </div>
         </div>
       </section>
+
+      <OrbitaStanze />
 
       <Sezione titolo="Prossime azioni" icona={Sparkles} conta={r?.prossime.length} className="col-5">
         {!r ? <Scheletro /> : r.prossime.length === 0 ? <Vuoto icona={Sparkles}>Nessuna azione urgente.</Vuoto> : (

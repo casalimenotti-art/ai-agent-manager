@@ -75,3 +75,9 @@ Rinominato `guardian_hub/` → `guardian/`; store diviso in `store.py` (comuni +
 - Test: `npm test` (vitest, 6); `npm run e2e` su build demo (tutti i controlli verdi: 5 pannelli senza perdere il centro, ogni voce di navigazione, approvazione → task pronto, titolo duplicato rifiutato, Ctrl+K, chat con contesto, vista tabella, axe, 390/768/1280/1920 px); suite Python 61 passati.
 - Non verificato: contro un Supabase reale (Auth, RLS, Realtime "Live").
 - Prossimo passo: deploy statico (docs/guardian-web.md) dopo lo smoke test; poi portare nel web il planner AI tramite una Supabase Edge Function (chiavi lato server) e la registrazione dei PC.
+
+## Aggiornamento HQ Ondata 1 (27/11 sera)
+- Fatto: tre stanze (migrazione 005, `guardian-web/src/logic/stanze.ts`, `guardian-web/src/ui/Stanze.tsx`), vista orbita, stanza espansa con nucleo compatto, kanban con trascinamento e "Sposta in…", comandi di stanza, contesto di stanza in chat, palette, colori Accesa/Soft.
+- Test: vitest 7; E2E tutti verdi (stanze comprese, 4 larghezze, axe); `tests/pg/run.sh` CHECK 002–005 OK.
+- In sospeso (titolare): PR #2 di Niko e accesso di Francesco al repo (Ondata 0).
+- Prossimo passo: Ondata 2 di `guardian-web/ROADMAP.md`, cioè la modalità conversazione nel browser (VAD dai parametri di `mic_continuo` sul branch claude/dashboard-pc, frase per frase, barge-in, sottotitoli, diagnostica delle latenze).

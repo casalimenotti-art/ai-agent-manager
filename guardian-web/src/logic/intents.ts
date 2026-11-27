@@ -55,7 +55,7 @@ export const DOMANDE_ESEMPIO = ['Quanti agenti sono attivi?', 'Quanti task abbia
 /** Domande su "questo task / questo agente / questa azienda" usando solo il contesto minimo del pannello aperto. */
 export function rispondiConContesto(domanda: string, s: Snapshot, ctx: { p: string; id?: string } | null, ora?: number): Risposta | null {
   const q = norm(domanda);
-  if (!ctx?.id || !ha(q, 'questo', 'questa', 'perche', 'cosa sta', 'spiega')) return rispondi(domanda, s, ora);
+  if (!ctx?.id || !ha(q, 'questo', 'questa', 'perche', 'cosa sta', 'cosa succede', 'spiega')) return rispondi(domanda, s, ora);
   if (ctx.p === 'task') {
     const t = s.tasks.find((x) => String(x.id) === ctx.id);
     if (!t) return null;
@@ -76,6 +76,17 @@ export function rispondiConContesto(domanda: string, s: Snapshot, ctx: { p: stri
     return { testo: `${a.nome} (${a.user_id}) è ${statoAgente(a, ora)}. ${t ? `Sta lavorando al task #${t.id} «${t.titolo}».` : 'Nessun task corrente registrato.'}` +
       (a.error ? ` Ultimo errore: ${a.error}.` : ''), fonte: 'agents (bridge) e tasks' };
   }
+  if (ctx.p === 'stanza') {
+    const st = s.stanze.find((x) => x.id === ctx.id);
+    if (!st) return null;
+    const ts = s.tasks.filter((t) => { const p = s.projects.find((x) => x.id === t.project_id);
+      return p ? p.stanza_id === st.id : t.responsabile === st.responsabile; });
+    const conta = (...stati: string[]) => ts.filter((t) => stati.includes(t.stato)).length;
+    const ag = s.agents.filter((a) => a.user_id === st.responsabile);
+    return { testo: `Stanza ${st.nome}: ${conta('running', 'waiting')} task in corso, ${conta('backlog', 'planned', 'ready')} da fare, ` +
+      `${conta('blocked', 'failed', 'needs_approval')} fermi. Agenti: ${ag.length ? ag.map((a) => `${a.nome} (${statoAgente(a, ora)})`).join(', ') : 'nessuno collegato'}.`,
+      fonte: 'stanze, tasks, agents' };
+  }
   if (ctx.p === 'azienda') {
     const p = s.projects.find((x) => String(x.id) === ctx.id);
     if (!p) return null;
@@ -85,4 +96,13 @@ export function rispondiConContesto(domanda: string, s: Snapshot, ctx: { p: stri
       fonte: 'projects e tasks' };
   }
   return rispondi(domanda, s, ora);
+}
+
+/** "apri vendite", "vai in amministrazione", "torna al centro": comandi di navigazione tra le stanze. */
+export function comandoStanza(domanda: string, s: Snapshot): { stanza: string | null; testo: string } | null {
+  const q = norm(domanda);
+  if (/\b(torna|vai)\b.*\b(centro|orbita|home)\b/.test(q)) return { stanza: null, testo: 'Torno al centro.' };
+  if (!/\b(apri|vai|entra|mostra|porta)\b/.test(q)) return null;
+  const st = s.stanze.find((x) => q.includes(norm(x.id)) || q.includes(norm(x.nome).split(/[ &]+/)[0]));
+  return st ? { stanza: st.id, testo: `Apro la stanza ${st.nome}.` } : null;
 }

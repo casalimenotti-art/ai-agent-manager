@@ -13,7 +13,7 @@ const agente = (p: Partial<Agent>): Agent => ({ id: 'a', user_id: 'menotti', nom
 const task = (p: Partial<Task>): Task => ({ id: 1, titolo: 'T', priorita: 'media', stato: 'ready', files_changed: [], depends_on: [],
   created_at: iso(60), updated_at: iso(10), ...p });
 const snap = (p: Partial<Snapshot>): Snapshot => ({ users: [], devices: [], agents: [], projects: [], tasks: [], events: [],
-  approvals: [], notifications: [], handoffs: [], ...p });
+  approvals: [], notifications: [], handoffs: [], stanze: [], ...p });
 
 describe('stati reali', () => {
   it('agente unknown se il bridge tace, PC offline se heartbeat vecchio', () => {
@@ -100,5 +100,27 @@ describe('contesto del pannello', () => {
     expect(r.testo).toContain("aspetta l'approvazione «Inviare email»");
     expect(rispondiConContesto('cosa sta facendo questo agente?', s, { p: 'agente', id: 'c' }, ORA)!.testo).toContain('task #2');
     expect(rispondiConContesto('quanti agenti sono attivi', s, null, ORA)!.testo).toContain('agenti al lavoro');
+  });
+});
+
+describe('stanze', () => {
+  it('assegna task, agenti ed eventi alla stanza giusta e riconosce i comandi', async () => {
+    const { riepilogoStanza, stanzaDiTask } = await import('./stanze');
+    const { comandoStanza } = await import('./intents');
+    const stanze = [{ id: 'sviluppo', nome: 'Sviluppo & Siti', colore: '#338ced', responsabile: 'menotti', ordine: 1, attiva: true },
+      { id: 'vendite', nome: 'Vendite', colore: '#e76624', responsabile: 'amico1', ordine: 2, attiva: true }];
+    const s = snap({ stanze, projects: [{ id: 1, nome: 'Siti', stato: 'attivo', created_at: iso(1), stanza_id: 'sviluppo' }],
+      agents: [agente({ id: 'n', user_id: 'amico1', stato: 'working' })],
+      tasks: [task({ id: 1, project_id: 1, stato: 'running' }), task({ id: 2, responsabile: 'amico1', stato: 'blocked' }), task({ id: 3, responsabile: 'x' })],
+      approvals: [{ id: 1, action: 'Email', status: 'richiesta', action_type: 'email', task_id: 2, created_at: iso(1) }] });
+    expect(stanzaDiTask(s.tasks[0], s)).toBe('sviluppo');
+    expect(stanzaDiTask(s.tasks[1], s)).toBe('vendite');
+    expect(stanzaDiTask(s.tasks[2], s)).toBeNull();
+    const v = riepilogoStanza(stanze[1], s, ORA);
+    expect([v.attivi, v.fermi, v.approvazioni, v.alLavoro, v.agenti.length]).toEqual([1, 1, 1, 1, 1]);
+    expect(comandoStanza('Guardian, apri vendite', s)!.stanza).toBe('vendite');
+    expect(comandoStanza('vai nello sviluppo', s)!.stanza).toBe('sviluppo');
+    expect(comandoStanza('torna al centro', s)!.stanza).toBeNull();
+    expect(comandoStanza('quanti agenti?', s)).toBeNull();
   });
 });

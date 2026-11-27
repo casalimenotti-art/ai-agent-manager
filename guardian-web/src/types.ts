@@ -26,7 +26,9 @@ export interface Agent {
   stato: AgentStato; current_task_id?: number | null; last_heartbeat?: string | null; last_activity?: string | null;
   error?: string | null; disponibile: boolean; usage?: Usage | null;
 }
-export interface Project { id: number; nome: string; descrizione?: string | null; stato: string; created_at: string; updated_at?: string }
+export interface Project { id: number; nome: string; descrizione?: string | null; stato: string; created_at: string; updated_at?: string; stanza_id?: string | null }
+/** Stanza dell'HQ (migrazione 005): dato, non codice. */
+export interface Stanza { id: string; nome: string; descrizione?: string | null; colore: string; responsabile?: string | null; ordine: number; attiva: boolean }
 export interface Task {
   id: number; titolo: string; descrizione?: string | null; responsabile?: string | null; agente?: string | null;
   priorita: Priorita; stato: TaskStato; next_step?: string | null; files_changed: string[]; created_by?: string | null;
@@ -66,5 +68,5 @@ export interface AgentLog {
 /** Fotografia di tutti i dati che la vista centrale usa. */
 export interface Snapshot {
   users: User[]; devices: Device[]; agents: Agent[]; projects: Project[]; tasks: Task[]; events: ActivityEvent[];
-  approvals: Approval[]; notifications: Notification[]; handoffs: Handoff[];
+  approvals: Approval[]; notifications: Notification[]; handoffs: Handoff[]; stanze: Stanza[];
 }

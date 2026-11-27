@@ -6,7 +6,7 @@ import { eventiModificaTask } from './eventi';
 import { controllaTesto, type DataSource, type Diretta, ErroreDati, messaggioVincolo, type ModificaTask, type NuovoTask } from './source';
 
 const COLONNE_DEVICES = 'id,user_id,nome,agent_name,model,stato,current_task_id,error,limit_reached,last_seen,last_checkpoint,created_at';
-const TABELLE_LIVE = ['agents', 'tasks', 'approvals', 'notifications', 'activity_events', 'devices', 'handoffs'];
+const TABELLE_LIVE = ['agents', 'tasks', 'approvals', 'notifications', 'activity_events', 'devices', 'handoffs', 'stanze', 'projects'];
 
 export class SupabaseSource implements DataSource {
   readonly modo = 'supabase' as const;
@@ -44,7 +44,7 @@ export class SupabaseSource implements DataSource {
   async esci() { await this.c.auth.signOut(); }
 
   async carica(userId: string): Promise<Snapshot> {
-    const [users, devices, agents, projects, tasks, events, approvals, notifications, handoffs] = await Promise.all([
+    const [users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze] = await Promise.all([
       this.q(this.c.from('users').select('id,nome,ruolo,agente,stato,accesso').order('id')),
       this.q(this.c.from('devices').select(COLONNE_DEVICES).order('user_id')),
       this.q(this.c.from('agents').select('*').order('user_id')),
@@ -54,8 +54,10 @@ export class SupabaseSource implements DataSource {
       this.q(this.c.from('approvals').select('*').order('created_at', { ascending: false }).limit(200)),
       this.q(this.c.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(100)),
       this.q(this.c.from('handoffs').select('*').order('timestamp', { ascending: false }).limit(100)),
+      // 005 non ancora applicata: niente stanze invece di un errore
+      this.q(this.c.from('stanze').select('*').eq('attiva', true).order('ordine').then((r) => ({ data: r.error ? [] : r.data, error: null }))),
     ]);
-    return { users, devices, agents, projects, tasks, events, approvals, notifications, handoffs } as Snapshot;
+    return { users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze } as Snapshot;
   }
 
   async ping(): Promise<number> {

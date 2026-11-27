@@ -30,6 +30,8 @@ pannelli con URL `?p=&id=&f=`, conversazione) · `src/ui/` (Shell, CommandCenter
 | Task aperti per agente | task non chiusi con `assigned_agent_id` | `tasks` | idem | "nessun agente" |
 | Utilizzo 5 h / 7 g | `% used` letto dalla statusline di Claude Code | `agents.usage` (bridge) | dal bridge | non mostrato |
 | Latenza DB | tempo di `select id from users limit 1` | ping ogni 30 s | 30 s | "non raggiungibile" |
+| Riepilogo di una stanza (attivi, in corso, fermi, da approvare, completati) | conteggi sui task della stanza (progetto con `stanza_id`, oppure task senza progetto del responsabile della stanza) | `stanze`, `projects`, `tasks`, `approvals` | Realtime o polling | 0 / "stanze non configurate (migrazione 005)" |
+| Agenti di una stanza | agenti il cui `user_id` è il responsabile della stanza | `agents`, `stanze.responsabile` | idem | "nessun agente collegato" |
 | Ricavi, spese, clienti, workflow | **nessuna fonte reale** | — | — | **non mostrati** |
 
 ## Contratto dei controlli
@@ -60,6 +62,14 @@ pannelli con URL `?p=&id=&f=`, conversazione) · `src/ui/` (Shell, CommandCenter
 | Invia (chat) / Invio | dock | router di intenti, può aprire un pannello | conversazione | snapshot | risposta con fonte | "non ho una risposta dai dati" |
 | Conversazione / Nascondi | dock | mostra/nasconde la cronologia | — | — | — | — |
 | Impostazioni voce/annunci | Impostazioni | localStorage | toast | — | "Preferenze salvate" | storage non disponibile: ignorato |
+| Porta di una stanza (3) | orbita | apre la stanza (URL `?s=`), nucleo compatto | stanza espansa | snapshot | — | "stanza non trovata" |
+| Indietro / nucleo compatto / Esc | stanza | torna all'orbita (Esc chiude prima un pannello aperto) | orbita | — | — | — |
+| Trascina scheda / "Sposta in…" | kanban della stanza | stato reale del task (Da fare→ready, In corso→running, Fermi→blocked, Chiusi→completed) | toast | `modificaTask` | "Task #n → stato" | vincolo DB leggibile, la scheda resta |
+| Titolo scheda | kanban | apre il task | drawer sopra la stanza | — | — | — |
+| Chiedi a Guardian (stanza) | testata stanza | domanda con il contesto della stanza | conversazione | snapshot | risposta con fonte | — |
+| Nuovo task (stanza) | testata stanza | apre il form | drawer Task | `creaTask` | "Task creato" | vincolo DB |
+| Comandi "apri vendite / sviluppo / amministrazione", "torna al centro" | barra di Guardian | apre/chiude la stanza | stanza/orbita | — | "Apro la stanza …" | non riconosciuto → risposta normale |
+| Colori stanze Accesa/Soft | Impostazioni | preferenza locale | colori | localStorage | toast | — |
 
 ### Controlli disabilitati (con motivo)
 | Controllo | Quando | Perché / cosa serve | Tooltip |
@@ -76,3 +86,4 @@ pannelli con URL `?p=&id=&f=`, conversazione) · `src/ui/` (Shell, CommandCenter
 ## Fasi
 1–2 audit e decisione ✅ · 3 design system ✅ · 4 Command Center ✅ · 5 pannelli ✅ · 6 dati reali + realtime/polling ✅ ·
 7 chat + intenti + Ctrl+K + voce ✅ · 8 statistiche ✅ · 9 test E2E e rifinitura ✅ (e2e/run.mjs: tutti i controlli, 390/768/1280/1920 px, axe senza violazioni serie, console pulita) · 10 guida di deploy ✅ (docs/guardian-web.md); messa online: azione del titolare.
+Ciclo continuo (prompt v3): vedi `ROADMAP.md`. Ondata 1 (tre stanze) ✅.
