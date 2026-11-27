@@ -95,7 +95,7 @@ class Nodi:
         return presa(m, "Result_Color")
 
 
-def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, colate=False):
+def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, colate=False, ao=True):
     """Vernice su acciaio: usura sugli spigoli (AO interno), graffi, sporco e ruggine nelle cavità, ammaccature nella normale."""
     m = bpy.data.materials.new(nome)
     N = Nodi(m)
@@ -103,9 +103,12 @@ def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, co
     N.l(bsdf.outputs[0], N.out.inputs[0])
     coord = N.n("ShaderNodeTexCoord").outputs["Object"]
     # spigoli convessi: AO "inside" bassa sugli spigoli
-    ao_in = N.n("ShaderNodeAmbientOcclusion", inside=True, only_local=True)
-    ao_in.inputs["Distance"].default_value = 0.04
-    spigoli = N.mat("SUBTRACT", 1.0, ao_in.outputs["AO"])
+    if ao:
+        ao_in = N.n("ShaderNodeAmbientOcclusion", inside=True, only_local=True)
+        ao_in.inputs["Distance"].default_value = 0.04
+        spigoli = N.mat("SUBTRACT", 1.0, ao_in.outputs["AO"])
+    else:  # versione veloce per superfici grandi (parete): niente raggi AO, usura dal rumore
+        spigoli = N.mat("MULTIPLY", N.rumore(12.0, 8, 0.7, coord), 0.6)
     rotto = N.rumore(9.0, 12, 0.7, coord)
     usura = N.rampa(N.mat("MULTIPLY", N.mat("ADD", spigoli, N.mat("MULTIPLY", rotto, 0.55)), 1.5), 0.66, 0.70)
     # graffi: rumore stirato in una direzione
@@ -117,9 +120,12 @@ def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, co
     chiazze = N.rampa(N.mat("MULTIPLY", N.rumore(4.0, 14, 0.8, coord), N.mat("ADD", spigoli, 0.6)), 0.50, 0.53)
     scoperto = N.mat("MAXIMUM", N.mat("MAXIMUM", usura, chiazze), N.mat("MULTIPLY", graffi, 0.6))
     # cavità: AO normale → sporco e ruggine
-    ao = N.n("ShaderNodeAmbientOcclusion")
-    ao.inputs["Distance"].default_value = 0.25
-    cavita = N.rampa(ao.outputs["AO"], 0.35, 0.85, (1, 1, 1, 1), (0, 0, 0, 1))
+    if ao:
+        ao_n = N.n("ShaderNodeAmbientOcclusion")
+        ao_n.inputs["Distance"].default_value = 0.25
+        cavita = N.rampa(ao_n.outputs["AO"], 0.35, 0.85, (1, 1, 1, 1), (0, 0, 0, 1))
+    else:
+        cavita = N.rampa(N.rumore(6.0, 10, 0.7, coord), 0.40, 0.65)
     macchie = N.rampa(N.rumore(5.0, 10, 0.75, coord), 0.45, 0.70)
     # vernice irregolare (due toni + sbiaditura)
     variaz = N.rumore(2.5, 6, 0.5, coord)
@@ -355,7 +361,7 @@ def costruisci(v):
     scuro = materiale_semplice("Mat_Interni", (0.015, 0.015, 0.017), 0.6, 0.55)
     gomma = materiale_semplice("Mat_Cavi", (0.01, 0.01, 0.01), 0.0, 0.7)
     occhio = materiale_semplice("Mat_Occhio", (0.0, 0.0, 0.0), 0, 0.3, BLU, 7.0)
-    nucleo = materiale_semplice("Mat_Nucleo", (0, 0, 0), 0, 0.3, CIANO, 9.0)
+    nucleo = materiale_semplice("Mat_Nucleo", (0, 0, 0), 0, 0.3, CIANO, 6.0)
     bocca = materiale_semplice("Bocca_Griglia", (0, 0, 0), 0, 0.5, BLU, 2.5)
     vetro = materiale_semplice("Mat_Vetro", (0.9, 0.95, 1.0), 0, 0.03, vetro=True)
     stencil = materiale_stencil("Mat_Stencil", V["testo"])
@@ -456,6 +462,7 @@ def costruisci(v):
         if tipo == "AREA":
             L.size = misura
         o = bpy.data.objects.new(nome, L)
+        o.visible_camera = False  # le luci non devono comparire nell'immagine
         sc.collection.objects.link(o)
         o.location = pos
         d = Vector(mira) - Vector(pos)
@@ -477,8 +484,8 @@ def costruisci(v):
     luce("Radente_parete", "AREA", (0.0, 0.7, 3.4), 650, (0.95, 0.9, 0.85), 4.0, mira=(0, 1.6, -0.6))
     luce("Radente_lato", "AREA", (-4.0, 0.6, 0.3), 260, (0.75, 0.85, 1.0), 2.0, mira=(0, 1.6, 0.3))
 
-    parete(sc, materiale_vernice("Mat_Parete", (0.05, 0.05, 0.048), (0.075, 0.07, 0.062), forza_ruggine=2.2, colate=True),
-           materiale_vernice("Mat_Rivetti", (0.06, 0.058, 0.055), (0.08, 0.075, 0.07), forza_ruggine=2.0))
+    parete(sc, materiale_vernice("Mat_Parete", (0.05, 0.05, 0.048), (0.075, 0.07, 0.062), forza_ruggine=2.2, colate=True, ao=False),
+           materiale_vernice("Mat_Rivetti", (0.06, 0.058, 0.055), (0.08, 0.075, 0.07), forza_ruggine=2.0, ao=False))
     if False:  # vecchio fondale scuro, sostituito dalla parete
         pass
     # alone freddo dietro la testa (sfondo da studio, non piatto)
@@ -512,6 +519,9 @@ def renderizza(sc, file, campioni, larghezza):
     sc.render.engine = "CYCLES"
     sc.cycles.device = "CPU"
     sc.cycles.samples = campioni
+    sc.cycles.adaptive_threshold = 0.04
+    sc.cycles.max_bounces, sc.cycles.diffuse_bounces, sc.cycles.glossy_bounces = 6, 2, 3
+    sc.cycles.transmission_bounces, sc.cycles.transparent_max_bounces = 4, 8
     sc.cycles.use_denoising = True
     try:
         sc.cycles.denoiser = "OPENIMAGEDENOISE"
