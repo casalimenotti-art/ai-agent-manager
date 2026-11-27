@@ -18,7 +18,22 @@ import config
 URL_GITHUB = re.compile(r"^https://github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)/([A-Za-z0-9._-]+?)(?:\.git)?/?$")
 
 
+_META_CACHE: dict = {}   # (percorso, mtime_ns) -> meta: evita di rileggere e riparsare YAML a ogni elenco
+
+
 def _meta(f: Path) -> dict:
+    try:
+        chiave = (str(f), f.stat().st_mtime_ns)
+    except OSError:
+        return _meta_leggi(f)
+    if chiave not in _META_CACHE:
+        if len(_META_CACHE) > 2000:
+            _META_CACHE.clear()
+        _META_CACHE[chiave] = _meta_leggi(f)
+    return dict(_META_CACHE[chiave])
+
+
+def _meta_leggi(f: Path) -> dict:
     try:
         m = re.match(r"^---\s*\n(.*?)\n---", f.read_text(encoding="utf-8", errors="replace"), re.S)
         meta = yaml.safe_load(m.group(1)) if m else {}
@@ -73,6 +88,15 @@ def valida_url(url: str) -> tuple[str, str] | None:
     return owner, repo
 
 
+def _rm_scrivibile(func, path, _exc):
+    """Su Windows i file di .git sono di sola lettura: li rende scrivibili e riprova (ignora se fallisce)."""
+    try:
+        os.chmod(path, 0o700)
+        func(path)
+    except OSError:
+        pass
+
+
 def installa_locale(url: str, skills_dir: Path = None) -> dict:
     base = skills_dir or config.SKILLS_DIR
     url = (url or "").strip()
@@ -99,11 +123,11 @@ def installa_locale(url: str, skills_dir: Path = None) -> dict:
             return {"ok": False, "messaggio": "git clone non riuscito: " + (r.stderr.strip()[-300:] or "errore")}
         if not (clone / "SKILL.md").is_file():
             return {"ok": False, "messaggio": "Il repository non ha un SKILL.md nella radice: non è una skill installabile qui."}
-        shutil.rmtree(clone / ".git", ignore_errors=True)
+        shutil.rmtree(clone / ".git", onerror=_rm_scrivibile)
         clone.rename(dest)
         return {"ok": True, "messaggio": f"Skill '{repo}' installata in {dest}"}
     finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+        shutil.rmtree(tmp, onerror=_rm_scrivibile)
 
 
 # ----------------------------------------------------------------- catalogo verificato
@@ -236,7 +260,7 @@ def installa_catalogo_locale(id_skill: str, skills_dir: Path = None) -> dict:
             json.dumps({"repo": f"https://github.com/{voce['repo']}", "path": voce["path"], "commit": sha}, indent=1))
         return {"ok": True, "messaggio": f"'{nome}' installata (commit {sha[:7]}) in {dest}"}
     finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+        shutil.rmtree(tmp, onerror=_rm_scrivibile)
 
 
 # ----------------------------------------------------------------- squadra di agenti Claude Code

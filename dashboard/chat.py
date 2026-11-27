@@ -5,6 +5,7 @@ import json
 import re
 import subprocess
 import threading
+import time
 from pathlib import Path
 from typing import Iterator
 
@@ -120,3 +121,79 @@ class Risposta:
                 self.errore = ev.get("stderr") or f"claude è terminato con codice {ev.get('returncode')}"
             return True
         return False
+
+
+# ---------------------------------------------------------------- "Lancia un agente" (sempre dopo conferma)
+MAX_COMPITO = 4000
+LANCI: list[dict] = []   # registro dei lanci in background (letto dall'interfaccia, scritto dai thread)
+_LANCI_LOCK = threading.Lock()
+DOPPIO_CLIC_S = 3.0
+
+
+def agenti_installati() -> list[str]:
+    """Nomi degli agenti presenti in ~/.claude/agents (gli unici lanciabili)."""
+    cartella = config.CLAUDE_HOME / "agents"
+    if not cartella.is_dir():
+        return []
+    return sorted(p.stem for p in cartella.glob("*.md") if re.fullmatch(r"[a-z0-9-]{1,64}", p.stem))
+
+
+def pulisci_compito(testo: str) -> str:
+    """Testo libero: via i caratteri di controllo (tranne a capo/tab), spazi ai bordi, tetto di lunghezza."""
+    t = "".join(c for c in (testo or "") if c in "\n\t" or ord(c) >= 32)
+    return t.strip()[:MAX_COMPITO]
+
+
+def prepara_lancio(agente: str, compito: str, cwd: str, installati: list[str] | None = None) -> dict:
+    """Costruisce (senza eseguire nulla) il lancio di un agente.
+
+    Ritorna {ok, errore, argv, prompt, cwd, modo}. `argv` è una lista (mai una stringa di shell);
+    il compito viaggia su stdin come nel resto della chat, quindi non viene mai interpolato in una shell.
+    Mai bypassPermissions: si usa config.CHAT_PERMISSION_MODE.
+    """
+    ammessi = agenti_installati() if installati is None else installati
+    compito = pulisci_compito(compito)
+    modo = config.CHAT_PERMISSION_MODE
+    res = {"ok": False, "errore": "", "argv": [], "prompt": compito, "cwd": (cwd or "").strip(), "modo": modo}
+    if agente not in ammessi or not agente_installato(agente):
+        res["errore"] = f"L'agente «{agente}» non è installato in ~/.claude/agents."
+    elif not compito:
+        res["errore"] = "Scrivi il compito da assegnare."
+    elif modo == "bypassPermissions":
+        res["errore"] = "I lanci dalla dashboard non usano bypassPermissions: cambia CHAT_PERMISSION_MODE."
+    elif not res["cwd"] or not Path(res["cwd"]).expanduser().is_dir():
+        res["errore"] = f"Cartella inesistente: {res['cwd'] or '(vuota)'}"
+    else:
+        res["argv"] = costruisci_comando(None, agente)
+        res["ok"] = True
+    return res
+
+
+def anteprima_lancio(lancio: dict) -> str:
+    """Testo semplice (da passare a theme.esc se finisce in HTML) che spiega cosa verrà eseguito."""
+    return (f"Cartella: {lancio['cwd']}\nComando: {' '.join(lancio['argv'])}\n"
+            f"Permessi: {lancio['modo']}\nCompito (passato come input, non come comando di shell):\n{lancio['prompt']}")
+
+
+def lancia_in_background(esegui, lancio: dict, agente: str) -> dict:
+    """Avvia `esegui(prompt, cwd, None, agente)` (es. fonte.esegui) in un thread e ne registra lo stato."""
+    voce_reg = {"agente": agente, "compito": lancio["prompt"][:120], "cwd": lancio["cwd"],
+                "stato": "in corso", "errore": None, "session_id": None, "_ts": time.time(), "_chiave": (agente, lancio["prompt"], lancio["cwd"])}
+    with _LANCI_LOCK:
+        # doppio clic: stesso compito già partito da meno di DOPPIO_CLIC_S secondi e ancora in corso -> non rilanciare
+        for v in LANCI:
+            if v.get("_chiave") == voce_reg["_chiave"] and v["stato"] == "in corso" and voce_reg["_ts"] - v["_ts"] < DOPPIO_CLIC_S:
+                return v
+        LANCI.append(voce_reg)
+
+    def _corpo():
+        r = Risposta()
+        try:
+            for ev in esegui(lancio["prompt"], lancio["cwd"], None, agente):
+                r.aggiungi(ev)
+        except Exception as e:  # il thread non deve morire in silenzio
+            r.errore = str(e)
+        voce_reg.update(stato="errore" if r.errore else "finito", errore=r.errore, session_id=r.session_id)
+
+    threading.Thread(target=_corpo, daemon=True).start()
+    return voce_reg

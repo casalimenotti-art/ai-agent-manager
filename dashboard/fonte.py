@@ -13,6 +13,7 @@ import time
 import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Iterator
 from urllib.parse import urlparse
 
@@ -22,6 +23,28 @@ import clienti
 import config
 import monitor
 import skill
+
+
+SCOPERTE_FILE = Path(__file__).resolve().parent / "dati" / "scoperte.json"
+
+
+def _scoperte_vuote(messaggio: str) -> dict:
+    return {"aggiornato": "", "repo": [], "skill": [], "messaggio": messaggio}
+
+
+def leggi_scoperte(percorso: Path | None = None) -> dict:
+    """Legge dati/scoperte.json: file mancante o corrotto -> liste vuote + messaggio, mai eccezioni."""
+    p = Path(percorso) if percorso else SCOPERTE_FILE
+    if not p.is_file():
+        return _scoperte_vuote("Nessuna scoperta ancora: manca il file dati/scoperte.json.")
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(d, dict):
+            raise ValueError("radice non valida")
+    except (OSError, ValueError):
+        return _scoperte_vuote("Il file dati/scoperte.json non è leggibile (formato non valido).")
+    voci = lambda k: [x for x in (d.get(k) or []) if isinstance(x, dict)] if isinstance(d.get(k), list) else []
+    return {"aggiornato": str(d.get("aggiornato") or ""), "repo": voci("repo"), "skill": voci("skill"), "messaggio": ""}
 
 
 class Fonte(ABC):
@@ -41,6 +64,11 @@ class Fonte(ABC):
 
     @abstractmethod
     def costi(self, giorni: int = 30) -> dict: ...  # vedi agenti.Indice.costi
+
+    def usage(self) -> dict | None:
+        """Utilizzo REALE: {"five_hour": {"pct","resets_at"}|None, "seven_day": {...}|None, "ts"} o None (barra di stato non attiva).
+        Di base None: la fonte remota non lo espone."""
+        return None
 
     @abstractmethod
     def ricavi(self) -> dict: ...            # {"YYYY-MM": importo_usd}
@@ -65,6 +93,10 @@ class Fonte(ABC):
 
     @abstractmethod
     def installa_squadra(self) -> dict: ...
+
+    def scoperte(self) -> dict:
+        """Repo e skill consigliate: {aggiornato, repo:[...], skill:[...], messaggio}. Non solleva mai."""
+        return _scoperte_vuote("Scoperte non disponibili su questa sorgente.")
 
     @abstractmethod
     def azienda(self) -> str: ...
@@ -93,6 +125,22 @@ class Fonte(ABC):
     @abstractmethod
     def installa_skill(self, url: str) -> dict: ...  # {ok, messaggio}
 
+    def documenti_radice(self) -> dict:
+        """CONTINUA.md e STATO.md della radice del repo ({nome: testo}); vuoto se la fonte non li espone."""
+        return {}
+
+
+def leggi_usage(percorso: Path | None = None) -> dict | None:
+    """Legge usage.json (scritto da hooks/guardian_statusline.py). None se manca o è illeggibile."""
+    try:
+        d = json.loads((percorso or config.USAGE_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(d, dict) or not isinstance(d.get("ts"), (int, float)):
+        return None
+    return {"five_hour": d.get("five_hour") if isinstance(d.get("five_hour"), dict) else None,
+            "seven_day": d.get("seven_day") if isinstance(d.get("seven_day"), dict) else None, "ts": float(d["ts"])}
+
 
 class FonteLocale(Fonte):
     nome = "Questo PC"
@@ -116,6 +164,9 @@ class FonteLocale(Fonte):
     def costi(self, giorni=30):
         return self._indice.costi(giorni)
 
+    def usage(self):
+        return leggi_usage()
+
     def attivita(self, limite=80, tipi=None):
         return self._indice.attivita(limite, tipi=tipi)
 
@@ -127,6 +178,9 @@ class FonteLocale(Fonte):
 
     def skill_elenco(self):
         return skill.elenca_skill()
+
+    def scoperte(self):
+        return leggi_scoperte()
 
     def esegui(self, prompt, cwd, resume=None, agente=None):
         return chat.esegui_locale(prompt, cwd, resume, agente)
@@ -166,6 +220,15 @@ class FonteLocale(Fonte):
 
     def installa_catalogo(self, id_skill):
         return skill.installa_catalogo_locale(id_skill)
+
+    def documenti_radice(self):
+        out = {}
+        for nome in ("CONTINUA.md", "STATO.md"):
+            try:
+                out[nome] = (config.BASE_DIR.parent / nome).read_text(encoding="utf-8", errors="replace")[:20000]
+            except OSError:
+                pass
+        return out
 
 
 class FonteRemota(Fonte):
@@ -287,15 +350,22 @@ class FonteDemo(FonteLocale):
 
     def sessioni(self):
         t = time.time()
-        base = [("sito-ottico", "sessione", "", "Edit", "Aggiorno la pagina del catalogo occhiali", 4),
-                ("sito-ottico", "subagente", "a1b2c3d", "WebSearch", "Cerco esempi di prova virtuale occhiali", 9),
-                ("ricerca-clienti", "subagente", "e4f5a6b", "WebFetch", "Verifico il sito di un ristorante", 30),
-                ("dashboard", "sessione", "", "Bash", "Eseguo i test della dashboard", 400)]
+        base = [("sito-ottico", "sessione", "", "Edit", "Aggiorno la pagina del catalogo occhiali", 4, "guardian-manager", "coordina la squadra"),
+                ("sito-ottico", "subagente", "a1b2c3d", "WebSearch", "Cerco esempi di prova virtuale occhiali", 9, "cacciatore-clienti", "ristoranti Cagliari"),
+                ("ricerca-clienti", "subagente", "e4f5a6b", "WebFetch", "Verifico il sito di un ristorante", 30, "analista-presenza-online", "audit Trattoria"),
+                ("dashboard", "sessione", "", "Bash", "Eseguo i test della dashboard", 400, "", "")]
         return [{"progetto": p, "cwd": f"/demo/{p}", "sessione": f"demo-{i}", "tipo": ty, "agente": ag, "padre": "demo-0" if ag else "",
                  "stato": "al lavoro" if eta < 120 else "fermo", "strumento": tool, "messaggio": msg,
                  "ultimo_agg": t - eta, "fonte": "demo", "token_in": 90 + 10 * i, "token_out": 14000 + 900 * i,
                  "cache_read": 600000 + 40000 * i, "cache_write": 30000, "costo": round(0.8 + 0.45 * i, 4),
-                 "modello": "claude-sonnet-5-5"} for i, (p, ty, ag, tool, msg, eta) in enumerate(base)]
+                 "modello": "claude-sonnet-5-5", "nome_agente": nome, "compito": comp}
+                for i, (p, ty, ag, tool, msg, eta, nome, comp) in enumerate(base)]
+
+    def usage(self):
+        """Valori FINTI (demo), dichiarati con "demo": True."""
+        t = time.time()
+        return {"five_hour": {"pct": 42.0, "resets_at": t + 2 * 3600 + 14 * 60}, "seven_day": {"pct": 18.0, "resets_at": t + 4 * 86400},
+                "ts": t - 12, "demo": True}
 
     def costi(self, giorni=30):
         rnd = random.Random(7)
@@ -328,7 +398,9 @@ class FonteDemo(FonteLocale):
             ("file", "compilatore-schede-visita", "visite/esempio-trattoria.md", "", "", ""),
         ]
         out = [{"ts": t - 3 * (len(passi) - i), "tipo": ty, "strumento": "", "testo": tx, "url": u, "brief": b, "risultato": r,
-                "chi": f"demo · {chi}", "sidechain": chi != "guardian-manager", "sessione": "demo"}
+                "chi": f"demo · {chi}", "sidechain": chi != "guardian-manager", "sessione": "demo-0" if chi in (
+                    "guardian-manager", "scopritore-problemi", "compilatore-schede-visita") else "demo-" + ("1" if chi == "cacciatore-clienti" else "2"),
+                "agente": {"cacciatore-clienti": "a1b2c3d", "analista-presenza-online": "e4f5a6b"}.get(chi, "")}
                for i, (ty, chi, tx, u, b, r) in enumerate(passi)]
         out = [e for e in out if not tipi or e["tipo"] in tipi]
         return sorted(out, key=lambda e: e["ts"], reverse=True)[:limite]
@@ -366,6 +438,14 @@ class FonteDemo(FonteLocale):
         return dict(self._ricavi)
 
     def progetti(self): return ["/demo/sito-ottico", "/demo/ricerca-clienti"]
+
+    def scoperte(self):
+        return {"aggiornato": time.strftime("%Y-%m-%dT%H:%M:%S"), "messaggio": "",
+                "repo": [{"nome": "esempio/repo-demo", "url": "https://example.com/repo-demo", "stelle": 1200,
+                          "licenza": "MIT", "perche": "Esempio: strumento di prova con dati finti."}],
+                "skill": [{"nome": "skill-demo", "installazioni": 340, "comando": "npx skills add esempio/skill-demo",
+                           "perche": "Esempio: skill dimostrativa, non installabile da qui."}]}
+
     def installa_skill(self, url): return dict(self._OFF)
     def installa_catalogo(self, id_skill): return dict(self._OFF)
     def installa_squadra(self): return dict(self._OFF)

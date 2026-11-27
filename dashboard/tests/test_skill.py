@@ -85,7 +85,10 @@ def _repo_con_sottocartella(tmp_path, scrivi_skill=True, symlink=False):
         (d / "SKILL.md").write_text("---\nname: frontend-design\ndescription: d\n---\n")
     (d / "altro.txt").write_text("x")
     if symlink:
-        (d / "x").symlink_to("/etc/passwd")
+        try:
+            (d / "x").symlink_to("/etc/passwd")
+        except OSError:
+            pytest.skip("symlink non creabili su Windows senza privilegi")
     subprocess.run(["git", "-C", str(r), "add", "-A"], check=True)
     subprocess.run(["git", "-C", str(r), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "i"], check=True)
     return r
@@ -146,6 +149,7 @@ def test_elenca_skill_tutte_le_origini(tmp_path, monkeypatch):
 
 
 def test_graphify_comandi_sicuri_e_nessuna_sovrascrittura(tmp_path, monkeypatch):
+    monkeypatch.setattr(skill.sys, "version_info", (3, 12, 0))   # il check versione non dipende dal Python del test
     import config, types
     monkeypatch.setattr(config, "CLAUDE_HOME", tmp_path / "h")
     monkeypatch.setattr(config, "EVENTS_FILE", tmp_path / "g" / "e.jsonl")
@@ -168,6 +172,7 @@ def test_graphify_comandi_sicuri_e_nessuna_sovrascrittura(tmp_path, monkeypatch)
 
 
 def test_graphify_errore_pip_non_crea_nulla(tmp_path, monkeypatch):
+    monkeypatch.setattr(skill.sys, "version_info", (3, 12, 0))   # il check versione non dipende dal Python del test
     import config, types
     monkeypatch.setattr(config, "CLAUDE_HOME", tmp_path / "h")
     monkeypatch.setattr(config, "EVENTS_FILE", tmp_path / "g" / "e.jsonl")
@@ -209,3 +214,16 @@ def test_azienda_scrittura(tmp_path):
     assert skill.scrivi_azienda("vendo X", p)["ok"] and skill.leggi_azienda(p) == "vendo X"
     assert not skill.scrivi_azienda("a" * 20_001, p)["ok"] and not skill.scrivi_azienda(5, p)["ok"]
     assert "Cosa vendiamo" in skill.leggi_azienda(tmp_path / "manca.md")   # modello se il file non esiste
+
+
+def test_categorie_e_data_italiana():
+    import plancia
+    assert plancia.categoria_skill("frontend-design", "UI e CSS") == "Design"
+    assert plancia.categoria_skill("pdf", "Leggi documenti PDF") == "Documenti"
+    assert plancia.categoria_skill("seo", "Audit SEO e marketing") == "Vendite e marketing"
+    assert plancia.categoria_skill("remotion-render", "Export a video") == "Media/video"
+    assert plancia.categoria_skill("xyz", "boh") == "Altro"
+    c = plancia.conta_categorie([{"nome": "seo", "descrizione": "marketing"}, {"nome": "xyz", "descrizione": ""}])
+    assert c == {"Vendite e marketing": 1, "Altro": 1}
+    assert plancia.data_italiana("2026-11-26T13:00:00") == "26 nov 2026, 13:00"
+    assert plancia.data_italiana("boh") == "boh" and plancia.data_italiana("") == ""

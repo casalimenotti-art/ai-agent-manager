@@ -1,0 +1,986 @@
+{
+  "app.py": {
+    "mtime": 1795665272.6133559,
+    "seen": 1795702582.3872178,
+    "ast_hash": "9c7724a20004c340eb7bfc82e9a3d6ca",
+    "semantic_hash": ""
+  },
+  "dashboard/agenti.py": {
+    "mtime": 1795720162.8094325,
+    "seen": 1795720350.4508119,
+    "ast_hash": "914f1865e0e7ff326e2be190b5362956",
+    "semantic_hash": ""
+  },
+  "dashboard/app.py": {
+    "mtime": 1795724064.2647736,
+    "seen": 1795724149.433349,
+    "ast_hash": "2465256eb6d43852ee5ed872baea4b77",
+    "semantic_hash": ""
+  },
+  "dashboard/chat.py": {
+    "mtime": 1795720441.6840253,
+    "seen": 1795720601.3250132,
+    "ast_hash": "3ffc41ae8f66f332af74f63b5c5ccf30",
+    "semantic_hash": ""
+  },
+  "dashboard/clienti.py": {
+    "mtime": 1795693145.196114,
+    "seen": 1795702582.387241,
+    "ast_hash": "f9233ef8396ecf1aef6de67fc2dd6068",
+    "semantic_hash": ""
+  },
+  "dashboard/config.py": {
+    "mtime": 1795718664.2472982,
+    "seen": 1795719022.3106368,
+    "ast_hash": "1d5d2af229a6be604deccb93c12f9110",
+    "semantic_hash": ""
+  },
+  "dashboard/fonte.py": {
+    "mtime": 1795702081.8868208,
+    "seen": 1795702582.387246,
+    "ast_hash": "53f9c5101cbc4ad41d9ce60eee052784",
+    "semantic_hash": ""
+  },
+  "dashboard/hooks/guardian_hook.py": {
+    "mtime": 1795665272.6262345,
+    "seen": 1795702582.387248,
+    "ast_hash": "88b1b2d84a8a0cc133b39f4598ef5dda",
+    "semantic_hash": ""
+  },
+  "dashboard/hooks/guardian_statusline.py": {
+    "mtime": 1795697814.4582863,
+    "seen": 1795702582.3872504,
+    "ast_hash": "510b0a576dc3c5add50c9e55c596c698",
+    "semantic_hash": ""
+  },
+  "dashboard/monitor.py": {
+    "mtime": 1795720424.755741,
+    "seen": 1795720601.3288193,
+    "ast_hash": "0538560d761af4aea3ceb8cb19ad0de1",
+    "semantic_hash": ""
+  },
+  "dashboard/plancia.py": {
+    "mtime": 1795720986.2667794,
+    "seen": 1795721490.6682909,
+    "ast_hash": "ef37831585f9233dc3445fe3c996bc71",
+    "semantic_hash": ""
+  },
+  "dashboard/siti_demo.py": {
+    "mtime": 1795695906.243042,
+    "seen": 1795702582.3872576,
+    "ast_hash": "a522866ddddf3155c12c78d33bdc1880",
+    "semantic_hash": ""
+  },
+  "dashboard/skill.py": {
+    "mtime": 1795719162.4378457,
+    "seen": 1795719260.437803,
+    "ast_hash": "d38169c854f2cfd4cecb3ddd578c9fee",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/fake_claude.py": {
+    "mtime": 1795665272.6335926,
+    "seen": 1795702582.3872619,
+    "ast_hash": "2a850de98f274e5d8bc07161fa17b5e5",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_agenti.py": {
+    "mtime": 1795715989.6973362,
+    "seen": 1795716086.890119,
+    "ast_hash": "7080bbdbd5f8dd79db185fd8534d6ddf",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_chat.py": {
+    "mtime": 1795719121.7084284,
+    "seen": 1795719260.4419506,
+    "ast_hash": "6e21cbba6642db78d61e8e2e2e84f8a7",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_clienti.py": {
+    "mtime": 1795693145.210766,
+    "seen": 1795702582.3872683,
+    "ast_hash": "9702bfb211b104cae7dc222a2a2e0ac4",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_css.py": {
+    "mtime": 1795724064.2693818,
+    "seen": 1795724149.4441159,
+    "ast_hash": "c36d1ad1573529a89a09300b102ff19e",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_dettaglio.py": {
+    "mtime": 1795717606.0166967,
+    "seen": 1795717685.4883623,
+    "ast_hash": "78b587c043402b238556e3316b2075c1",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_fonte.py": {
+    "mtime": 1795697316.2607646,
+    "seen": 1795702582.3872747,
+    "ast_hash": "d20a77d3f4fe4a30a8d7f7d0b69bc9b0",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_monitor.py": {
+    "mtime": 1795665272.6335926,
+    "seen": 1795702582.387277,
+    "ast_hash": "dc26bd0ea8fb5178389a5c67a7b001ef",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_ricavi.py": {
+    "mtime": 1795665272.6335926,
+    "seen": 1795702582.387279,
+    "ast_hash": "5c6e9a2a0782ac97087240bede8d2a4c",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_siti_demo.py": {
+    "mtime": 1795695906.8266711,
+    "seen": 1795702582.3872821,
+    "ast_hash": "01d2b603f1315502603ca6b5992b1ab4",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_skill.py": {
+    "mtime": 1795719121.7231498,
+    "seen": 1795719260.450124,
+    "ast_hash": "5011977d81e59fa7d1fd0e08c9ec28e1",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_suggerimenti.py": {
+    "mtime": 1795702134.1974273,
+    "seen": 1795702582.3872864,
+    "ast_hash": "efa55464a5cf89b0028ee3befe8801ae",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_voce.py": {
+    "mtime": 1795701330.6223018,
+    "seen": 1795702582.3872888,
+    "ast_hash": "dfcfa225b51d17350ae5eb7bc2644963",
+    "semantic_hash": ""
+  },
+  "dashboard/theme.py": {
+    "mtime": 1795724064.2683897,
+    "seen": 1795724149.4522257,
+    "ast_hash": "19fca113f57fe62d19e0e66dc447140e",
+    "semantic_hash": ""
+  },
+  "dashboard/video-demo/src/Root.tsx": {
+    "mtime": 1795693145.2144034,
+    "seen": 1795702582.3872929,
+    "ast_hash": "395d94e3de6596d817cfa94613ff5da9",
+    "semantic_hash": ""
+  },
+  "dashboard/video-demo/src/Video.tsx": {
+    "mtime": 1795693145.2144034,
+    "seen": 1795702582.3872952,
+    "ast_hash": "88045ff1d317c9fe84f13dd9661b9755",
+    "semantic_hash": ""
+  },
+  "dashboard/video-demo/src/index.ts": {
+    "mtime": 1795693145.2144034,
+    "seen": 1795702582.3872979,
+    "ast_hash": "ad0de2057cab122cc7b140129491eb4e",
+    "semantic_hash": ""
+  },
+  "dashboard/voce.py": {
+    "mtime": 1795720424.132567,
+    "seen": 1795720601.3526225,
+    "ast_hash": "f61b184d31105834096ccc4b4b31ccf2",
+    "semantic_hash": ""
+  },
+  "siti-demo/_gen/gen_bnb_a.py": {
+    "mtime": 1795696603.6545606,
+    "seen": 1795702582.3873024,
+    "ast_hash": "e16eda59e6037d593e03dd5ff24d32b6",
+    "semantic_hash": ""
+  },
+  "siti-demo/_gen/gen_bnb_b.py": {
+    "mtime": 1795696572.0585008,
+    "seen": 1795702582.3873045,
+    "ast_hash": "faf81293249df1ef2459334785641cda",
+    "semantic_hash": ""
+  },
+  "siti-demo/_gen/gen_design_v2.py": {
+    "mtime": 1795697770.4756544,
+    "seen": 1795702582.3873065,
+    "ast_hash": "6cfb86cfacb31632bec986f3b3da4e0b",
+    "semantic_hash": ""
+  },
+  "siti-demo/_gen/gen_est_e.py": {
+    "mtime": 1795696583.8579454,
+    "seen": 1795702582.3873086,
+    "ast_hash": "2f502db0809fdaee3f357281804bce30",
+    "semantic_hash": ""
+  },
+  "siti-demo/_gen/gen_rist_c.py": {
+    "mtime": 1795696545.942191,
+    "seen": 1795702582.3873105,
+    "ast_hash": "c8695a64c23b6dfb25ac82e577dd24a3",
+    "semantic_hash": ""
+  },
+  "CONTINUA.md": {
+    "mtime": 1795724042.8557332,
+    "seen": 1795724149.459154,
+    "ast_hash": "4e5c9b0fd2a8f11e76ae99f3b4f522ab",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1795665272.6133559,
+    "seen": 1795702582.3873148,
+    "ast_hash": "d0ee9b66056fbccba334a1b7a072d2bf",
+    "semantic_hash": ""
+  },
+  "STATO.md": {
+    "mtime": 1795724043.138523,
+    "seen": 1795724149.4597528,
+    "ast_hash": "76a17ec97ad9721f4183dac0ff5bcaa7",
+    "semantic_hash": ""
+  },
+  "dashboard/PROMPT_30_CLIENTI.md": {
+    "mtime": 1795694596.6406362,
+    "seen": 1795702582.387319,
+    "ast_hash": "faadd72fe722b681573fe643abb8e7cf",
+    "semantic_hash": ""
+  },
+  "dashboard/PROMPT_CLAUDE_CODE.md": {
+    "mtime": 1795665272.617824,
+    "seen": 1795702582.387321,
+    "ast_hash": "3aef535eca291fb17ec5865318932489",
+    "semantic_hash": ""
+  },
+  "dashboard/PROMPT_FINALE.md": {
+    "mtime": 1795693145.1870308,
+    "seen": 1795702582.3873231,
+    "ast_hash": "fcb841b246c5619e2a07bcd50babd406",
+    "semantic_hash": ""
+  },
+  "dashboard/PROMPT_NOTTE.md": {
+    "mtime": 1795693145.1870308,
+    "seen": 1795702582.3873253,
+    "ast_hash": "f73b7d68b79ac2ac3513fbf8db82fa70",
+    "semantic_hash": ""
+  },
+  "dashboard/PROMPT_OBIETTIVO_10K.md": {
+    "mtime": 1795693145.1892307,
+    "seen": 1795702582.3873277,
+    "ast_hash": "a9cc8a3ff497019bf8ee53c227681be6",
+    "semantic_hash": ""
+  },
+  "dashboard/README.md": {
+    "mtime": 1795694596.6422038,
+    "seen": 1795702582.38733,
+    "ast_hash": "94144f29d701ef0ed5d025718e02f52f",
+    "semantic_hash": ""
+  },
+  "dashboard/SETUP_PC.md": {
+    "mtime": 1795693145.1908789,
+    "seen": 1795702582.3873327,
+    "ast_hash": "73ff695d6b600bc12a2e8fe24e57c878",
+    "semantic_hash": ""
+  },
+  "dashboard/agenti-sviluppo/sviluppatore-dashboard.md": {
+    "mtime": 1795719271.561057,
+    "seen": 1795719442.1692748,
+    "ast_hash": "2d26fb1547ef3234ea98bce0757405c6",
+    "semantic_hash": ""
+  },
+  "dashboard/agenti-sviluppo/web-designer.md": {
+    "mtime": 1795699671.5922208,
+    "seen": 1795702582.3873367,
+    "ast_hash": "f8e6a3a69d2d670f273f677dac2bc1cc",
+    "semantic_hash": ""
+  },
+  "dashboard/avvia_err.txt": {
+    "mtime": 1795702751.9447834,
+    "seen": 1795713272.8922055,
+    "ast_hash": "d46b597c365b148d2679f2830b228d91",
+    "semantic_hash": ""
+  },
+  "dashboard/avvia_log.txt": {
+    "mtime": 1795713251.6698968,
+    "seen": 1795713272.8922138,
+    "ast_hash": "2b5824e94c775b8b446281b8bc774a40",
+    "semantic_hash": ""
+  },
+  "dashboard/docs/graph/GRAPH_REPORT.md": {
+    "mtime": 1795697699.6091883,
+    "seen": 1795702582.3873432,
+    "ast_hash": "dddfac7714f4e87aa44ac776205c2633",
+    "semantic_hash": ""
+  },
+  "dashboard/docs/spec/01-visione-e-regole.md": {
+    "mtime": 1795693145.198689,
+    "seen": 1795702582.3873453,
+    "ast_hash": "f452038f545538794b5f4d3cfbf90392",
+    "semantic_hash": ""
+  },
+  "dashboard/docs/spec/02-dati-realtime.md": {
+    "mtime": 1795693145.20179,
+    "seen": 1795702582.3873472,
+    "ast_hash": "a78797a9e63746090610cf4b7bdae041",
+    "semantic_hash": ""
+  },
+  "dashboard/docs/spec/03-ui-visual.md": {
+    "mtime": 1795693145.20179,
+    "seen": 1795702582.3873496,
+    "ast_hash": "3b5aaffe41951966a64ea99ae1471f8b",
+    "semantic_hash": ""
+  },
+  "dashboard/docs/spec/04-agenti-e-manager.md": {
+    "mtime": 1795693145.203331,
+    "seen": 1795702582.3873518,
+    "ast_hash": "dbc57a0f3bff383b7dd2f78eca4df19b",
+    "semantic_hash": ""
+  },
+  "dashboard/docs/spec/05-clienti-pipeline.md": {
+    "mtime": 1795693145.203331,
+    "seen": 1795702582.387354,
+    "ast_hash": "0222a45f307e2282ca16d7067d518845",
+    "semantic_hash": ""
+  },
+  "dashboard/docs/spec/06-test-e-consegna.md": {
+    "mtime": 1795693145.203331,
+    "seen": 1795702582.3873558,
+    "ast_hash": "79a26a3dcafa1d20073fc407f95b79a2",
+    "semantic_hash": ""
+  },
+  "dashboard/docs/spec/07-riferimenti-online.md": {
+    "mtime": 1795693145.203331,
+    "seen": 1795702582.387358,
+    "ast_hash": "02c854bd4076d58f1b4f17f2b1c18efb",
+    "semantic_hash": ""
+  },
+  "dashboard/requirements.txt": {
+    "mtime": 1795694596.6554081,
+    "seen": 1795702582.38736,
+    "ast_hash": "6784028462c70b44439be2b663ecfb4d",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/analista-presenza-online.md": {
+    "mtime": 1795698714.0809698,
+    "seen": 1795702582.3873622,
+    "ast_hash": "ab389542b7b75702c3585bfbf60c82d4",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/analista-risultati.md": {
+    "mtime": 1795698714.3322556,
+    "seen": 1795702582.3873646,
+    "ast_hash": "35609453c1fc87663e4184673ff9435d",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/architetto-squadra.md": {
+    "mtime": 1795698714.5541525,
+    "seen": 1795702582.3873663,
+    "ast_hash": "992486776caa922fd8124c4c415a6985",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/azienda.template.md": {
+    "mtime": 1795665272.6301522,
+    "seen": 1795702582.3873687,
+    "ast_hash": "0741cafe7a67e652441346a2b836f899",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/cacciatore-clienti.md": {
+    "mtime": 1795698714.7530398,
+    "seen": 1795702582.387371,
+    "ast_hash": "ea5d8d3f77dc4404256dfcb0e4fba09f",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/collaudatore-agenti.md": {
+    "mtime": 1795698714.968021,
+    "seen": 1795702582.3873732,
+    "ast_hash": "263960dcb820922c084be5864c91c693",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/compilatore-schede-visita.md": {
+    "mtime": 1795698715.2217295,
+    "seen": 1795702582.387375,
+    "ast_hash": "d5bcc4ce84ae9a2fd552aa45f538c5a2",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/curatore-skill.md": {
+    "mtime": 1795698715.482093,
+    "seen": 1795702582.3873775,
+    "ast_hash": "8324337f705372918142cb168edf6236",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/forgiatore-agenti.md": {
+    "mtime": 1795698715.7372637,
+    "seen": 1795702582.3873794,
+    "ast_hash": "3808975ede3acc29c3d438f48b42ea01",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/guardian-manager.md": {
+    "mtime": 1795698715.9436052,
+    "seen": 1795702582.3873816,
+    "ast_hash": "441fba37e07e52b82518f227c76d44d3",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/ottimizzatore-prompt.md": {
+    "mtime": 1795698716.158224,
+    "seen": 1795702582.3873835,
+    "ast_hash": "9aa86e7b1304c13b78d254462acdb48a",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/redattore-outreach.md": {
+    "mtime": 1795698716.3648975,
+    "seen": 1795702582.3873856,
+    "ast_hash": "1cc9a7cedc4071cbe54c8856bdad14dd",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/ricercatore-web.md": {
+    "mtime": 1795699671.7588022,
+    "seen": 1795702582.3873878,
+    "ast_hash": "5f4d52ea01a66a586c9cf9567d21ee39",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/scopritore-problemi.md": {
+    "mtime": 1795698716.570939,
+    "seen": 1795702582.38739,
+    "ast_hash": "28a8f23323be66e3afc4c8a430c710a7",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/scout-strumenti.md": {
+    "mtime": 1795699711.2028835,
+    "seen": 1795702582.387392,
+    "ast_hash": "5b45d0c87c491bde629e23a01d77003d",
+    "semantic_hash": ""
+  },
+  "dashboard/squadra/verificatore-fonti.md": {
+    "mtime": 1795698716.7791069,
+    "seen": 1795702582.3873942,
+    "ast_hash": "74402edecb2b019bce9fde3f509892db",
+    "semantic_hash": ""
+  },
+  "dashboard/video-demo/README.md": {
+    "mtime": 1795693145.2144034,
+    "seen": 1795702582.387396,
+    "ast_hash": "191c7be23eeb3cb0b74235ed8779fa04",
+    "semantic_hash": ""
+  },
+  "docs/idee-design.md": {
+    "mtime": 1795697316.9115384,
+    "seen": 1795702582.3873985,
+    "ast_hash": "d3285f4fcb794cf49b0850c6f57896b8",
+    "semantic_hash": ""
+  },
+  "docs/ricerca-automazioni-guardian.md": {
+    "mtime": 1795700087.754941,
+    "seen": 1795702582.3874004,
+    "ast_hash": "79abe8b06a9f7fab8589d09bed2f6927",
+    "semantic_hash": ""
+  },
+  "docs/ricerca-email-automazioni-skill.md": {
+    "mtime": 1795698697.7490108,
+    "seen": 1795702582.3874025,
+    "ast_hash": "92234314adedfd374980546d41452aaf",
+    "semantic_hash": ""
+  },
+  "docs/ricerca-jarvis-ui.md": {
+    "mtime": 1795700097.2660375,
+    "seen": 1795702582.3874044,
+    "ast_hash": "81d9b1b18202773df2fc7d6cc4dd3bf2",
+    "semantic_hash": ""
+  },
+  "docs/ricerca-skill-agenti.md": {
+    "mtime": 1795700171.048052,
+    "seen": 1795702582.3874068,
+    "ast_hash": "1fa2add41cdebc0ca0c97d27c5e0b0d0",
+    "semantic_hash": ""
+  },
+  "docs/ricerca-stili-hud.md": {
+    "mtime": 1795700079.9070034,
+    "seen": 1795702582.387409,
+    "ast_hash": "782927babe84e01ffe7172d70a197c75",
+    "semantic_hash": ""
+  },
+  "docs/ricerca-streamlit-fluido.md": {
+    "mtime": 1795700080.6391726,
+    "seen": 1795702582.387411,
+    "ast_hash": "b3b21fdae4fd326986ab7626040d8c39",
+    "semantic_hash": ""
+  },
+  "docs/ricerca-voce.md": {
+    "mtime": 1795700126.7647927,
+    "seen": 1795702582.3874133,
+    "ast_hash": "a1f9d53a2a94bbbb27894557f4f2cd2e",
+    "semantic_hash": ""
+  },
+  "docs/ricerca-whatsapp-instagram.md": {
+    "mtime": 1795698727.4049246,
+    "seen": 1795702582.3874154,
+    "ast_hash": "cb872186399fff91c99e10c60bb498f9",
+    "semantic_hash": ""
+  },
+  "requirements.txt": {
+    "mtime": 1795665272.6436427,
+    "seen": 1795702582.3874176,
+    "ast_hash": "0e259a623da51721d85eb6bb0e283f49",
+    "semantic_hash": ""
+  },
+  "siti-demo/4-canti-bistrot.html": {
+    "mtime": 1795696554.6309235,
+    "seen": 1795702582.3874211,
+    "ast_hash": "73bf8615a8cd5c343a2bf8233b4c56b6",
+    "semantic_hash": ""
+  },
+  "siti-demo/_scartato-sun-sardinia.html": {
+    "mtime": 1795695702.2031987,
+    "seen": 1795702582.3874235,
+    "ast_hash": "3f8b0d593af6d002d69171e233c53475",
+    "semantic_hash": ""
+  },
+  "siti-demo/anania-guesthouse.html": {
+    "mtime": 1795696572.747986,
+    "seen": 1795702582.3874254,
+    "ast_hash": "d3683dd935a10750458acfda6658dc18",
+    "semantic_hash": ""
+  },
+  "siti-demo/antica-cagliari-ristorante.html": {
+    "mtime": 1795696554.8114092,
+    "seen": 1795702582.3874276,
+    "ast_hash": "4b8e4884b464e8eaed44c950ffc61bbd",
+    "semantic_hash": ""
+  },
+  "siti-demo/antica-trattoria-dar-mammozzaro.html": {
+    "mtime": 1795697770.6297638,
+    "seen": 1795702582.3874295,
+    "ast_hash": "4ebf01a768a0b4e2e4b13db9caa995ac",
+    "semantic_hash": ""
+  },
+  "siti-demo/b-b-casa-spano.html": {
+    "mtime": 1795696596.7985866,
+    "seen": 1795702582.3874319,
+    "ast_hash": "592dd5af368cbff91d3998d3f9e60507",
+    "semantic_hash": ""
+  },
+  "siti-demo/beauty-center-valentino.html": {
+    "mtime": 1795696588.6064024,
+    "seen": 1795702582.387434,
+    "ast_hash": "eaff7bb3b72cf5929a74415ce395dc11",
+    "semantic_hash": ""
+  },
+  "siti-demo/bellini-b-b.html": {
+    "mtime": 1795697770.6333535,
+    "seen": 1795702582.387436,
+    "ast_hash": "4196fa9c51f252e523b722f11e05a69d",
+    "semantic_hash": ""
+  },
+  "siti-demo/bernardi-foto-ottica.html": {
+    "mtime": 1795697770.6333535,
+    "seen": 1795702582.387438,
+    "ast_hash": "b284bb2f744e9c428d2921fef2669ef1",
+    "semantic_hash": ""
+  },
+  "siti-demo/black-and-white-parrucchieri.html": {
+    "mtime": 1795697770.6389527,
+    "seen": 1795702582.3874402,
+    "ast_hash": "aeab529e7e7594684c4e10cd4e0b5749",
+    "semantic_hash": ""
+  },
+  "siti-demo/chiarovista-di-mario-orru.html": {
+    "mtime": 1795696588.6064024,
+    "seen": 1795702582.387442,
+    "ast_hash": "a1543d9e4532643e4befea11301797c3",
+    "semantic_hash": ""
+  },
+  "siti-demo/clelsy-centro-estetico.html": {
+    "mtime": 1795696588.6064024,
+    "seen": 1795702582.3874443,
+    "ast_hash": "355c5f11e70df3117fe2b430df802e09",
+    "semantic_hash": ""
+  },
+  "siti-demo/clinical-beauty-farm-srl.html": {
+    "mtime": 1795696588.6064024,
+    "seen": 1795702582.3874466,
+    "ast_hash": "ade6b2df428f8bf80fcf6b796666c072",
+    "semantic_hash": ""
+  },
+  "siti-demo/coccole-centro-estetico.html": {
+    "mtime": 1795696588.6064024,
+    "seen": 1795702582.3874488,
+    "ast_hash": "78424c876d6f53a202eb6c2538aafafe",
+    "semantic_hash": ""
+  },
+  "siti-demo/comfort-beauty-estetica-maxia.html": {
+    "mtime": 1795697770.6389527,
+    "seen": 1795702582.387451,
+    "ast_hash": "12e4065becd62e6e2c97ef0a71ecf28f",
+    "semantic_hash": ""
+  },
+  "siti-demo/el-carnicero-assemini.html": {
+    "mtime": 1795696546.5058713,
+    "seen": 1795702582.3874528,
+    "ast_hash": "85d37203be55f395b6ef3467443c2514",
+    "semantic_hash": ""
+  },
+  "siti-demo/fattoria-giaccu.html": {
+    "mtime": 1795696572.747986,
+    "seen": 1795702582.387455,
+    "ast_hash": "1f4b4435ef879a68b413feee6fcf3e47",
+    "semantic_hash": ""
+  },
+  "siti-demo/fenicottero-b-b.html": {
+    "mtime": 1795696604.1914558,
+    "seen": 1795702582.3874571,
+    "ast_hash": "1a97384d88082ab370ecbbcabc92df90",
+    "semantic_hash": ""
+  },
+  "siti-demo/gisella-b-b.html": {
+    "mtime": 1795696596.7965813,
+    "seen": 1795702582.387459,
+    "ast_hash": "3bbb0094e07df9df9f92beaadda5f5b8",
+    "semantic_hash": ""
+  },
+  "siti-demo/il-borgo-b-b-villanova.html": {
+    "mtime": 1795696604.1914558,
+    "seen": 1795702582.3874612,
+    "ast_hash": "d326f3a26b66617bd480f293158bec62",
+    "semantic_hash": ""
+  },
+  "siti-demo/il-cagliarese-b-b.html": {
+    "mtime": 1795697770.6333535,
+    "seen": 1795702582.3874633,
+    "ast_hash": "bf3fc2578264a4182e9b8f6dd3a2606a",
+    "semantic_hash": ""
+  },
+  "siti-demo/le-tre-nasse-b-b.html": {
+    "mtime": 1795696604.1914558,
+    "seen": 1795702582.3874655,
+    "ast_hash": "50f9ccf7c2dbba08e4ff979eba42374f",
+    "semantic_hash": ""
+  },
+  "siti-demo/libarium-nostrum.html": {
+    "mtime": 1795697770.6297638,
+    "seen": 1795702582.3874676,
+    "ast_hash": "9a5d43142d5df5881b8a157293b0b837",
+    "semantic_hash": ""
+  },
+  "siti-demo/ottica-borriello.html": {
+    "mtime": 1795697770.6333535,
+    "seen": 1795702582.3874695,
+    "ast_hash": "3a16e0b2d91caa67ed2343af46b66256",
+    "semantic_hash": ""
+  },
+  "siti-demo/ottica-ungari.html": {
+    "mtime": 1795697770.6333535,
+    "seen": 1795702582.3874717,
+    "ast_hash": "b9e4e9dfd5d2bd7bb4ca46bb0bcc2dd7",
+    "semantic_hash": ""
+  },
+  "siti-demo/pani-e-casu.html": {
+    "mtime": 1795696546.5058713,
+    "seen": 1795702582.3874733,
+    "ast_hash": "00a042ddd7d4ba6bc1b2f992058f2b0a",
+    "semantic_hash": ""
+  },
+  "siti-demo/ristorante-51.html": {
+    "mtime": 1795696546.5058713,
+    "seen": 1795702582.3874757,
+    "ast_hash": "6a81c7c830030a3cf249e5c2a71e67ec",
+    "semantic_hash": ""
+  },
+  "siti-demo/ristorante-arke.html": {
+    "mtime": 1795696554.3539946,
+    "seen": 1795702582.3874779,
+    "ast_hash": "6dd04ffcdc6e1c391eb49cba361e7d6c",
+    "semantic_hash": ""
+  },
+  "siti-demo/ristorante-terra-e-mari.html": {
+    "mtime": 1795697770.6297638,
+    "seen": 1795702582.3874798,
+    "ast_hash": "bbfb41a93c305f82916a1f8b4be093ab",
+    "semantic_hash": ""
+  },
+  "siti-demo/sa-mola-sarda.html": {
+    "mtime": 1795696604.1914558,
+    "seen": 1795702582.387482,
+    "ast_hash": "91d1767ee5d8ac70b134a29aafa2faa3",
+    "semantic_hash": ""
+  },
+  "siti-demo/stanze-centro-storico.html": {
+    "mtime": 1795696604.1914558,
+    "seen": 1795702582.3874838,
+    "ast_hash": "1f2834526e30ca99d07f175625cd0780",
+    "semantic_hash": ""
+  },
+  "visite/4-canti-bistrot.md": {
+    "mtime": 1795695959.1221268,
+    "seen": 1795702582.387486,
+    "ast_hash": "d816063f260926fdeab4f1d6b253917d",
+    "semantic_hash": ""
+  },
+  "visite/GIRO.md": {
+    "mtime": 1795695990.0117636,
+    "seen": 1795702582.387488,
+    "ast_hash": "b4b1c2605114d87f250dbaa76a92255c",
+    "semantic_hash": ""
+  },
+  "visite/anania-guesthouse.md": {
+    "mtime": 1795695959.1933072,
+    "seen": 1795702582.3874903,
+    "ast_hash": "10e2f537a036c58984966bb395dab2ce",
+    "semantic_hash": ""
+  },
+  "visite/antica-cagliari-ristorante.md": {
+    "mtime": 1795695959.2698195,
+    "seen": 1795702582.3874924,
+    "ast_hash": "c2787641570af56b275c2de743fa721d",
+    "semantic_hash": ""
+  },
+  "visite/antica-trattoria-dar-mammozzaro.md": {
+    "mtime": 1795695939.4819813,
+    "seen": 1795702582.3874946,
+    "ast_hash": "f9d821cbcc0f0ca0c33177dc500c71e3",
+    "semantic_hash": ""
+  },
+  "visite/b-b-casa-spano.md": {
+    "mtime": 1795695959.345299,
+    "seen": 1795702582.3874967,
+    "ast_hash": "1bb09d0d81bde047dbd8d57de12f2b2d",
+    "semantic_hash": ""
+  },
+  "visite/beauty-center-valentino.md": {
+    "mtime": 1795695959.4217463,
+    "seen": 1795702582.387499,
+    "ast_hash": "8d2467cfd7461c5def187ec63fb692d2",
+    "semantic_hash": ""
+  },
+  "visite/bellini-b-b.md": {
+    "mtime": 1795695939.601014,
+    "seen": 1795702582.387501,
+    "ast_hash": "897fb6a1fe238586b4eb97d99639ad59",
+    "semantic_hash": ""
+  },
+  "visite/bernardi-foto-ottica.md": {
+    "mtime": 1795695939.6889188,
+    "seen": 1795702582.3875031,
+    "ast_hash": "743193b4da8a86e129484e8ddf74a67d",
+    "semantic_hash": ""
+  },
+  "visite/black-and-white-parrucchieri.md": {
+    "mtime": 1795695939.77426,
+    "seen": 1795702582.387505,
+    "ast_hash": "8fcde0627ed87fa5c88fb9359a000ee1",
+    "semantic_hash": ""
+  },
+  "visite/chiarovista-di-mario-orru.md": {
+    "mtime": 1795695939.8642824,
+    "seen": 1795702582.3875072,
+    "ast_hash": "d525c246a773e473b4f89dc9147569c9",
+    "semantic_hash": ""
+  },
+  "visite/clelsy-centro-estetico.md": {
+    "mtime": 1795695959.4916701,
+    "seen": 1795702582.3875093,
+    "ast_hash": "f4d6ab84fa58038b11194f1e7647e899",
+    "semantic_hash": ""
+  },
+  "visite/clinical-beauty-farm-srl.md": {
+    "mtime": 1795695959.5531268,
+    "seen": 1795702582.3875113,
+    "ast_hash": "3da23e329318f2b40dc903e70ae493ae",
+    "semantic_hash": ""
+  },
+  "visite/coccole-centro-estetico.md": {
+    "mtime": 1795695959.6324978,
+    "seen": 1795702582.3875134,
+    "ast_hash": "a25294c1a95d405425e8df064d9ced08",
+    "semantic_hash": ""
+  },
+  "visite/comfort-beauty-estetica-maxia.md": {
+    "mtime": 1795695939.9490552,
+    "seen": 1795702582.3875153,
+    "ast_hash": "61acae462bba7d9d2926bb8b95cd9383",
+    "semantic_hash": ""
+  },
+  "visite/el-carnicero-assemini.md": {
+    "mtime": 1795695959.7279832,
+    "seen": 1795702582.3875175,
+    "ast_hash": "7f378587983e59afae9296dde0abebdc",
+    "semantic_hash": ""
+  },
+  "visite/fattoria-giaccu.md": {
+    "mtime": 1795695959.7920384,
+    "seen": 1795702582.3875196,
+    "ast_hash": "3c43cd196b4067e9e3ddd594722739cb",
+    "semantic_hash": ""
+  },
+  "visite/fenicottero-b-b.md": {
+    "mtime": 1795695940.0187135,
+    "seen": 1795702582.3875217,
+    "ast_hash": "afbe4d8c270b75ec46e913c02e42fdf2",
+    "semantic_hash": ""
+  },
+  "visite/gisella-b-b.md": {
+    "mtime": 1795695986.6720784,
+    "seen": 1795702582.3875237,
+    "ast_hash": "da47616bd13a54821014db2a59487d81",
+    "semantic_hash": ""
+  },
+  "visite/il-borgo-b-b-villanova.md": {
+    "mtime": 1795695940.1089964,
+    "seen": 1795702582.3875256,
+    "ast_hash": "0c26a048a8c48e0ecec99c5b4ebd643d",
+    "semantic_hash": ""
+  },
+  "visite/il-cagliarese-b-b.md": {
+    "mtime": 1795695940.1980608,
+    "seen": 1795702582.3875277,
+    "ast_hash": "f3e604cc05fbdc475f975657e336f558",
+    "semantic_hash": ""
+  },
+  "visite/le-tre-nasse-b-b.md": {
+    "mtime": 1795695940.2736933,
+    "seen": 1795702582.3875296,
+    "ast_hash": "21753d102d35467354a5d5600b929d10",
+    "semantic_hash": ""
+  },
+  "visite/libarium-nostrum.md": {
+    "mtime": 1795695940.3623376,
+    "seen": 1795702582.387532,
+    "ast_hash": "ce11b12e98c302b1d8a9d1fda4743f11",
+    "semantic_hash": ""
+  },
+  "visite/ottica-borriello.md": {
+    "mtime": 1795695940.4589906,
+    "seen": 1795702582.3875341,
+    "ast_hash": "b0414028e026e06e628946c6993d0cfb",
+    "semantic_hash": ""
+  },
+  "visite/ottica-ungari.md": {
+    "mtime": 1795695940.5433116,
+    "seen": 1795702582.3875363,
+    "ast_hash": "6454b081e01e60091afd0eb91a6e0620",
+    "semantic_hash": ""
+  },
+  "visite/pani-e-casu.md": {
+    "mtime": 1795695940.6419306,
+    "seen": 1795702582.3875387,
+    "ast_hash": "18bdd8ea4ad454948ebef555a442a17c",
+    "semantic_hash": ""
+  },
+  "visite/ristorante-51.md": {
+    "mtime": 1795695940.7223845,
+    "seen": 1795702582.3875408,
+    "ast_hash": "20db3fce6d763856343fc329b9a1c4f2",
+    "semantic_hash": ""
+  },
+  "visite/ristorante-arke.md": {
+    "mtime": 1795695958.8083007,
+    "seen": 1795702582.3875427,
+    "ast_hash": "a99f72c737971d1c7a33d28ae7b77cb6",
+    "semantic_hash": ""
+  },
+  "visite/ristorante-terra-e-mari.md": {
+    "mtime": 1795695958.9162152,
+    "seen": 1795702582.3875446,
+    "ast_hash": "574f6863766fe8b69d587b4cddd46dda",
+    "semantic_hash": ""
+  },
+  "visite/sa-mola-sarda.md": {
+    "mtime": 1795695958.9821315,
+    "seen": 1795702582.3875468,
+    "ast_hash": "d92f3ee3840b51d82bc092563973c253",
+    "semantic_hash": ""
+  },
+  "visite/stanze-centro-storico.md": {
+    "mtime": 1795695959.043422,
+    "seen": 1795702582.387549,
+    "ast_hash": "2d13664d476c3097317da4a52cfcd78f",
+    "semantic_hash": ""
+  },
+  "docs/audit-dashboard.md": {
+    "mtime": 1795717825.8403735,
+    "seen": 1795717913.7628846,
+    "ast_hash": "c9424b794c711740747c94419cf63835",
+    "semantic_hash": ""
+  },
+  "dashboard/catalogo.py": {
+    "mtime": 1795719676.7547474,
+    "seen": 1795719797.3778558,
+    "ast_hash": "6a568558ba9c22cad99839cf59c9e507",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_catalogo.py": {
+    "mtime": 1795719682.61352,
+    "seen": 1795719797.3875656,
+    "ast_hash": "cee50bd702eeeb8205012e13898afae5",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_revisione_scheda.py": {
+    "mtime": 1795717273.2985938,
+    "seen": 1795717331.2434473,
+    "ast_hash": "9b1c23dbb3eab439f3f1a814775a94bf",
+    "semantic_hash": ""
+  },
+  "dashboard/storico.py": {
+    "mtime": 1795720422.5014734,
+    "seen": 1795720601.3313127,
+    "ast_hash": "eaa1a90811eb683c9b3f598a0f8b8ef9",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_storico.py": {
+    "mtime": 1795716173.1426198,
+    "seen": 1795716251.2666123,
+    "ast_hash": "4fd3a017c17daa55b3d2f68e81408580",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_robustezza.py": {
+    "mtime": 1795720206.2293315,
+    "seen": 1795720350.470533,
+    "ast_hash": "57b442050df1c8176c34e19da6398f40",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_guida.py": {
+    "mtime": 1795718184.0929275,
+    "seen": 1795718246.7928722,
+    "ast_hash": "cc00fc48ffb1856fc868cd6ddd9c6cd2",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_riepilogo_oggi.py": {
+    "mtime": 1795718342.5837667,
+    "seen": 1795718416.9778526,
+    "ast_hash": "b8f592d7ae0f46c21dc191fde6253a41",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_concorrenza.py": {
+    "mtime": 1795720441.8184376,
+    "seen": 1795720601.3357353,
+    "ast_hash": "1411592ef602c4324964b55164756c73",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_titolo_scoperta.py": {
+    "mtime": 1795720991.8439212,
+    "seen": 1795721490.685201,
+    "ast_hash": "47967d1c72d9fac30ea968526d7ab56d",
+    "semantic_hash": ""
+  },
+  "dashboard/accesso.py": {
+    "mtime": 1795723922.9653585,
+    "seen": 1795724149.4328635,
+    "ast_hash": "77d263c49ee300093d593122c164f930",
+    "semantic_hash": ""
+  },
+  "dashboard/telefono/imposta_pin.py": {
+    "mtime": 1795723754.280421,
+    "seen": 1795724149.4406528,
+    "ast_hash": "c20cac3ce0f96ca136bebe1d1a8bb634",
+    "semantic_hash": ""
+  },
+  "dashboard/tests/test_accesso.py": {
+    "mtime": 1795723923.1105196,
+    "seen": 1795724149.441106,
+    "ast_hash": "0623ebee3f4c978d00a910104c4fa384",
+    "semantic_hash": ""
+  },
+  "CLAUDE_IMPROVEMENTS.md": {
+    "mtime": 1795721690.4865878,
+    "seen": 1795724149.4591472,
+    "ast_hash": "655c9a29b07badb023d0f7486957c8be",
+    "semantic_hash": ""
+  },
+  "docs/telefono.md": {
+    "mtime": 1795723742.4689713,
+    "seen": 1795724149.4884782,
+    "ast_hash": "bfd5e20625237114ac5ca907d6a9a857",
+    "semantic_hash": ""
+  }
+}

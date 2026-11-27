@@ -201,3 +201,52 @@ def test_attivita_filtri_e_limite(tmp_path):
     ix = indice(tmp_path)
     assert len(ix.attivita(limite=3)) == 3 and ix.attivita(limite=3)[0]["testo"] == "q1"
     assert ix.attivita(tipi={"delega"}) == []
+
+
+def test_subagente_meta_nome_compito_e_finito(tmp_path):
+    now = time.time()
+    scrivi(tmp_path / "projects" / "x" / "s1.jsonl", [asst(now, testo="padre")])
+    sub = tmp_path / "projects" / "x" / "s1" / "subagents" / "agent-abc1234.jsonl"
+    scrivi(sub, [asst(now, "ms", tool="WebSearch", side=True)])
+    meta = sub.with_name("agent-abc1234.meta.json")
+    meta.write_text(json.dumps({"agentType": "cacciatore-clienti", "description": "Ristoranti Cagliari", "finished": False}))
+    ix = indice(tmp_path)
+    r = {s["tipo"]: s for s in ix.sessioni()}["subagente"]
+    assert r["stato"] == "al lavoro" and r["nome_agente"] == "cacciatore-clienti" and r["compito"] == "Ristoranti Cagliari"
+    meta.write_text(json.dumps({"agentType": "cacciatore-clienti", "description": "Ristoranti Cagliari", "finished": True}))
+    r = {s["tipo"]: s for s in ix.sessioni()}["subagente"]
+    assert r["stato"] == "finito"
+    chi = {e["chi"] for e in ix.attivita()}
+    assert "Cacciatore di clienti · Ristoranti Cagliari" in chi
+
+
+def test_promemoria_interni_nascosti():
+    t = agenti.maschera("prima <system-reminder>non mostrare</system-reminder> dopo <system-reminder>aperto senza fine")
+    assert "non mostrare" not in t and "aperto" not in t and t.startswith("prima") and "dopo" in t
+
+
+def test_nessun_link_apre_altre_schede():
+    import theme
+    righe = [{"ts": time.time(), "tipo": "web-apri", "url": "https://esempio.it/pagina", "testo": "cosa c'è",
+              "chi": "cacciatore-clienti · test", "brief": "", "risultato": "ok", "strumento": "WebFetch", "sidechain": True}]
+    html = theme.feed_attivita(righe, lambda t: "ora", time.time())
+    assert "_blank" not in html and "esempio.it" in html
+    cl = theme.tabella_clienti([{"adattamento": 4, "azienda": "A", "categoria": "c", "zona": "z", "stato": "da visitare",
+                                 "fonte": "https://esempio.it/x", "prova": "p"}])
+    assert "_blank" in cl and "noopener" in cl and ">esempio.it</a>" in cl
+
+
+def test_dominio():
+    import plancia
+    assert plancia.dominio("https://www.italia.it/it/sardegna/x?a=1") == "italia.it"
+    assert plancia.dominio("http://Bar.Sole.it:8080/a") == "bar.sole.it"
+    assert plancia.dominio("javascript:alert(1)") == "" and plancia.dominio("") == ""
+
+
+def test_nomi_di_ruolo_leggibili():
+    import plancia
+    assert plancia.nome_ruolo("general-purpose", "Siti B&B gruppo A") == "Web designer"
+    assert plancia.nome_ruolo("general-purpose", "Plancia unica dashboard Guardian") == "Sviluppatore della dashboard"
+    assert plancia.nome_ruolo("verificatore-fonti", "qualsiasi") == "Verificatore delle fonti"
+    assert plancia.nome_ruolo("claude-code-guide", "") == "Esperto di Claude Code"
+    assert plancia.nome_ruolo("general-purpose", "") == "Assistente"

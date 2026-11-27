@@ -10,7 +10,8 @@ if errorlevel 1 goto :errore
 call ".venv\Scripts\activate.bat"
 pip install -q --disable-pip-version-check -r requirements.txt
 if errorlevel 1 goto :errore
-start "" "http://localhost:8501"
+rem GUARDIAN_NO_BROWSER=1: non apre una nuova scheda (riavvii fatti da Claude con la dashboard gia' aperta)
+if not defined GUARDIAN_NO_BROWSER start "" "http://localhost:8501"
 streamlit run app.py --server.address localhost --server.port 8501 --server.headless true
 goto :fine
 :errore

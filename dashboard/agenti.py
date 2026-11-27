@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import re
 import time
 from collections import deque
@@ -40,9 +41,14 @@ _SEGRETI = re.compile(
     r"|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+|(?i:(?:password|passwd|token|secret|api[_-]?key)\s*[=:]\s*\S+))")
 
 
+# Promemoria interni dell'harness (non sono lavoro dell'agente): non vanno mostrati nel feed.
+_PROMEMORIA = re.compile(r"<system-reminder>.*?(?:</system-reminder>|$)", re.S)
+
+
 def maschera(testo, n: int = 300) -> str:
-    """Testo corto e senza chiavi/token riconoscibili (i comandi possono contenerli)."""
-    return _SEGRETI.sub("[…nascosto…]", " ".join(str(testo or "").split()))[:n]
+    """Testo corto, senza promemoria interni e senza chiavi/token riconoscibili (i comandi possono contenerli)."""
+    t = _PROMEMORIA.sub(" ", str(testo or ""))
+    return _SEGRETI.sub("[…nascosto…]", " ".join(t.split()))[:n]
 
 
 def evento_da_strumento(nome: str, inp: dict, ts: float) -> dict:
@@ -58,7 +64,9 @@ def evento_da_strumento(nome: str, inp: dict, ts: float) -> dict:
         e.update(tipo="web-apri", url=str(inp.get("url") or "")[:300], testo=maschera(inp.get("prompt"), 200))
     elif nome.startswith("mcp__") and re.search(r"chrome|browser|playwright", nome, re.I):
         u = inp.get("url")
-        e.update(tipo="browser", strumento=nome.split("__")[-1], url=u[:300] if isinstance(u, str) else "")
+        az = inp.get("action")
+        e.update(tipo="browser", strumento=nome.split("__")[-1], url=u[:300] if isinstance(u, str) else "",
+                 testo=maschera(az, 40) if isinstance(az, str) else "")
     elif nome in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
         e.update(tipo="file", testo=maschera(inp.get("file_path") or inp.get("notebook_path"), 200))
     elif nome in ("Read", "Glob", "Grep"):
@@ -88,6 +96,11 @@ class _Stato:
         self.sidechain = "subagents" in path.parts
         self.agent_id = path.stem.removeprefix("agent-") if self.sidechain else ""
         self.parent_session = path.parent.parent.name if self.sidechain else ""
+        # Metadati del subagente scritti da Claude Code accanto al JSONL: tipo, compito, se ha finito.
+        self.meta_path = path.with_name(path.stem + ".meta.json")
+        self.nome_agente = ""
+        self.compito = ""
+        self.finito = False
         self.ultimo_ts = 0.0
         self.ultimo_strumento = ""
         self.ultimo_assistente = ""
@@ -170,12 +183,36 @@ class _Stato:
                         ris = b.get("content")
                         if isinstance(ris, list):
                             ris = " ".join(x.get("text", "") for x in ris if isinstance(x, dict))
-                        self._attesa.pop(b["tool_use_id"])["risultato"] = maschera(ris, 320)
+                        att = self._attesa.pop(b["tool_use_id"], None)   # None se un'altra sessione l'ha già consumato
+                        if att is not None:
+                            att["risultato"] = maschera(ris, 320)
             testo = _testo(content)  # i tool_result non hanno testo: vengono ignorati
             if testo:
                 self.ultimo_utente = testo
 
+    def _leggi_meta(self):
+        if not self.sidechain or self.finito:
+            return
+        try:
+            mt = self.meta_path.stat().st_mtime_ns
+            if mt == getattr(self, "_meta_mt", None):
+                return  # meta invariato dall'ultima lettura
+            m = json.loads(self.meta_path.read_text(encoding="utf-8"))
+            self._meta_mt = mt
+        except (OSError, ValueError):
+            return
+        if isinstance(m, dict):
+            self.nome_agente = maschera(m.get("agentType"), 60)
+            self.compito = maschera(m.get("description"), 120)
+            self.finito = m.get("finished") is True
+
     def aggiorna(self):
+        # l'Indice è condiviso tra le sessioni del browser (più schede/telefono): un solo thread alla volta
+        with _LOCK_AGGIORNA:
+            self._aggiorna()
+
+    def _aggiorna(self):
+        self._leggi_meta()
         try:
             size = self.path.stat().st_size
             if size < self.offset:  # file riscritto
@@ -196,6 +233,9 @@ class _Stato:
                 continue
             if isinstance(riga, dict):
                 self.feed(riga)
+
+
+_LOCK_AGGIORNA = threading.RLock()
 
 
 class Indice:
@@ -259,9 +299,10 @@ class Indice:
                     strumento = ev["tool"]
                 fermo_da_hook = ev.get("event") == "Stop"
             inattivo = ora - ultimo_ts
-            al_lavoro = inattivo <= soglia and not fermo_da_hook
+            finito = st.finito or strumento == "SubagentHandback"
+            al_lavoro = inattivo <= soglia and not fermo_da_hook and not finito
             progetto = Path(st.cwd).name if st.cwd else p.parent.name
-            messaggio = st.ultimo_assistente or st.ultimo_utente
+            messaggio = maschera(st.ultimo_assistente or st.ultimo_utente, 300)
             risultato.append({
                 "progetto": progetto,
                 "cwd": st.cwd,
@@ -269,9 +310,11 @@ class Indice:
                 "tipo": "subagente" if st.sidechain else "sessione",
                 "agente": st.agent_id,
                 "padre": st.parent_session,
-                "stato": "al lavoro" if al_lavoro else "fermo",
+                "stato": "al lavoro" if al_lavoro else ("finito" if finito else "fermo"),
+                "nome_agente": st.nome_agente,
+                "compito": st.compito,
                 "strumento": strumento,
-                "messaggio": " ".join(messaggio.split())[:300],
+                "messaggio": messaggio,
                 "ultimo_agg": ultimo_ts,
                 "fonte": fonte,
                 "token_in": st.token_in, "token_out": st.token_out,
@@ -291,10 +334,14 @@ class Indice:
             info = meta.get(st.session_id + st.agent_id)
             if not info:
                 continue
-            chi = f"{info['progetto']} · " + (f"subagente {st.agent_id[:7]}" if st.sidechain else "sessione")
+            if st.sidechain and (st.nome_agente or st.compito):
+                import plancia   # import tardivo: plancia è logica pura, nessun ciclo
+                chi = plancia.nome_ruolo(st.nome_agente, st.compito) + (f" · {st.compito}" if st.compito else "")
+            else:
+                chi = f"{info['progetto']} · " + (f"subagente {st.agent_id[:7]}" if st.sidechain else "sessione")
             for e in st.attivita:
                 if e["ts"] >= soglia and (not tipi or e["tipo"] in tipi):
-                    out.append({**e, "chi": chi, "sidechain": st.sidechain, "sessione": st.session_id})
+                    out.append({**e, "chi": chi, "sidechain": st.sidechain, "sessione": st.session_id, "agente": st.agent_id})
         out.sort(key=lambda e: e["ts"], reverse=True)
         return out[:limite]
 

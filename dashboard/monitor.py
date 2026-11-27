@@ -32,20 +32,39 @@ class Campionatore:
     def __init__(self, storico_s: float | None = None):
         self.storico_s = config.HISTORY_S if storico_s is None else storico_s
         self._procs: dict[int, psutil.Process] = {}
+        self._esclusi: dict[int, float] = {}   # pid -> create_time dei processi già scartati
         self._storico: deque[tuple[float, float, float]] = deque()
         self._lock = threading.Lock()
+        self._lock_proc = threading.Lock()
         self._mio_pid = os.getpid()
         self._claude_pct = 0.0  # CPU Claude in % dell'intera macchina (cpu / n_core)
         psutil.cpu_percent(None)  # primo campione a vuoto
 
     def processi(self) -> dict:
+        with self._lock_proc:   # cpu_percent(None) confronta con l'ultima chiamata: due thread insieme falsano la lettura
+            return self._processi()
+
+    def _processi(self) -> dict:
         trovati: dict[int, psutil.Process] = {}
-        for p in psutil.process_iter(["pid", "name", "cmdline", "exe"]):
+        escl = self._esclusi
+        nuovi_escl: dict[int, float] = {}
+        for p in psutil.process_iter(["pid", "name", "create_time"]):
             info = p.info
-            if info["pid"] == self._mio_pid:
+            pid = info["pid"]
+            if pid == self._mio_pid:
                 continue
-            if e_processo_claude(info["name"], info["cmdline"] or [], info["exe"] or ""):
-                trovati[info["pid"]] = self._procs.get(info["pid"]) or p
+            if escl.get(pid) == info["create_time"]:   # già valutato e non Claude: niente cmdline/exe (costosi)
+                nuovi_escl[pid] = info["create_time"]
+                continue
+            try:
+                cmd, exe = p.cmdline(), p.exe()
+            except (psutil.Error, OSError):
+                cmd, exe = [], ""
+            if e_processo_claude(info["name"], cmd or [], exe or ""):
+                trovati[pid] = self._procs.get(pid) or p
+            else:
+                nuovi_escl[pid] = info["create_time"]
+        self._esclusi = nuovi_escl
         self._procs = trovati
         lista = []
         for pid, p in trovati.items():

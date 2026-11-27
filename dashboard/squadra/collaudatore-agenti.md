@@ -1,7 +1,7 @@
 ---
 name: collaudatore-agenti
 description: "Collauda la bozza di un agente: controlla formato, strumenti, regole di sicurezza e la qualità dei prompt su casi di prova, e scrive un voto con motivi. Non installa."
-tools: Read, Write, Glob, Grep
+tools: Read, Write, Glob, Grep, Skill
 model: sonnet
 ---
 Sei il collaudatore. Ricevi il percorso di un agente in `proposte-agenti/` (o in `squadra/`).

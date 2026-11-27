@@ -36,3 +36,12 @@ def test_nome_vuoto_e_lungo():
     assert "La tua attività" in sd.genera_sito("", "bar", "")
     assert len(sd.genera_sito("x" * 500, "bar", "y" * 500)) < 20000
     assert sd.slug_file("Bar  Sole!!") == "bar-sole" and sd.slug_file("") == "sito"
+
+
+def test_pagina_preferisce_il_sito_salvato(tmp_path):
+    import siti_demo as sd
+    html, salvato = sd.pagina(tmp_path, "Bar Uno", "bar", "Cagliari")
+    assert not salvato and "Bar Uno" in html
+    (tmp_path / "bar-uno.html").write_text("<p>personalizzato</p>", encoding="utf-8")
+    html, salvato = sd.pagina(tmp_path, "Bar Uno", "bar", "Cagliari")
+    assert salvato and html == "<p>personalizzato</p>"

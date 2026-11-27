@@ -1,6 +1,7 @@
 """Configurazione letta da dashboard/.env e dalle variabili d'ambiente."""
 import json
 import os
+import shutil
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -25,8 +26,10 @@ AGENT_URL = os.environ.get("GUARDIAN_AGENT_URL", "")
 TOKEN = os.environ.get("GUARDIAN_TOKEN", "")
 
 CLAUDE_HOME = _path("CLAUDE_HOME", "~/.claude")
-CLAUDE_BIN = os.environ.get("CLAUDE_BIN") or "claude"
+# Su Windows npm installa claude.cmd/claude.ps1: Popen(["claude"]) non li trova, shutil.which sì (usa PATHEXT).
+CLAUDE_BIN = os.environ.get("CLAUDE_BIN") or shutil.which("claude") or "claude"
 EVENTS_FILE = _path("GUARDIAN_EVENTS_FILE", "~/.claude/guardian/events.jsonl")
+USAGE_FILE = _path("GUARDIAN_USAGE_FILE", "~/.claude/guardian/usage.json")   # scritto da hooks/guardian_statusline.py
 PROJECTS_DIR = CLAUDE_HOME / "projects"
 SKILLS_DIR = CLAUDE_HOME / "skills"
 LEADS_DIR = _path("LEADS_DIR", str(BASE_DIR.parent / "leads"))     # CSV scritti da cacciatore-clienti

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{color-scheme:dark}
+html,body{background:#080a12}body{margin:0;padding:6px 2px;font:14px ui-monospace,Menlo,Consolas,monospace;color:#e8f1ff}
+#riga{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+button{padding:10px 18px;background:transparent;color:#00f0ff;border:1px solid #00f0ff;cursor:pointer;letter-spacing:.12em;text-transform:uppercase;font:inherit}
+button:hover,button:focus-visible{background:rgba(0,240,255,.14);outline:none}
+button.on{color:#ff8a6b;border-color:#ff8a6b}
+#stato{color:#a3aecb;min-width:210px}
+#livello{height:6px;width:160px;background:#151b34}#liv{height:100%;width:0;background:#00f0ff;transition:width .06s}
+#testo{margin-top:8px;color:#8b97b3;font-size:12px}
+</style></head><body>
+<div id="riga"><button id="vai">Avvia conversazione</button><button id="stop" style="display:none;color:#ff8a6b;border-color:#ff8a6b">Zitta</button>
+<div id="stato" role="status" aria-live="polite">Microfono spento</div><div id="livello" aria-hidden="true"><div id="liv"></div></div></div>
+<div id="testo">Parla e fai una pausa: Guardian capisce, risponde a voce e poi ti riascolta. L'audio resta sul tuo PC.</div>
+<script>
+const $=i=>document.getElementById(i);
+function manda(type,dati){window.parent.postMessage(Object.assign({isStreamlitMessage:true,type:type},dati||{}),"*")}
+manda("streamlit:componentReady",{apiVersion:1});
+const altezza=()=>manda("streamlit:setFrameHeight",{height:110});
+window.addEventListener("message",e=>{if(e.data&&e.data.type==="streamlit:render")altezza()});   // Streamlit ignora l'altezza prima del suo render
+altezza();setTimeout(altezza,300);
+const P=window.parent;
+const SOGLIA_MIN=0.02, FRAME_PRIMA=8, SILENZIO_FINE_MS=1000, MIN_PARLATO_MS=400, MAX_PARLATO_MS=25000, TARGET_SR=16000;
+let ctx=null,stream=null,proc=null,sorgente=null,attivo=false,contatore=0;
+let calib=[],soglia=SOGLIA_MIN,parlando=false,inizioParlato=0,ultimoVoce=0,sopra=0,prima=[],buf=[],ultimoStato="";
+function stato(t){if(t!==ultimoStato){$("stato").textContent=t;ultimoStato=t}}
+function occupato(){try{const S=P.speechSynthesis;const l=P.__guardianLavora;
+  return (l&&Date.now()-l<300000)||(S&&(S.speaking||S.pending))}catch(e){return false}}
+function rms(x){let s=0;for(let i=0;i<x.length;i++)s+=x[i]*x[i];return Math.sqrt(s/x.length)}
+function scendi(dati,sr){if(sr===TARGET_SR)return dati;const r=sr/TARGET_SR,n=Math.floor(dati.length/r),o=new Float32Array(n);
+  for(let i=0;i<n;i++){const a=i*r,i0=Math.floor(a),i1=Math.min(i0+1,dati.length-1),f=a-i0;o[i]=dati[i0]*(1-f)+dati[i1]*f}return o}
+function wav(f32,sr){const n=f32.length,b=new ArrayBuffer(44+n*2),v=new DataView(b);
+  const s=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
+  s(0,"RIFF");v.setUint32(4,36+n*2,true);s(8,"WAVE");s(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);s(36,"data");v.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++){const x=Math.max(-1,Math.min(1,f32[i]));v.setInt16(44+i*2,x<0?x*0x8000:x*0x7fff,true)}return new Uint8Array(b)}
+function b64(u8){let s="";const c=0x8000;for(let i=0;i<u8.length;i+=c)s+=String.fromCharCode.apply(null,u8.subarray(i,i+c));return btoa(s)}
+function chiudiFrase(){
+  const dur=Date.now()-inizioParlato;const pezzi=buf;buf=[];parlando=false;sopra=0;
+  if(dur<MIN_PARLATO_MS){return}
+  let n=0;pezzi.forEach(p=>n+=p.length);const tutto=new Float32Array(n);let o=0;pezzi.forEach(p=>{tutto.set(p,o);o+=p.length});
+  const w=wav(scendi(tutto,ctx.sampleRate),TARGET_SR);contatore++;
+  stato("Ho sentito: elaboro…");
+  manda("streamlit:setComponentValue",{value:{id:contatore+"-"+Date.now(),wav:b64(w),ms:dur},dataType:"json"});
+}
+function frame(e){
+  if(!attivo)return;const x=e.inputBuffer.getChannelData(0);const r=rms(x);$("liv").style.width=Math.min(100,r*500)+"%";
+  if(occupato()){if(parlando){parlando=false;buf=[]}sopra=0;prima=[];
+    try{stato(P.speechSynthesis.speaking||P.speechSynthesis.pending?"Guardian parla…":"Guardian sta lavorando…")}catch(_){stato("Guardian sta lavorando…")}return}
+  if(calib.length<14){calib.push(r);if(calib.length===14){const o=[...calib].sort((a,b)=>a-b);soglia=Math.max(SOGLIA_MIN,o[Math.floor(o.length*0.3)]*3.2)}stato("Calibro il rumore…");return}
+  const copia=new Float32Array(x);const ora=Date.now();
+  if(!parlando){stato("Ti ascolto…");prima.push(copia);if(prima.length>FRAME_PRIMA)prima.shift();
+    if(r>soglia){sopra++;if(sopra>=3){parlando=true;inizioParlato=ora;ultimoVoce=ora;buf=prima.slice();prima=[];stato("Ti sento…")}}else sopra=0;return}
+  buf.push(copia);if(r>soglia)ultimoVoce=ora;
+  if(ora-ultimoVoce>SILENZIO_FINE_MS||ora-inizioParlato>MAX_PARLATO_MS)chiudiFrase();
+}
+async function avvia(){
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
+  catch(e){stato("Microfono non disponibile: "+(e&&e.name||"permesso negato"));return}
+  ctx=new (window.AudioContext||window.webkitAudioContext)();await ctx.resume();
+  sorgente=ctx.createMediaStreamSource(stream);proc=ctx.createScriptProcessor(2048,1,1);proc.onaudioprocess=frame;
+  const muto=ctx.createGain();muto.gain.value=0;sorgente.connect(proc);proc.connect(muto);muto.connect(ctx.destination);
+  attivo=true;calib=[];parlando=false;sopra=0;prima=[];buf=[];$("vai").textContent="Ferma conversazione";$("vai").className="on";$("stop").style.display="";stato("Calibro il rumore…");
+  try{P.speechSynthesis&&P.speechSynthesis.cancel()}catch(e){}
+}
+function ferma(){attivo=false;try{proc&&proc.disconnect();sorgente&&sorgente.disconnect();stream&&stream.getTracks().forEach(t=>t.stop());ctx&&ctx.close()}catch(e){}
+  ctx=stream=proc=sorgente=null;$("vai").textContent="Avvia conversazione";$("vai").className="";$("stop").style.display="none";$("liv").style.width="0";stato("Microfono spento")}
+$("vai").onclick=()=>attivo?ferma():avvia();
+$("stop").onclick=()=>{try{P.speechSynthesis.cancel();P.__guardianLavora=0}catch(e){}};
+window.addEventListener("pagehide",ferma);
+</script></body></html>

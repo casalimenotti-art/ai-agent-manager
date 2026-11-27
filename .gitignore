@@ -1,0 +1,9 @@
+# file locali, cache e log
+__pycache__/
+.pytest_cache/
+graphify-out/cache/
+dashboard/graphify-out/cache/
+dashboard/avvia_err.txt
+dashboard/avvia_log.txt
+_avast_/
+.env

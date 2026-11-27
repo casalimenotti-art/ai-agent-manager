@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html
 import re
+from pathlib import Path
 
 TEMI = {
     "notte": {"bg": "#0b1020", "fg": "#e8f1ff", "muted": "#9aa6c4", "acc": "#00c8e8", "acc2": "#ff5f45", "card": "#121a33"},
@@ -29,7 +30,7 @@ GENERICO = ("Cosa offriamo", ["Servizi (da inserire)", "Contatti e orari", "Come
 
 def categoria_chiave(cat: str) -> str:
     c = (cat or "").lower()
-    for k, alias in (("ristorante", ("ristor", "trattor", "bar", "pizz")), ("b&b", ("b&b", "bed", "casa vacanz", "affitt")),
+    for k, alias in (("ristorante", ("ristor", "trattor", "bar", "pizz")), ("b&b", ("b&b", "bed", "casa vacanz", "affitt", "guest", "agritur")),
                      ("ottica", ("ottic", "occhial")), ("parrucchiere", ("parrucch", "estetic", "barbier")),
                      ("officina", ("offic", "autoripar", "gommist")), ("studio", ("studio", "profession", "avvoc", "commercial"))):
         if any(a in c for a in alias):
@@ -95,3 +96,13 @@ def genera_sito(nome: str, categoria: str, zona: str, tema: str = "notte", oppor
 
 def slug_file(nome: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", (nome or "").lower()).strip("-")[:60] or "sito"
+
+
+def pagina(cartella, nome: str, categoria: str, zona: str, tema: str = "notte", opportunita: str = "") -> tuple[str, bool]:
+    """Il sito salvato in cartella (es. personalizzato a mano) se esiste, altrimenti quello generato.
+    Ritorna (html, salvato)."""
+    p = Path(cartella) / f"{slug_file(nome)}.html"
+    try:
+        return p.read_text(encoding="utf-8"), True
+    except OSError:
+        return genera_sito(nome, categoria, zona, tema, opportunita), False

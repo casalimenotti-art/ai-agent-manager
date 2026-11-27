@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="it" data-title-it="Bellini B&amp;B — San Benedetto, Cagliari | Bozza demo" data-title-en="Bellini B&amp;B — San Benedetto, Cagliari | Demo draft">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bellini B&amp;B — San Benedetto, Cagliari | Bozza demo</title>
+<meta name="description" content="Bozza dimostrativa del sito proprio di Bellini B&amp;B, Via Vincenzo Bellini 21, Cagliari (San Benedetto): richiesta di disponibilità diretta, camere, quartiere.">
+<meta name="robots" content="noindex">
+<style>
+
+*{box-sizing:border-box}html{scroll-behavior:smooth}img{max-width:100%;height:auto;display:block}
+.skip{position:absolute;left:-999px;top:0;background:#fff;color:#000;padding:.6rem 1rem;z-index:99}.skip:focus{left:0}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+button,input{font:inherit}
+.lang button{cursor:pointer}
+address{font-style:normal}
+.cards{list-style:none;padding:0;margin:1.5rem 0 0;display:grid;gap:1.25rem}
+.two{display:grid;gap:1.5rem;align-items:center}
+.f{display:flex;flex-direction:column;gap:.35rem}
+.msg{font-weight:700;min-height:1.6em}
+.note,.small{font-size:.9rem}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media(min-width:760px){.cards{grid-template-columns:repeat(3,1fr)}.two{grid-template-columns:1.2fr 1fr}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+:root{--bg:#fbf6ee;--bg2:#efe4d2;--tx:#2a241f;--mut:#51473e;--ac:#9a3b20;--ol:#3f4f25;--focus:#1b4fd1}
+body{margin:0;background:var(--bg);color:var(--tx);font:1rem/1.7 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+h1,h2,h3{line-height:1.12;font-weight:800;letter-spacing:-.02em}
+h1{font-size:clamp(2.2rem,9vw,4.4rem);margin:.3rem 0 1rem;color:var(--ol)}h2{font-size:clamp(1.6rem,5vw,2.3rem);margin:0 0 1rem;color:var(--ol)}
+a{color:var(--ac)}
+.top{display:flex;flex-wrap:wrap;gap:.6rem 1.2rem;align-items:center;justify-content:space-between;padding:.8rem 1.1rem;background:var(--ol);color:#fff}
+.top :focus-visible{outline-color:#fff}
+.brand{color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem}
+nav{display:flex;gap:.4rem;flex-wrap:wrap}nav a{color:#fff;text-decoration:none;padding:.35rem .8rem;border-radius:99px;transition:background .25s}nav a:hover{background:rgba(255,255,255,.2)}
+.lang button{background:transparent;color:#fff;border:2px solid #fff;border-radius:99px;padding:.2rem .8rem;transition:background .25s}.lang button[aria-pressed=true]{background:#fff;color:var(--ol);font-weight:700}
+section{padding:3.2rem 1.1rem;max-width:1080px;margin:0 auto}
+.alt{max-width:none;background:var(--bg2)}.alt>*{max-width:1080px;margin-left:auto;margin-right:auto}
+.hero{display:grid;gap:2rem;align-items:center}
+@media(min-width:760px){.hero{grid-template-columns:1.1fr 1fr}}
+.hero-in{animation:rise .8s ease both}
+.kicker{display:inline-block;background:var(--ac);color:#fff;padding:.2rem .8rem;border-radius:99px;font-weight:700;font-size:.85rem;margin:0}
+.lead{font-size:1.15rem;color:var(--mut)}
+.hero-img{border-radius:28px 28px 120px 28px;animation:rise 1s .2s ease both,float 7s 1.2s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-8px)}}
+.btn{display:inline-block;background:var(--ac);color:#fff;border:0;border-radius:99px;padding:.85rem 1.5rem;font-weight:700;text-decoration:none;cursor:pointer;transition:transform .25s,background .25s}
+.btn:hover{transform:scale(1.04);background:#7d2e17}
+.btn.wa{background:var(--ol)}.btn.wa:hover{background:#2e3b1b}
+.cta{display:flex;flex-wrap:wrap;gap:.8rem;margin:1.5rem 0}
+.avail{max-width:1080px;background:#fff;border:3px solid var(--ol);border-radius:24px;margin:1rem auto;padding:2rem 1.3rem}
+form{display:grid;gap:1rem}label{font-weight:700}
+input{padding:.7rem;border:2px solid #6b5f53;border-radius:12px;background:#fff;color:var(--tx)}
+@media(min-width:760px){form{grid-template-columns:repeat(3,1fr) auto;align-items:end}}
+.msg{color:var(--ac)}
+.card{background:#fff;border-radius:20px;padding:1rem;box-shadow:0 2px 0 var(--bg2),0 8px 22px rgba(60,40,20,.1);transition:transform .3s}.card:hover{transform:translateY(-5px)}
+.card img{border-radius:14px}.card h3{font-size:1.15rem;margin:.9rem 0 .3rem}.card p{margin:0;color:var(--mut)}
+.two img{border-radius:120px 24px 24px 24px}
+.note,.small{color:var(--mut)}
+.slot{border:3px dashed var(--ac);border-radius:20px;padding:1.4rem;background:#fff}
+footer{background:var(--ol);color:#fff;padding:1.5rem 1.1rem;text-align:center}footer p{margin:.2rem}
+
+
+/*dz2*/:root{--dz-bg:#fbf6ee;--dz-tx:#2a241f;--dz-b:#9a3b20;--dz-bt:#fff}
+html{scroll-padding-top:4.5rem}body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.skip{z-index:99!important}
+header.top,.top{position:sticky;top:0;z-index:20}
+main h1{text-wrap:balance;overflow-wrap:anywhere}main h2{text-wrap:balance}
+main section h2::after{content:"";display:block;width:2.75rem;height:4px;background:var(--dz-b);margin-top:.55rem;border-radius:2px;transition:width .5s cubic-bezier(.2,.7,.2,1)}
+main section:hover h2::after{width:4.5rem}
+main section[id]{scroll-margin-top:4.5rem}
+.btn{transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s ease,background-color .25s ease}.btn:active{transform:scale(.97)}
+.hero .btn{min-height:52px;font-size:1.05rem;padding-inline:1.5rem}
+li,dd,td{font-variant-numeric:tabular-nums}
+.card,.menu-sec,.room,article{transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s ease}
+.js .dz-r{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.js .dz-r.dz-in{opacity:1;transform:none}
+.dz-bar{display:none}
+@media(max-width:44.99rem){
+body{padding-bottom:calc(5rem + env(safe-area-inset-bottom))}
+.dz-bar{display:flex;gap:.6rem;position:fixed;left:0;right:0;bottom:0;z-index:30;padding:.6rem .8rem calc(.6rem + env(safe-area-inset-bottom));background:var(--dz-bg);border-top:3px solid var(--dz-b);box-shadow:0 -8px 24px rgba(0,0,0,.18)}
+.dz-bar a{flex:1 1 0;display:flex;align-items:center;justify-content:center;min-height:48px;padding:.4rem .6rem;border-radius:12px;border:2px solid var(--dz-tx);color:var(--dz-tx);background:transparent;font:700 1rem/1.15 system-ui,-apple-system,'Segoe UI',sans-serif;text-align:center;text-decoration:none;transition:transform .2s ease}
+.dz-bar a.p{flex:1.5 1 0;background:var(--dz-b);border-color:var(--dz-b);color:var(--dz-bt)}
+.dz-bar a:active{transform:scale(.96)}
+.dz-bar a:focus-visible{outline:3px solid var(--dz-tx);outline-offset:2px}
+}
+@media(min-width:45rem){.hero .btn{min-height:54px}}
+@media(prefers-reduced-motion:reduce){.js .dz-r{opacity:1;transform:none;transition:none}.btn,.dz-bar a{transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main" data-en="Skip to content">Vai al contenuto</a>
+<header class="top">
+<a class="brand" href="#top">Bellini B&amp;B</a>
+<nav aria-label="Principale"><a href="#camere" data-en="Rooms">Camere</a><a href="#quartiere" data-en="Area">Quartiere</a><a href="#recensioni" data-en="Reviews">Recensioni</a><a href="#disponibilita" data-en="Availability">Disponibilità</a></nav>
+<div class="lang" role="group" aria-label="Lingua / Language"><button type="button" data-lang="it" aria-pressed="true">IT</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div>
+</header>
+<main id="main">
+<section class="hero" id="top">
+<div class="hero-in">
+<p class="kicker" data-en="B&amp;B in Cagliari — San Benedetto">B&amp;B a Cagliari — San Benedetto</p>
+<h1>Bellini B&amp;B</h1>
+<p class="lead" data-en="Your own website, with a direct availability request, to receive guests' enquiries without going through the portal.">Il vostro sito, con richiesta di disponibilità diretta, per ricevere le richieste degli ospiti senza passare dal portale.</p>
+<p class="cta"><a class="btn" href="#disponibilita" data-en="Request availability">Richiedi disponibilità</a> <a class="btn wa" href="https://wa.me/393471884960" data-en="WhatsApp">WhatsApp</a></p>
+<address>Via Vincenzo Bellini 21, Cagliari (San Benedetto)</address>
+</div>
+<img class="hero-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Cpath d='M0 240l110-90 80 60 70-50 140 100v40H0z' fill='%23aaa'/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300">
+</section>
+
+<section id="disponibilita" class="avail" aria-labelledby="h-av">
+<h2 id="h-av" data-en="Request availability directly">Richiedi disponibilità direttamente</h2>
+<p data-en="Write to the host directly, no portal in between. This form is a demonstration: it sends nothing.">Scrivi direttamente alla struttura, senza passare dal portale. Questo modulo è dimostrativo: non invia nulla.</p>
+<form id="avail" novalidate>
+<div class="f"><label for="ci" data-en="Check-in">Arrivo</label><input type="date" id="ci" name="ci"></div>
+<div class="f"><label for="co" data-en="Check-out">Partenza</label><input type="date" id="co" name="co"></div>
+<div class="f"><label for="gu" data-en="Guests">Ospiti</label><input type="number" id="gu" name="gu" min="1" max="20" value="2"></div>
+<button class="btn" type="submit" data-en="Check availability">Verifica disponibilità</button>
+</form>
+<p id="msg" class="msg" role="status" aria-live="polite"></p>
+</section>
+
+<section id="camere" aria-labelledby="h-r">
+<h2 id="h-r" data-en="Rooms">Camere</h2>
+<p class="note" data-en="Placeholders: room names, descriptions, capacity and rates to be provided by the host.">Segnaposto: nomi, descrizioni, capienza e tariffe da fornire a cura del titolare.</p>
+<ul class="cards"><li class="card"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Cpath d='M0 240l110-90 80 60 70-50 140 100v40H0z' fill='%23aaa'/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3 data-en="Room 1 (name to be added)">Camera 1 (nome da inserire)</h3><p data-en="Description, bed setup and amenities to be added.">Descrizione, letti e dotazioni da inserire.</p></li><li class="card"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Cpath d='M0 240l110-90 80 60 70-50 140 100v40H0z' fill='%23aaa'/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3 data-en="Room 2 (name to be added)">Camera 2 (nome da inserire)</h3><p data-en="Description, bed setup and amenities to be added.">Descrizione, letti e dotazioni da inserire.</p></li><li class="card"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Cpath d='M0 240l110-90 80 60 70-50 140 100v40H0z' fill='%23aaa'/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3 data-en="Room 3 (name to be added)">Camera 3 (nome da inserire)</h3><p data-en="Description, bed setup and amenities to be added.">Descrizione, letti e dotazioni da inserire.</p></li></ul>
+</section>
+
+<section id="quartiere" class="alt" aria-labelledby="h-q">
+<h2 id="h-q" data-en="The neighbourhood: San Benedetto">Il quartiere: San Benedetto</h2>
+<div class="two">
+<div><p data-en="San Benedetto is a district of Cagliari known for its civic covered market, and for the shops and everyday life around it.">San Benedetto è un quartiere di Cagliari noto per il mercato civico coperto e per i negozi e la vita quotidiana che lo circondano.</p>
+<p data-en="A lived-in area, good for getting a feel for the city's daily life.">Una zona vissuta, adatta a conoscere la vita di tutti i giorni della città.</p>
+<p class="note" data-en="To be completed with the host's own tips; no distances are stated here.">Da completare con i consigli del titolare; qui non sono indicate distanze.</p></div>
+<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Cpath d='M0 240l110-90 80 60 70-50 140 100v40H0z' fill='%23aaa'/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy">
+</div>
+</section>
+
+<section id="recensioni" aria-labelledby="h-rec">
+<h2 id="h-rec" data-en="Your reviews">Le vostre recensioni</h2>
+<div class="slot">
+<p data-en="Area to connect: the guests' real reviews (from the portal, with the host's consent) and the host's replies will appear here.">Area da collegare: qui compariranno le recensioni reali degli ospiti (dal portale, con il consenso del titolare) e le risposte della struttura.</p>
+<p class="small" data-en="No review is shown in this draft.">In questa bozza non è mostrata nessuna recensione.</p>
+</div>
+</section>
+
+<section id="contatti" class="alt" aria-labelledby="h-c">
+<h2 id="h-c" data-en="Contact">Contatti</h2>
+<address>Via Vincenzo Bellini 21, Cagliari (San Benedetto)</address>
+<p data-en="Phone: not published. WhatsApp number shown on the portal listing: +39 347 188 4960 (to be confirmed by the host).">Telefono: non pubblicato. Numero WhatsApp indicato nella scheda del portale: +39 347 188 4960 (da confermare con il titolare).</p><p><a class="btn wa" href="https://wa.me/393471884960" data-en="Write on WhatsApp">Scrivi su WhatsApp</a></p>
+</section>
+</main>
+<footer>
+<p>Bozza dimostrativa preparata per Bellini B&amp;B — non pubblicata</p>
+<p lang="en">Demo draft prepared for Bellini B&amp;B — not published</p>
+</footer>
+<script>
+(function(){
+var els=document.querySelectorAll('[data-en]');
+els.forEach(function(e){e.setAttribute('data-it',e.innerHTML)});
+var btns=document.querySelectorAll('[data-lang]');
+var root=document.documentElement;
+function msg(){var m=document.getElementById('msg');if(m.getAttribute('data-shown')){m.textContent=root.lang==='en'?'demo: no data sent':'demo: nessun dato inviato'}}
+function set(l){root.lang=l;
+els.forEach(function(e){e.innerHTML=e.getAttribute(l==='en'?'data-en':'data-it')});
+btns.forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-lang')===l))});
+document.title=root.getAttribute(l==='en'?'data-title-en':'data-title-it');msg()}
+btns.forEach(function(b){b.addEventListener('click',function(){set(b.getAttribute('data-lang'))})});
+document.getElementById('avail').addEventListener('submit',function(ev){ev.preventDefault();document.getElementById('msg').setAttribute('data-shown','1');msg()});
+var ci=document.getElementById('ci'),co=document.getElementById('co');
+ci.addEventListener('change',function(){co.min=ci.value});
+})();
+</script>
+<nav class="dz-bar" aria-label="Azioni rapide"><a href="https://wa.me/393471884960" data-en="WhatsApp">WhatsApp</a><a class="p" href="#disponibilita" data-en="Request availability">Richiedi disponibilità</a></nav>
+<script>(function(){try{var d=document;if(!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion:reduce)').matches)return;d.documentElement.classList.add('js');var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('dz-in');io.unobserve(e.target)}})},{rootMargin:'0px 0px -8%'});d.querySelectorAll('main section:not(.hero)').forEach(function(s){var c=s.children.length==1&&s.firstElementChild.tagName=='DIV'?s.firstElementChild:s;Array.prototype.forEach.call(c.children,function(k,i){if(k.tagName=='SCRIPT')return;k.classList.add('dz-r');k.style.transitionDelay=Math.min(i,4)*60+'ms';io.observe(k)})})}catch(x){}})();</script>
+</body>
+</html>

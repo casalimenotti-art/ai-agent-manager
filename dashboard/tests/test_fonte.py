@@ -43,3 +43,30 @@ def test_crea_fonte_demo(monkeypatch):
     import config
     monkeypatch.setattr(config, "SOURCE", "demo")
     assert isinstance(fonte.crea_fonte(), fonte.FonteDemo)
+
+
+def test_scoperte_file_valido(tmp_path):
+    p = tmp_path / "scoperte.json"
+    p.write_text('{"aggiornato":"2026-01-01T00:00:00","repo":[{"nome":"a/b","url":"u","perche":"p","stelle":5,"licenza":"MIT"}],'
+                 '"skill":[{"nome":"s","installazioni":3,"comando":"npx x","perche":"q"}]}', encoding="utf-8")
+    s = fonte.leggi_scoperte(p)
+    assert s["repo"][0]["nome"] == "a/b" and s["skill"][0]["comando"] == "npx x" and s["messaggio"] == ""
+
+
+def test_scoperte_file_mancante(tmp_path):
+    s = fonte.leggi_scoperte(tmp_path / "non-esiste.json")
+    assert s["repo"] == [] and s["skill"] == [] and s["messaggio"]
+
+
+def test_scoperte_file_corrotto(tmp_path):
+    p = tmp_path / "scoperte.json"
+    for contenuto in ("{rotto", "[1,2]", '{"repo": "no", "skill": [1, {"nome": "ok"}]}'):
+        p.write_text(contenuto, encoding="utf-8")
+        s = fonte.leggi_scoperte(p)
+        assert isinstance(s["repo"], list) and isinstance(s["skill"], list)
+    assert s["skill"] == [{"nome": "ok"}]
+
+
+def test_demo_e_locale_espongono_scoperte():
+    assert fonte.FonteDemo().scoperte()["repo"]
+    assert set(fonte.FonteLocale().scoperte()) >= {"repo", "skill", "messaggio"}

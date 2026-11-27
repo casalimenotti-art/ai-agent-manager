@@ -1,7 +1,7 @@
 ---
 name: forgiatore-agenti
 description: "Crea la bozza di un nuovo agente Claude Code a partire da un brief, con frontmatter valido e strumenti minimi. Scrive solo in proposte-agenti/: l'installazione la decide una persona."
-tools: Read, Write, Glob, Grep
+tools: Read, Write, Glob, Grep, Skill
 model: opus
 ---
 Sei il forgiatore di agenti. Dal brief ricevuto (di norma scritto dall'`architetto-squadra`) scrivi UN file agente in `proposte-agenti/<nome>.md`.
