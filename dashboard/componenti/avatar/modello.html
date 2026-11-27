@@ -19,14 +19,16 @@ if (!gl) {
 
 function renderGuardian(gl) {
   const vertex = `
-    attribute vec3 point;
+    attribute vec3 point, surface;
     uniform mat3 basis;
     uniform vec3 center, radii;
-    uniform float aspect;
+    uniform float aspect, jaw;
     varying vec3 normal, position;
     void main() {
-      position = basis * (point * radii) + center;
-      normal = normalize(basis * (point / radii));
+      vec3 posed = point * radii;
+      posed.y -= jaw * smoothstep(0.18, 0.27, posed.z) * (1.0 - smoothstep(-0.23, -0.09, posed.y));
+      position = basis * posed + center;
+      normal = normalize(basis * (surface / radii));
       float d = 9.0 - position.z;
       gl_Position = vec4(position.x * 4.25 / aspect, (position.y - 0.70) * 4.25, d * 0.99 - 1.0, d);
     }`;
@@ -64,12 +66,31 @@ function renderGuardian(gl) {
     const a=node(y,x),b=node(y+1,x),c=node(y+1,x+1),d=node(y,x+1);
     geometry.push(...a,...b,...c,...a,...c,...d);
   }
-  gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());
+  const sphere=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,sphere);
   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(geometry),gl.STATIC_DRAW);
   const point = gl.getAttribLocation(program,"point");
   gl.enableVertexAttribArray(point);
   gl.vertexAttribPointer(point,3,gl.FLOAT,false,0,0);
-  const u = Object.fromEntries(["basis","center","radii","aspect","paint","finish"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const surface=gl.getAttribLocation(program,"surface");
+  gl.enableVertexAttribArray(surface);
+  const bytes=Uint8Array.from(atob("__FACE_DATA__"), c=>c.charCodeAt(0));
+  const faceVertices=3890, faceIndices=23016;
+  const face=gl.createBuffer(), indices=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,face);
+  gl.bufferData(gl.ARRAY_BUFFER,bytes.subarray(0,faceVertices*24),gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,indices);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,bytes.subarray(faceVertices*24),gl.STATIC_DRAW);
+  let activeMesh;
+  function bindMesh(mesh) {
+    if (activeMesh===mesh) return;
+    activeMesh=mesh;
+    gl.bindBuffer(gl.ARRAY_BUFFER,mesh);
+    const stride=mesh===face?24:0;
+    gl.vertexAttribPointer(point,3,gl.FLOAT,false,stride,0);
+    gl.vertexAttribPointer(surface,3,gl.FLOAT,false,stride,mesh===face?12:0);
+  }
+  const u = Object.fromEntries(["basis","center","radii","aspect","paint","finish","jaw"].map(name=>[name,gl.getUniformLocation(program,name)]));
   gl.enable(gl.DEPTH_TEST);
   const pearl=[0.83,0.84,0.76], shell=[0.63,0.69,0.63], carbon=[0.16,0.21,0.19], alloy=[0.37,0.46,0.41], jade=[0.50,0.97,0.75];
   const identity=[1,0,0,0,1,0,0,0,1];
@@ -78,6 +99,8 @@ function renderGuardian(gl) {
   const norm=a=>scale(a,1/Math.hypot(...a));
   const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
   function part(center,radii,paint,basis=identity,finish=0.20) {
+    bindMesh(sphere);
+    gl.uniform1f(u.jaw,0);
     gl.uniformMatrix3fv(u.basis,false,basis);
     gl.uniform3fv(u.center,center);
     gl.uniform3fv(u.radii,radii);
@@ -139,11 +162,13 @@ function renderGuardian(gl) {
       part([side*.38,-.47,.24],[.24,.48,.16],pearl);
     }
     part([0,.40,0],[.52,.56,.32],carbon);
-    for (let i=0;i<4;i++) part([0,.20+i*.13,.29],[.30+i*.025,.065,.086],alloy);
-    part([0,1.02+rise,0],[.69,.51,.40],alloy);
+    for (let i=0;i<3;i++) part([0,.22+i*.16,.29],[.26+i*.032,.039,.061],alloy);
+    for (const side of [-1,1]) joint([side*.32,.27,.23],[side*.44,.81,.17],.055,.075,shell);
+    part([0,1.02+rise,0],[.69,.47,.34],carbon);
+    part([0,1.01+rise,.21],[.61,.40,.23],pearl);
+    part([0,1.29+rise,.16],[.62,.14,.25],alloy);
     for (const side of [-1,1]) {
-      part([side*.28,1.04+rise,.21],[.37,.41,.29],pearl);
-      part([side*.43,1.28+rise,.19],[.31,.16,.17],shell);
+      joint([side*.51,.85+rise,.32],[side*.27,.67+rise,.31],.026,.028,alloy);
     }
     part([0,1.03+rise,.49],[.058,.17,.026],carbon);
     part([0,1.09+rise,.52],[.025,.077,.016],jade);
@@ -166,19 +191,23 @@ function renderGuardian(gl) {
       }
       part([h[0]-side*.105,h[1]-.042,h[2]+.026],[.033,.08,.033],pearl);
     }
-    head(0,.03,0,.43,.52,.36,carbon);
-    head(0,.10,.015,.435,.47,.345,pearl,.27);
-    head(0,-.22,.11,.30,.29,.24,shell);
-    head(0,-.06,.19,.356,.35,.246,pearl);
+    head(0,.08,-.17,.39,.415,.29,carbon);
     for (const side of [-1,1]) {
-      head(side*.40,-.02,0,.10,.17,.17,alloy);
-      head(side*.455,-.02,.048,.045,.105,.107,jade);
-      head(side*.154,.028,.369,.119,.062,.052,carbon);
-      head(side*.154+gx*.019,.029-gy*.007,.414,.038,.026,.016,listening?[.68,1,.85]:jade);
-      head(side*.20,-.105,.342,.095,.047,.035,shell);
+      head(side*.37,.03,-.07,.075,.17,.15,alloy);
+      head(side*.423,.03,-.052,.018,.082,.081,jade);
+      head(side*.147,-.021,.348,.066,.013,.012,[.19,.19,.16],.03);
+      head(side*.14,-.074,.283,.078,.065,.076,[.69,.72,.66],.21);
+      head(side*.14+gx*.017,-.074-gy*.009,.355,.027,.029,.011,[.19,.31,.24],.36);
+      head(side*.14+gx*.017,-.074-gy*.009,.364,.011,.013,.006,[.03,.05,.04],.25);
     }
-    head(0,-.072,.398,.060,.101,.065,pearl);
-    head(0,-.208,.350,.100,speaking&&!reduced.matches?.025+.024*Math.abs(Math.sin(t*13)):.016,.031,carbon);
+    bindMesh(face);
+    gl.uniform3fv(u.center,[0,2.06+rise,0]);
+    gl.uniform3fv(u.radii,[1,1,1]);
+    gl.uniform3fv(u.paint,[.79,.72,.62]);
+    gl.uniformMatrix3fv(u.basis,false,basis);
+    gl.uniform1f(u.finish,.11);
+    gl.uniform1f(u.jaw,speaking&&!reduced.matches?.052*Math.abs(Math.sin(t*12)):0);
+    gl.drawElements(gl.TRIANGLES,faceIndices,gl.UNSIGNED_SHORT,0);
     canvas.dataset.ready="true";
   }
   requestAnimationFrame(frame);

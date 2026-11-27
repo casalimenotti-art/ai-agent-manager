@@ -31,4 +31,6 @@ def visuale(stato: str, comando: dict | None = None) -> str:
 
 
 def modello() -> str:
-    return (Path(__file__).parent / "componenti/avatar/modello.html").read_text(encoding="utf-8")
+    cartella = Path(__file__).parent / "componenti/avatar"
+    html = (cartella / "modello.html").read_text(encoding="utf-8")
+    return html.replace("__FACE_DATA__", (cartella / "volto.b64").read_text(encoding="ascii").strip())

@@ -28,7 +28,7 @@ import voce_out
 from frame import html_frame
 
 _FAVICON = Path(__file__).resolve().parent / "assets" / "logo" / "favicon.svg"
-st.set_page_config(page_title="Guardian", page_icon=str(_FAVICON) if _FAVICON.exists() else "🛡️", layout="wide", initial_sidebar_state="auto")
+st.set_page_config(page_title="Guardian", page_icon=str(_FAVICON) if _FAVICON.exists() else "🛡️", layout="wide", initial_sidebar_state="collapsed")
 
 # Tema scuro: .streamlit/config.toml vale solo se si avvia da dashboard/, quindi forzo anche da qui.
 try:
@@ -901,6 +901,33 @@ def pannello_scoperte():
         st.caption("Il comando va copiato ed eseguito a mano, dopo aver letto la skill: da qui non si installa nulla.")
 
 
+# I collegamenti pubblici del progetto sono condivisibili nella plancia del titolare.
+def sez_progetti():
+    st.subheader("Progetti del team")
+    progetti = {
+        "amico1": (("Codex Commerciale", "https://nicola-codex-commerciale.nikoopusce7.chatgpt.site"),),
+        "menotti": (("Guardian · AI Agent Manager", "https://github.com/casalimenotti-art/ai-agent-manager"),),
+    }
+    nomi = {"amico1": "Nicola Pusceddu", "menotti": "Menotti", "amico2": "Francesco Salis"}
+    persone = team.leggi_persone()
+    for col, persona in zip(st.columns(3), persone):
+        with col.container(border=True):
+            id_persona = persona["id"]
+            st.markdown(f"#### {nomi.get(id_persona, persona['nome'])}")
+            st.text(persona["ruolo"])
+            st.caption(persona["agente"])
+            for nome, url in progetti.get(id_persona, ()):
+                st.link_button(nome, url, use_container_width=True)
+            if id_persona not in progetti:
+                st.caption("Nessun progetto pubblico verificato.")
+    st.subheader("Console dei modelli")
+    codex, claude = st.columns(2)
+    codex.link_button("Apri Codex", "https://chatgpt.com/codex", use_container_width=True)
+    claude.link_button("Apri Claude Code", "https://claude.ai/code", use_container_width=True)
+    st.caption("Ogni console usa il tuo account. Le richieste ai motori dei colleghi non sono ancora collegate.")
+    st.link_button("Passaggi su GitHub", "https://github.com/casalimenotti-art/ai-agent-manager/tree/codex/dashboard/passaggi")
+
+
 # ---------------------------------------------------------------- Team: le tre persone e il registro condiviso
 @st.cache_data(ttl=30, show_spinner=False)
 def dati_team():
@@ -960,7 +987,7 @@ def sez_team():
 # ---------------------------------------------------------------- Plancia unica
 SPAZI = [("agenti", "Agenti", sez_agenti), ("team", "Team", sez_team), ("skill", "Skill", sez_skill), ("squadra", "Squadra", sez_squadra),
          ("store", "Store", sez_store), ("clienti", "Clienti", sez_clienti), ("siti", "Siti demo", sez_siti),
-         ("scoperte", "Scoperte", pannello_scoperte), ("consumi", "Consumi", sez_consumi), ("costi", "Costi", sez_costi)]
+         ("scoperte", "Scoperte", pannello_scoperte), ("progetti", "Progetti", sez_progetti), ("consumi", "Consumi", sez_consumi), ("costi", "Costi", sez_costi)]
 
 
 @st.fragment(run_every=15)
@@ -1096,9 +1123,9 @@ if not OSPITE and (_ag := st.session_state.pop("_lancia_da_catalogo", None)):
 
 # Panoramica operativa e passaggi rapidi per il titolare
 if not OSPITE:
-    scorciatoie = st.columns(4)
-    for col, titolo, spazio in zip(scorciatoie, ("Diretta", "Consumi", "Clienti", "Team"),
-                                  ("agenti", "consumi", "clienti", "team")):
+    scorciatoie = st.columns(5)
+    for col, titolo, spazio in zip(scorciatoie, ("Diretta", "Consumi", "Clienti", "Team", "Progetti"),
+                                  ("agenti", "consumi", "clienti", "team", "progetti")):
         col.button(titolo, key=f"rapido_{spazio}", use_container_width=True,
                    on_click=st.session_state.update, args=({"spazio": spazio},))
     posta, centro, consumi = st.columns([1, 2.7, 1.35], gap="medium")
