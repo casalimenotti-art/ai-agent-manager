@@ -113,25 +113,47 @@ class Handoff:
     errors: str = ""
     tests: str = ""
     timestamp: str = ""
+    tests_pending: str = ""
+    dependencies: str = ""
+    important_notes: str = ""
+    from_agent_id: str | None = None
+    to_agent_id: str | None = None
+    stato: str = "aperto"
+
+    TESTI = ("completed_steps", "decisions", "errors", "tests", "tests_pending", "dependencies", "important_notes")
 
     def valida(self) -> "Handoff":
         self.agent_name = pulisci(self.agent_name, 80, True, "agente")
         self.summary = pulisci(self.summary, 4000, True, "obiettivo e stato")
         self.next_step = pulisci(self.next_step, 1000, True, "prossimo passo")
-        for campo in ("completed_steps", "decisions", "errors", "tests"):
+        for campo in self.TESTI:
             setattr(self, campo, pulisci(getattr(self, campo), 4000, nome=campo))
+        for campo in ("from_agent_id", "to_agent_id"):
+            setattr(self, campo, (pulisci(getattr(self, campo), 60, nome=campo) or "").lower() or None)
+        self.stato = scegli(self.stato or "aperto", HANDOFF_STATI, "Stato handoff")
         self.files_changed = pulisci_file(self.files_changed)
         self.timestamp = self.timestamp or adesso()
         return self
+
+    @classmethod
+    def da_riga(cls, r: dict) -> "Handoff":
+        """Ricostruisce un Handoff da una riga del database (campi assenti = vuoti)."""
+        return cls(agent_name=r["agent_name"], summary=r["summary"], next_step=r["next_step"], task_id=r.get("task_id"),
+                   files_changed=r.get("files_changed") or [], timestamp=str(r.get("timestamp") or ""),
+                   from_agent_id=r.get("from_agent_id"), to_agent_id=r.get("to_agent_id"),
+                   stato=r.get("stato") or "aperto", **{k: r.get(k) or "" for k in cls.TESTI})
 
     def markdown(self) -> str:
         files = "\n".join(f"- {f}" for f in self.files_changed) or "- (nessuno)"
         sez = [("Obiettivo e stato attuale", self.summary), ("Lavoro completato", self.completed_steps),
                ("Decisioni prese", self.decisions), ("Problemi incontrati", self.errors),
-               ("Test eseguiti", self.tests)]
+               ("Test eseguiti", self.tests), ("Test ancora necessari", self.tests_pending),
+               ("Dipendenze", self.dependencies), ("Da non perdere", self.important_notes)]
         corpo = "\n\n".join(f"## {t}\n{v or '(niente)'}" for t, v in sez)
-        return (f"# Handoff{f' task #{self.task_id}' if self.task_id else ''} — {self.agent_name}\n\n"
-                f"- creato: {self.timestamp}\n\n{corpo}\n\n## File modificati\n{files}\n\n"
+        verso = f"\n- per: {self.to_agent_id}" if self.to_agent_id else ""
+        da = f" ({self.from_agent_id})" if self.from_agent_id else ""
+        return (f"# Handoff{f' task #{self.task_id}' if self.task_id else ''} — {self.agent_name}{da}\n\n"
+                f"- creato: {self.timestamp}\n- stato: {self.stato}{verso}\n\n{corpo}\n\n## File modificati\n{files}\n\n"
                 f"## Prossimo passo\n{self.next_step}\n")
 
 

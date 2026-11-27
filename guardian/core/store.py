@@ -91,3 +91,21 @@ def crea_store_locale(path):
     s = SqliteStore(path)
     seed_users_da_registro(s)
     return s
+
+
+def valida_memoria(kind, content, source) -> dict:
+    """Ogni voce di memoria ha tipo, contenuto e fonte (da dove viene l'informazione)."""
+    from .models import MEMORY_KINDS
+    return {"kind": scegli(kind, MEMORY_KINDS, "Tipo di memoria"),
+            "content": pulisci(content, 4000, True, "contenuto"),
+            "source": pulisci(source, 300, True, "fonte")}
+
+
+def testo_ripresa(h) -> str:
+    """Voce di memoria 'ripresa' creata da un handoff: dove eravamo e cosa fare dopo."""
+    parti = [f"Prossimo passo: {h.next_step}", f"Stato: {h.summary[:1200]}"]
+    if h.tests_pending:
+        parti.append(f"Test ancora necessari: {h.tests_pending[:500]}")
+    if h.important_notes:
+        parti.append(f"Da non perdere: {h.important_notes[:800]}")
+    return "\n".join(parti)

@@ -1,7 +1,7 @@
 import pytest
 from streamlit.testing.v1 import AppTest
 
-PAGINE = ["Overview", "Agenti", "Task", "Progetti", "Attività", "Log", "Handoff", "Approvazioni", "Notifiche",
+PAGINE = ["Overview", "Agenti", "Task", "Progetti", "Attività", "Log", "Handoff", "Memoria", "Approvazioni", "Notifiche",
           "Dispositivi"]
 
 
@@ -21,7 +21,8 @@ def at(tmp_path, monkeypatch):
     s.bridge_agent_logs(tok, a["id"], [{"message": "Strumento: Bash", "source": "hook"}])
     _, tok = s.register_device("menotti", "PC", "Claude Code")
     s.bridge_heartbeat(tok, "occupato", current_task=t["id"])
-    s.bridge_checkpoint(tok, task_id=t["id"], summary="stato", next_step="passo")
+    s.bridge_checkpoint(tok, task_id=t["id"], summary="stato", next_step="passo", tests_pending="e2e")
+    s.add_memory("decisione", "Backend Supabase", "piano v2", p["id"])
     s.request_approval("Inviare email", requested_by="amico1", action_type="email", reason="preventivo",
                        impact="1 email", data_involved="indirizzo del cliente", task_id=t["id"])
     a = AppTest.from_file("../guardian/app.py", default_timeout=30)

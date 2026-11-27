@@ -14,6 +14,7 @@ from pathlib import Path
 from .models import (ACTION_TYPES, AGENT_STATI, AGENT_TIPI, APPROVAL_STATI, DEVICE_STATI, TASK_APERTI, TASK_STATI_V1,
                      TASK_TERMINALI, Handoff, ValidazioneError, adesso, pulisci, pulisci_file, scegli)
 from .store import (JSON_FIELDS, LIST_FIELDS, MSG_DIPENDENZE, _valida_task, hash_token, messaggio_db, nuovo_token,
+                    testo_ripresa, valida_memoria,
                     severita)
 
 SCHEMA_V1 = """
@@ -377,20 +378,81 @@ class SqliteStore:
 
     def add_handoff(self, h: Handoff, device_id: int | None = None, user_id: str | None = None) -> int:
         h.valida()
-        if h.task_id and not self.task(h.task_id):
+        t = self.task(h.task_id) if h.task_id else None
+        if h.task_id and not t:
             raise ValidazioneError(f"Task #{h.task_id} inesistente.")
+        dest = self.agent(h.to_agent_id) if h.to_agent_id else None
+        if h.to_agent_id and not dest:
+            raise ValidazioneError(f"Agente destinatario inesistente: {h.to_agent_id}")
         hid = self._insert("handoffs", {"task_id": h.task_id, "device_id": device_id, "agent_name": h.agent_name,
-                                        "summary": h.summary, "completed_steps": h.completed_steps,
-                                        "files_changed": h.files_changed, "decisions": h.decisions,
-                                        "errors": h.errors, "tests": h.tests, "next_step": h.next_step,
-                                        "timestamp": h.timestamp})
+                                        "summary": h.summary, "files_changed": h.files_changed, "next_step": h.next_step,
+                                        "timestamp": h.timestamp, "from_agent_id": h.from_agent_id,
+                                        "to_agent_id": h.to_agent_id, "stato": "aperto",
+                                        **{k: getattr(h, k) for k in Handoff.TESTI}})
         if h.task_id:
             self._x("UPDATE tasks SET next_step=?, updated_at=? WHERE id=?", (h.next_step, adesso(), h.task_id))
+            self.add_memory("ripresa", testo_ripresa(h), f"handoff #{hid}", t.get("project_id"), h.task_id, user_id)
         if device_id:
             self._x("UPDATE devices SET last_checkpoint=? WHERE id=?", (h.timestamp, device_id))
-        self.add_event("checkpoint", f"Handoff salvato. Prossimo passo: {h.next_step}", user_id=user_id,
-                       agent_name=h.agent_name, task_id=h.task_id, device_id=device_id, files=h.files_changed)
+        verso = f" → {dest['nome']}" if dest else ""
+        self.add_event("handoff" if dest else "checkpoint", f"Handoff salvato{verso}. Prossimo passo: {h.next_step}",
+                       user_id=user_id,
+                       agent_name=h.agent_name, agent_id=h.from_agent_id, task_id=h.task_id, device_id=device_id,
+                       files=h.files_changed, project_id=t.get("project_id") if t else None)
+        if dest:  # specchio del trigger handoffs_notifica (migrazione 004)
+            self._notifica("handoff_to_you", f"Handoff per {dest['nome']}: {h.next_step}", [dest["user_id"]],
+                           "handoffs", hid)
         return hid
+
+    def handoff(self, handoff_id: int) -> dict | None:
+        r = self._q("SELECT * FROM handoffs WHERE id=?", (handoff_id,))
+        return r[0] if r else None
+
+    def take_handoff(self, handoff_id: int, agent_id: str | None = None, by: str | None = None) -> dict:
+        h = self.handoff(handoff_id)
+        if not h or h["stato"] != "aperto":
+            raise ValidazioneError("Handoff inesistente o già preso.")
+        if agent_id and not self.agent(agent_id):
+            raise ValidazioneError("Agente inesistente.")
+        self._x("UPDATE handoffs SET stato='preso', to_agent_id=COALESCE(?, to_agent_id) WHERE id=? AND stato='aperto'",
+                (agent_id, handoff_id))
+        self.add_event("handoff_taken", f"Handoff #{handoff_id} preso" + (f" da {agent_id}" if agent_id else ""),
+                       user_id=by, agent_id=agent_id, task_id=h.get("task_id"))
+        return self.handoff(handoff_id)
+
+    def close_handoff(self, handoff_id: int, by: str | None = None) -> dict:
+        h = self.handoff(handoff_id)
+        if not h or h["stato"] == "chiuso":
+            raise ValidazioneError("Handoff inesistente o già chiuso.")
+        self._x("UPDATE handoffs SET stato='chiuso' WHERE id=?", (handoff_id,))
+        self.add_event("handoff_closed", f"Handoff #{handoff_id} chiuso", user_id=by, task_id=h.get("task_id"))
+        return self.handoff(handoff_id)
+
+    # --- memoria condivisa ----------------------------------------------------
+    def memories(self, project_id=None, task_id=None, kind=None, q: str | None = None, includi_superate: bool = False,
+                 limit: int = 100) -> list[dict]:
+        where, args = [], []
+        for col, val in (("project_id", project_id), ("task_id", task_id), ("kind", kind)):
+            if val not in (None, ""):
+                where.append(f"{col}=?")
+                args.append(val)
+        if not includi_superate:
+            where.append("superseded_by IS NULL")
+        for parola in (q or "").split():
+            where.append("lower(content) LIKE ?")
+            args.append(f"%{parola.lower()}%")
+        w = (" WHERE " + " AND ".join(where)) if where else ""
+        return self._q(f"SELECT * FROM memory{w} ORDER BY created_at DESC, id DESC LIMIT ?", (*args, limit))
+
+    def add_memory(self, kind, content, source, project_id=None, task_id=None, created_by=None) -> int:
+        campi = valida_memoria(kind, content, source)
+        return self._insert("memory", {**campi, "project_id": project_id, "task_id": task_id,
+                                       "created_by": created_by, "created_at": adesso()})
+
+    def supersede_memory(self, old_id: int, new_id: int) -> None:
+        if old_id == new_id or not self._q("SELECT 1 FROM memory WHERE id=?", (new_id,)):
+            raise ValidazioneError("La voce che sostituisce deve esistere ed essere diversa.")
+        self._x("UPDATE memory SET superseded_by=? WHERE id=?", (new_id, old_id))
 
     # --- approvazioni --------------------------------------------------------
     def approvals(self, status: str | None = None) -> list[dict]:
@@ -471,8 +533,24 @@ class SqliteStore:
 
     def bridge_checkpoint(self, token, **campi) -> int:
         d = self._device_by_token(token)
+        if campi.get("from_agent_id"):
+            self._agente_del_device(d, campi["from_agent_id"])
+        campi = {k: v for k, v in campi.items() if v is not None}
         campi.setdefault("agent_name", d["agent_name"] or d["nome"])
         return self.add_handoff(Handoff(**campi), device_id=d["id"], user_id=d["user_id"])
+
+    def bridge_handoff_take(self, token, handoff_id, agent_id) -> dict:
+        d = self._device_by_token(token)
+        a = self._agente_del_device(d, agent_id)
+        return self.take_handoff(handoff_id, a["id"], d["user_id"])
+
+    def bridge_memory_add(self, token, kind, content, source, project_id=None, task_id=None) -> int:
+        d = self._device_by_token(token)
+        return self.add_memory(kind, content, source, project_id, task_id, d["user_id"])
+
+    def bridge_memory_search(self, token, q=None, project_id=None, task_id=None) -> list[dict]:
+        self._device_by_token(token)
+        return self.memories(project_id, task_id, q=q, limit=50)
 
     def bridge_pull_tasks(self, token) -> list[dict]:
         d = self._device_by_token(token)

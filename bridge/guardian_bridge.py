@@ -33,7 +33,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
-from guardian.core.models import TASK_STATI, Handoff, ValidazioneError, pulisci, pulisci_file  # noqa: E402
+from guardian.core.models import MEMORY_KINDS, TASK_STATI, Handoff, ValidazioneError, pulisci, pulisci_file  # noqa: E402
 
 CASA = Path(os.environ.get("GUARDIAN_HOME", Path.home() / ".guardian"))
 
@@ -153,15 +153,41 @@ def cmd_checkpoint(client, args):
     h = Handoff(agent_name=os.environ.get("GUARDIAN_AGENT") or args.agente or "agente", summary=args.summary,
                 next_step=args.next, task_id=args.task, completed_steps=args.done or "",
                 files_changed=args.file, decisions=args.decisions or "", errors=args.errors or "",
-                tests=args.tests or "").valida()
+                tests=args.tests or "", tests_pending=args.tests_pending or "", dependencies=args.deps or "",
+                important_notes=args.notes or "", to_agent_id=args.to_agent,
+                from_agent_id=args.from_agent or os.environ.get("GUARDIAN_CLAUDE_AGENT_ID")
+                or os.environ.get("GUARDIAN_CODEX_AGENT_ID") or None).valida()
     hid = client.call("bridge_checkpoint", task_id=h.task_id, agent_name=h.agent_name, summary=h.summary,
                       completed_steps=h.completed_steps, files_changed=h.files_changed, decisions=h.decisions,
-                      errors=h.errors, tests=h.tests, next_step=h.next_step)
+                      errors=h.errors, tests=h.tests, next_step=h.next_step, tests_pending=h.tests_pending,
+                      dependencies=h.dependencies, important_notes=h.important_notes,
+                      from_agent_id=h.from_agent_id, to_agent_id=h.to_agent_id)
     cartella = CASA / "handoffs"
     cartella.mkdir(parents=True, exist_ok=True)
     copia = cartella / f"{time.strftime('%Y%m%dT%H%M%S')}-task{h.task_id or 0}.md"
     copia.write_text(h.markdown(), encoding="utf-8")
     print(f"Handoff #{hid} salvato su Guardian. Copia locale: {copia}")
+    return 0
+
+
+def cmd_handoff_take(client, args):
+    h = client.call("bridge_handoff_take", handoff_id=args.id, agent_id=args.agent)
+    print(Handoff.da_riga(h).markdown())
+    print(f"Handoff #{h['id']} preso da {args.agent}: riparti dal «Prossimo passo».")
+    return 0
+
+
+def cmd_memory(client, args):
+    if args.azione == "add":
+        mid = client.call("bridge_memory_add", kind=args.tipo, content=pulisci(args.testo, 4000, True, "contenuto"),
+                          source=pulisci(args.fonte, 300, True, "fonte"), project_id=args.progetto, task_id=args.task)
+        print(f"Memoria #{mid} salvata.")
+        return 0
+    righe = client.call("bridge_memory_search", q=args.testo or None, project_id=args.progetto, task_id=args.task) or []
+    for m in righe:
+        print(f"#{m['id']} [{m['kind']}] {str(m['created_at'])[:10]} ({m['source']})\n  {m['content']}")
+    if not righe:
+        print("Nessuna voce di memoria trovata.")
     return 0
 
 
@@ -338,6 +364,21 @@ def parser() -> argparse.ArgumentParser:
     c.add_argument("--tests")
     c.add_argument("--next", required=True, help="Prossimo passo preciso")
     c.add_argument("--file", action="append", default=[])
+    c.add_argument("--tests-pending", help="Test ancora necessari")
+    c.add_argument("--deps", help="Dipendenze (task, persone, accessi)")
+    c.add_argument("--notes", help="Informazioni importanti da non perdere")
+    c.add_argument("--to-agent", help="Agente destinatario (es. amico1-codex): riceve una notifica")
+    c.add_argument("--from-agent", help="Agente che passa il lavoro (default: quello configurato in bridge/.env)")
+    ht = sub.add_parser("handoff-take", help="Prendi in carico un handoff e stampalo")
+    ht.add_argument("id", type=int)
+    ht.add_argument("--agent", required=True)
+    m = sub.add_parser("memory", help="Memoria condivisa: add / search")
+    m.add_argument("azione", choices=("add", "search"))
+    m.add_argument("testo", nargs="?", default="")
+    m.add_argument("--tipo", default="info_progetto", choices=MEMORY_KINDS)
+    m.add_argument("--fonte", default="", help="Da dove viene l'informazione (obbligatoria per add)")
+    m.add_argument("--progetto", type=int)
+    m.add_argument("--task", type=int)
     sub.add_parser("pull")
     r = sub.add_parser("run", help="Ciclo continuo: PC + agenti configurati in bridge/.env")
     r.add_argument("--ogni", type=int, default=30, help="Secondi tra un giro e l'altro (min 15)")
@@ -357,7 +398,8 @@ def parser() -> argparse.ArgumentParser:
 
 COMANDI = {"heartbeat": cmd_heartbeat, "event": cmd_event, "task-update": cmd_task_update,
            "checkpoint": cmd_checkpoint, "pull": cmd_pull, "sync-registro": cmd_sync_registro, "run": cmd_run,
-           "agent-register": cmd_agent_register, "claim": cmd_claim}
+           "agent-register": cmd_agent_register, "claim": cmd_claim, "handoff-take": cmd_handoff_take,
+           "memory": cmd_memory}
 
 
 def main(argv=None) -> int:

@@ -15,12 +15,13 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from guardian.core.store import crea_store_locale  # noqa: E402
-from guardian.ui import (activity, agents, approvals, devices, handoff, logs, notifications, overview,  # noqa: E402
-                         projects, tasks)
+from guardian.ui import (activity, agents, approvals, devices, handoff, logs, memory, notifications,  # noqa: E402
+                         overview, projects, tasks)
 from guardian.ui.components import CSS, Ctx, esegui, segreto  # noqa: E402
 
 PAGINE = {"Overview": overview, "Agenti": agents, "Task": tasks, "Progetti": projects, "Attività": activity,
-          "Log": logs, "Handoff": handoff, "Approvazioni": approvals, "Notifiche": notifications, "Dispositivi": devices}
+          "Log": logs, "Handoff": handoff, "Memoria": memory, "Approvazioni": approvals, "Notifiche": notifications,
+          "Dispositivi": devices}
 
 st.set_page_config(page_title="Guardian", page_icon="🛡️", layout="wide", initial_sidebar_state="auto")
 st.markdown(CSS, unsafe_allow_html=True)

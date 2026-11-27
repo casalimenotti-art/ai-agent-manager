@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .models import (ACTION_TYPES, AGENT_STATI, AGENT_TIPI, APPROVAL_STATI, Handoff, ValidazioneError, adesso, pulisci,
                      pulisci_file, scegli)
-from .store import _valida_task, hash_token, messaggio_db, nuovo_token, severita
+from .store import _valida_task, hash_token, messaggio_db, nuovo_token, severita, testo_ripresa, valida_memoria
 
 COLONNE_DEVICES = ("id,user_id,nome,agent_name,model,stato,current_task_id,error,limit_reached,last_seen,"
                    "last_checkpoint,created_at")
@@ -237,16 +237,62 @@ class SupabaseStore:
         return self._ex(q.order("timestamp", desc=True).limit(limit))
 
     def add_handoff(self, h: Handoff, device_id=None, user_id=None):
+        """Le notifiche al destinatario le crea il trigger handoffs_notifica (migrazione 004)."""
         h.valida()
         r = self._ex(self._t("handoffs").insert({
             "task_id": h.task_id, "device_id": device_id, "agent_name": h.agent_name, "summary": h.summary,
-            "completed_steps": h.completed_steps, "files_changed": h.files_changed, "decisions": h.decisions,
-            "errors": h.errors, "tests": h.tests, "next_step": h.next_step}))[0]
+            "files_changed": h.files_changed, "next_step": h.next_step, "from_agent_id": h.from_agent_id,
+            "to_agent_id": h.to_agent_id, "stato": "aperto", **{k: getattr(h, k) for k in Handoff.TESTI}}))[0]
+        t = None
         if h.task_id:
-            self._ex(self._t("tasks").update({"next_step": h.next_step}).eq("id", h.task_id))
-        self.add_event("checkpoint", f"Handoff salvato. Prossimo passo: {h.next_step}", user_id=user_id,
-                       agent_name=h.agent_name, task_id=h.task_id, files=h.files_changed)
+            t = self._ex(self._t("tasks").update({"next_step": h.next_step}).eq("id", h.task_id))[0]
+            self.add_memory("ripresa", testo_ripresa(h), f"handoff #{r['id']}", t.get("project_id"), h.task_id, user_id)
+        self.add_event("handoff" if h.to_agent_id else "checkpoint",
+                       f"Handoff salvato{' → ' + h.to_agent_id if h.to_agent_id else ''}. Prossimo passo: {h.next_step}",
+                       user_id=user_id, agent_name=h.agent_name, agent_id=h.from_agent_id, task_id=h.task_id,
+                       files=h.files_changed, project_id=t.get("project_id") if t else None)
         return r["id"]
+
+    def handoff(self, handoff_id):
+        r = self._ex(self._t("handoffs").select("*").eq("id", handoff_id))
+        return r[0] if r else None
+
+    def take_handoff(self, handoff_id, agent_id=None, by=None):
+        campi = {"stato": "preso", **({"to_agent_id": agent_id} if agent_id else {})}
+        r = self._ex(self._t("handoffs").update(campi).eq("id", handoff_id).eq("stato", "aperto"))
+        if not r:
+            raise ValidazioneError("Handoff inesistente o già preso.")
+        self.add_event("handoff_taken", f"Handoff #{handoff_id} preso" + (f" da {agent_id}" if agent_id else ""),
+                       user_id=by, agent_id=agent_id, task_id=r[0].get("task_id"))
+        return r[0]
+
+    def close_handoff(self, handoff_id, by=None):
+        r = self._ex(self._t("handoffs").update({"stato": "chiuso"}).eq("id", handoff_id).neq("stato", "chiuso"))
+        if not r:
+            raise ValidazioneError("Handoff inesistente o già chiuso.")
+        self.add_event("handoff_closed", f"Handoff #{handoff_id} chiuso", user_id=by, task_id=r[0].get("task_id"))
+        return r[0]
+
+    def memories(self, project_id=None, task_id=None, kind=None, q=None, includi_superate=False, limit=100):
+        sel = self._t("memory").select("id,project_id,task_id,kind,content,source,created_by,created_at,superseded_by")
+        for col, val in (("project_id", project_id), ("task_id", task_id), ("kind", kind)):
+            if val not in (None, ""):
+                sel = sel.eq(col, val)
+        if not includi_superate:
+            sel = sel.is_("superseded_by", "null")
+        if q and q.strip():
+            sel = sel.text_search("ricerca", q.strip(), options={"config": "italian", "type": "plain"})
+        return self._ex(sel.order("created_at", desc=True).limit(limit))
+
+    def add_memory(self, kind, content, source, project_id=None, task_id=None, created_by=None):
+        campi = valida_memoria(kind, content, source)
+        return self._ex(self._t("memory").insert({**campi, "project_id": project_id, "task_id": task_id,
+                                                  "created_by": created_by}))[0]["id"]
+
+    def supersede_memory(self, old_id, new_id):
+        if old_id == new_id:
+            raise ValidazioneError("La voce che sostituisce deve essere diversa.")
+        self._ex(self._t("memory").update({"superseded_by": new_id}, returning=self._minimal()).eq("id", old_id))
 
     # --- approvazioni ---------------------------------------------------------------
     def approvals(self, status=None):

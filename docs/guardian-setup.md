@@ -11,7 +11,7 @@ registro/*.jsonl su GitHub ──bridge sync-registro──► timeline Attivit�
 
 ## 1. Supabase (Menotti, ~10 min, piano gratuito)
 1. https://supabase.com → *New project* (regione EU, es. Frankfurt). Salva la password del DB nel tuo gestore password.
-2. *SQL Editor* → incolla ed esegui, in ordine, `supabase/migrations/001_guardian.sql` poi `002_command_center.sql` e `003_bridge_agenti.sql`
+2. *SQL Editor* → incolla ed esegui, in ordine, `supabase/migrations/001_guardian.sql` poi `002_command_center.sql`, `003_bridge_agenti.sql` e `004_memoria_handoff.sql`
    (ogni migrazione è rieseguibile; prima del commit è provata su PostgreSQL con `bash tests/pg/run.sh`).
 3. Sempre nel SQL Editor, crea i 3 collaboratori con le **loro** email (blocco commentato in fondo al file SQL):
    ```sql
@@ -57,7 +57,9 @@ i primi 200 caratteri delle richieste all'agente (con le chiavi riconosciute sos
 |---|---|
 | inizio task | `python bridge/guardian_bridge.py task-update 4 --stato running` |
 | evento utile | `python bridge/guardian_bridge.py event nota "Test passati" --task 4 --file x.py` |
-| limite vicino / pausa | `python bridge/guardian_bridge.py checkpoint --task 4 --summary "obiettivo + stato" --done "…" --decisions "…" --errors "…" --tests "…" --next "passo preciso" --file a.py` |
+| limite vicino / pausa / passaggio | `python bridge/guardian_bridge.py checkpoint --task 4 --summary "obiettivo + stato" --done "…" --decisions "…" --errors "…" --tests "…" --tests-pending "…" --deps "…" --notes "da non perdere" --next "passo preciso" --to-agent amico1-codex --file a.py` |
+| riprendere un passaggio | `python bridge/guardian_bridge.py handoff-take 12 --agent amico1-codex` (stampa tutto il contesto) |
+| memoria condivisa | `python bridge/guardian_bridge.py memory add "testo" --tipo decisione --fonte "riunione 27/11"` · `memory search "parole"` |
 | fine task | `python bridge/guardian_bridge.py task-update 4 --stato completed` |
 | task assegnati a me | `python bridge/guardian_bridge.py pull` (scrive `~/.guardian/inbox.json`, **non** esegue nulla) |
 | prendere un task ready | `python bridge/guardian_bridge.py claim 7 --agent menotti-claude` (→ running) |
@@ -74,4 +76,5 @@ Il registro (`registro/scrivi.py`, AGENTS.md) resta obbligatorio: è la traccia 
 ## Sviluppo locale (senza Supabase)
 `streamlit run guardian/app.py` → modalità locale su `~/.guardian/hub.db` (dati NON condivisi).
 Bridge locale: `python bridge/guardian_bridge.py --local ~/.guardian/hub.db init-local --user menotti --nome PC`.
+Export dei task aperti in GUARDIAN_TASKS.md (solo tra i marcatori): `python -m guardian.export_md`.
 Test: `python -m pytest -q tests` (include `tests/pg/run.sh` se PostgreSQL è installato).

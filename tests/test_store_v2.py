@@ -111,4 +111,4 @@ def test_migrazioni_postgres():
     r = subprocess.run(["bash", str(Path(__file__).parent / "pg" / "run.sh")], capture_output=True, text=True,
                        timeout=300)
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
-    assert "CHECK 002 OK" in r.stdout and "CHECK 003 OK" in r.stdout
+    assert "CHECK 002 OK" in r.stdout and "CHECK 003 OK" in r.stdout and "CHECK 004 OK" in r.stdout
