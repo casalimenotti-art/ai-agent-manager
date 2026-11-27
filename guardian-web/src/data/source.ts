@@ -32,6 +32,8 @@ export interface DataSource {
   logAgente(agentId: string, limite?: number): Promise<AgentLog[]>;
   memoria(filtro: { project_id?: number; task_id?: number; q?: string }): Promise<Memory[]>;
   aggiungiMemoria(m: Pick<Memory, 'kind' | 'content' | 'source'> & Partial<Memory>, by: string): Promise<void>;
+  /** Domanda al cervello sul PC del titolare: restituisce le frasi della risposta mentre arrivano. */
+  chiediCervello(userId: string, testo: string, contesto: Record<string, unknown>): AsyncIterable<string>;
 }
 
 export class ErroreDati extends Error {}

@@ -11,7 +11,7 @@ registro/*.jsonl su GitHub ──bridge sync-registro──► timeline Attivit�
 
 ## 1. Supabase (Menotti, ~10 min, piano gratuito)
 1. https://supabase.com → *New project* (regione EU, es. Frankfurt). Salva la password del DB nel tuo gestore password.
-2. *SQL Editor* → incolla ed esegui, in ordine, `supabase/migrations/001_guardian.sql` poi `002_command_center.sql`, `003_bridge_agenti.sql`, `004_memoria_handoff.sql` e `005_stanze.sql`
+2. *SQL Editor* → incolla ed esegui, in ordine, `supabase/migrations/001_guardian.sql` poi `002_command_center.sql`, `003_bridge_agenti.sql`, `004_memoria_handoff.sql`, `005_stanze.sql` e `006_cervello.sql`
    (ogni migrazione è rieseguibile; prima del commit è provata su PostgreSQL con `bash tests/pg/run.sh`).
 3. Sempre nel SQL Editor, crea i 3 collaboratori con le **loro** email (blocco commentato in fondo al file SQL):
    ```sql
@@ -66,6 +66,16 @@ i primi 200 caratteri delle richieste all'agente (con le chiavi riconosciute sos
 | importare il registro git | `python bridge/guardian_bridge.py sync-registro --branches` |
 
 Il registro (`registro/scrivi.py`, AGENTS.md) resta obbligatorio: è la traccia in git; il bridge è la vista live.
+
+## 3b. Il cervello di Guardian (solo sul PC di Menotti, facoltativo)
+Con il bridge configurato e Claude Code installato:
+```
+python bridge/guardian_bridge.py cervello
+```
+Da quel momento le domande "aperte" fatte all'HQ (anche a voce e dal telefono) arrivano a Claude Code **in sola risposta**:
+modalità plan, nessuno strumento di scrittura, cartella vuota `~/.guardian/cervello`. La risposta torna a frasi e Guardian la legge a voce.
+Usa il tuo abbonamento Claude Code. Funziona solo mentre il PC è acceso e il comando gira; l'HQ mostra "Cervello online/offline".
+Solo il PC di un admin può fare da cervello (regola nel database). Le domande restano 7 giorni (`pulisci_cervello()`).
 
 ## 4. Verifica finale (smoke test, una volta)
 Dal tuo PC, dopo i punti 1–3:

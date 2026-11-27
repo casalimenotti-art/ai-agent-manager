@@ -8,6 +8,9 @@ import { controllaTesto, type DataSource, type Diretta, ErroreDati, type Modific
 
 const min = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 
+// solo demo e solo con ?cervello=finto: un cervello di prova dichiarato, per vedere e testare il flusso
+const CERVELLO_FINTO = typeof location !== 'undefined' && new URLSearchParams(location.search).get('cervello') === 'finto';
+
 const STANZE: Stanza[] = [
   { id: 'sviluppo', nome: 'Sviluppo & Siti', descrizione: 'Siti, software, test e la dashboard', colore: '#338ced', responsabile: 'menotti', ordine: 1, attiva: true },
   { id: 'vendite', nome: 'Vendite', descrizione: 'Solo vendite: lead, visite, bozze, preventivi, esiti', colore: '#e76624', responsabile: 'amico1', ordine: 2, attiva: true },
@@ -55,6 +58,7 @@ function seme(): Snapshot & { logs: AgentLog[]; memory: Memory[] } {
       { id: 3, nome: 'Amministrazione SRL', descrizione: null, stato: 'attivo', created_at: min(5000), stanza_id: 'amministrazione' },
     ],
     stanze: STANZE,
+    cervello: CERVELLO_FINTO ? { modello: 'cervello finto (demo)', ultimo_battito: new Date().toISOString() } : null,
     events: [
       ev(1, 'task_started', 'Claude Code ha preso il task #1: Sito demo Ottica Ungari', 50, { task_id: 1, agent_id: 'menotti-claude', agent_name: 'Claude Code' }),
       ev(2, 'approval_requested', 'Richiesta approvazione: Invio preventivo a Bellini B&B', 35, { task_id: 3, severity: 'warning', user_id: 'amico1' }),
@@ -227,5 +231,12 @@ export class DemoSource implements DataSource {
     this.d.memory.unshift({ id: this.nid(this.d.memory), kind: m.kind, content, source, project_id: m.project_id ?? null,
       task_id: m.task_id ?? null, created_by: by, created_at: new Date().toISOString() });
     this.cambiato();
+  }
+
+  async *chiediCervello(_userId: string, testo: string, contesto: Record<string, unknown>): AsyncIterable<string> {
+    if (!CERVELLO_FINTO) { yield 'Il cervello non è collegato.'; return; }
+    const frasi = [`Risposta di prova del cervello, solo in demo.`, `Ho ricevuto: «${testo.slice(0, 60)}».`,
+      `Il contesto aveva ${Object.keys(contesto).length} voci.`];
+    for (const f of frasi) { await new Promise((ok) => setTimeout(ok, 250)); yield f; }
   }
 }

@@ -6,7 +6,7 @@ import { eventiModificaTask } from './eventi';
 import { controllaTesto, type DataSource, type Diretta, ErroreDati, messaggioVincolo, type ModificaTask, type NuovoTask } from './source';
 
 const COLONNE_DEVICES = 'id,user_id,nome,agent_name,model,stato,current_task_id,error,limit_reached,last_seen,last_checkpoint,created_at';
-const TABELLE_LIVE = ['agents', 'tasks', 'approvals', 'notifications', 'activity_events', 'devices', 'handoffs', 'stanze', 'projects'];
+const TABELLE_LIVE = ['agents', 'tasks', 'approvals', 'notifications', 'activity_events', 'devices', 'handoffs', 'stanze', 'projects', 'guardian_cervello'];
 
 export class SupabaseSource implements DataSource {
   readonly modo = 'supabase' as const;
@@ -44,7 +44,7 @@ export class SupabaseSource implements DataSource {
   async esci() { await this.c.auth.signOut(); }
 
   async carica(userId: string): Promise<Snapshot> {
-    const [users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze] = await Promise.all([
+    const [users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze, cervello] = await Promise.all([
       this.q(this.c.from('users').select('id,nome,ruolo,agente,stato,accesso').order('id')),
       this.q(this.c.from('devices').select(COLONNE_DEVICES).order('user_id')),
       this.q(this.c.from('agents').select('*').order('user_id')),
@@ -56,8 +56,11 @@ export class SupabaseSource implements DataSource {
       this.q(this.c.from('handoffs').select('*').order('timestamp', { ascending: false }).limit(100)),
       // 005 non ancora applicata: niente stanze invece di un errore
       this.q(this.c.from('stanze').select('*').eq('attiva', true).order('ordine').then((r) => ({ data: r.error ? [] : r.data, error: null }))),
+      // 006 non ancora applicata: cervello non configurato
+      this.q(this.c.from('guardian_cervello').select('modello,ultimo_battito').limit(1).then((r) => ({ data: r.error ? [] : r.data, error: null }))),
     ]);
-    return { users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze } as Snapshot;
+    return { users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze,
+      cervello: (cervello as Snapshot['cervello'][])[0] ?? null } as Snapshot;
   }
 
   async ping(): Promise<number> {
@@ -160,5 +163,26 @@ export class SupabaseSource implements DataSource {
     const content = controllaTesto(m.content, 'contenuto'); const source = controllaTesto(m.source, 'fonte', 300);
     if (!content || !source) throw new ErroreDati('Contenuto e fonte sono obbligatori.');
     await this.q(this.c.from('memory').insert({ kind: m.kind, content, source, project_id: m.project_id ?? null, task_id: m.task_id ?? null, created_by: by }));
+  }
+
+  async *chiediCervello(userId: string, testo: string, contesto: Record<string, unknown>): AsyncIterable<string> {
+    const [r] = await this.q<{ id: number }[]>(this.c.from('guardian_richieste').insert({ user_id: userId, testo: controllaTesto(testo, 'domanda', 2000), contesto }).select('id'));
+    const coda: { seq: number; testo: string; fine: boolean }[] = []; let sveglia: (() => void) | null = null;
+    const ch = this.c.channel(`cervello-${r.id}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guardian_risposte', filter: `richiesta_id=eq.${r.id}` },
+      (p) => { coda.push(p.new as never); sveglia?.(); }).subscribe();
+    let prossimo = 0; const inizio = Date.now();
+    try {
+      while (Date.now() - inizio < 60_000) {
+        // anche senza Realtime: lettura periodica delle risposte arrivate
+        if (!coda.some((x) => x.seq === prossimo)) {
+          const nuove = await this.q<{ seq: number; testo: string; fine: boolean }[]>(this.c.from('guardian_risposte').select('seq,testo,fine').eq('richiesta_id', r.id).gte('seq', prossimo).order('seq'));
+          coda.push(...nuove.filter((n) => !coda.some((c) => c.seq === n.seq)));
+        }
+        const x = coda.find((c) => c.seq === prossimo);
+        if (x) { prossimo++; if (x.testo) yield x.testo; if (x.fine) return; continue; }
+        await new Promise<void>((ok) => { sveglia = ok; setTimeout(ok, 800); });
+      }
+      yield 'Il cervello non ha risposto in tempo: forse il PC è spento.';
+    } finally { void this.c.removeChannel(ch); }
   }
 }

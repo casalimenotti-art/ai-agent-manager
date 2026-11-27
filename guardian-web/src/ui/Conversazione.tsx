@@ -1,5 +1,6 @@
 // Modalità conversazione: pulsante, barra dei sottotitoli e collegamento del motore alla risposta di Guardian.
-import { AudioLines, Lock, PhoneOff, Square } from 'lucide-react';
+import { AudioLines, Brain, Lock, PhoneOff, Square } from 'lucide-react';
+import { cervelloOnline } from '../logic/status';
 import { useEffect, useSyncExternalStore } from 'react';
 import { conversazioneSupportata, motore } from '../voce/motore';
 import { perLaVoce } from '../voce/vad';
@@ -12,6 +13,16 @@ export function useConversazione() {
 
 const ETICHETTE = { spento: '', avvio: 'Accendo il microfono…', ascolto: 'Ti ascolto', elaborazione: 'Ci penso…', parla: 'Guardian parla' };
 
+export function StatoCervello() {
+  const { snap } = useG();
+  const on = cervelloOnline(snap?.cervello);
+  return (
+    <span className={`pill ${on ? 'ok' : ''}`} title={on ? 'Le domande aperte vanno a Claude Code sul PC del titolare (sola risposta)'
+      : 'Senza cervello Guardian risponde solo dai dati. Per attivarlo: sul PC del titolare «guardian_bridge.py cervello»'}>
+      <Brain aria-hidden />{on ? `Cervello online · ${snap?.cervello?.modello ?? 'Claude Code'}` : 'Cervello offline · risposte dai dati'}</span>
+  );
+}
+
 export function PulsanteConversazione({ compatto = false }: { compatto?: boolean }) {
   const s = useConversazione();
   const rispondi = useRispondi();
@@ -19,7 +30,7 @@ export function PulsanteConversazione({ compatto = false }: { compatto?: boolean
   const attiva = s.fase !== 'spento';
   const titolo = !ok ? 'Conversazione non disponibile: questo browser non supporta riconoscimento e sintesi vocale (prova Chrome o Edge)'
     : attiva ? 'Termina la conversazione' : 'Conversazione a voce: parli e Guardian ti risponde a voce (mani libere)';
-  const avvia = () => void motore.avvia(async (t) => perLaVoce(await rispondi(t)));
+  const avvia = () => void motore.avvia(async (t) => { const r = await rispondi(t); return typeof r === 'string' ? perLaVoce(r) : r; });
   return (
     <button type="button" className={`btn ${compatto ? 'icon' : 'primary conv-btn'} ${attiva ? 'conv-on' : ''}`} disabled={!ok} title={titolo}
       aria-label={attiva ? 'Termina la conversazione' : 'Avvia la conversazione a voce'} aria-pressed={attiva}

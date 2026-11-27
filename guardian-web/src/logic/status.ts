@@ -35,3 +35,9 @@ export function fa(ts?: string | null, ora?: number): string {
   if (s < 86400) return `${Math.floor(s / 3600)} h fa`;
   return new Date(ts as string).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
 }
+
+/** Cervello online se il PC del titolare ha dato un battito nell'ultimo minuto. */
+export function cervelloOnline(c: { ultimo_battito?: string | null } | null | undefined, ora?: number): boolean {
+  const eta = etaSecondi(c?.ultimo_battito, ora);
+  return eta !== null && eta < 60;
+}

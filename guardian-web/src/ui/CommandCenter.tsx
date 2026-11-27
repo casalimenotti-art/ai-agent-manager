@@ -11,7 +11,7 @@ import { GuardianCore } from './GuardianCore';
 import { Gravita, Scheletro, Sezione, StatoAgente, StatoTask, Vuoto } from './kit';
 import { OrbitaStanze, VistaStanza } from './Stanze';
 import { useVoce } from './voce';
-import { PulsanteConversazione, useConversazione } from './Conversazione';
+import { PulsanteConversazione, StatoCervello, useConversazione } from './Conversazione';
 
 const ORDINE: Task['stato'][] = ['running', 'needs_approval', 'blocked', 'failed', 'waiting', 'ready'];
 const PESO_PRIO = { urgente: 0, alta: 1, media: 2, bassa: 3 };
@@ -50,7 +50,7 @@ export function CommandCenter() {
         <div>
           <h1>Guardian</h1>
           <p className="stato" aria-live="polite">{testoStato(snap, opz)}</p>
-          <div className="row" style={{ marginBottom: 16 }}><PulsanteConversazione /></div>
+          <div className="row" style={{ marginBottom: 16 }}><PulsanteConversazione /><StatoCervello /></div>
           {errore && <p className="err" role="alert">{errore}</p>}
           <div className="kpis">
             {snap ? (<>

@@ -3,7 +3,7 @@ import { Activity, Bell, Bot, Building2, Cpu, GitBranchPlus, Plus } from 'lucide
 import { useEffect, useState } from 'react';
 import { attivitaPerGiorno, caricoPerAgente, completatiOggi, durataMediaOre, errori24h, tassoCompletamento } from '../../logic/metrics';
 import { report } from '../../logic/report';
-import { fa, statoAgente, statoDispositivo } from '../../logic/status';
+import { cervelloOnline, fa, statoAgente, statoDispositivo } from '../../logic/status';
 import { leggiPreferenze, salvaPreferenze, useG, type Pannello, type Preferenze } from '../../state';
 import { TASK_TERMINALI, type AgentLog, type Severita } from '../../types';
 import { GraficoBarre, GraficoLinee } from '../charts';
@@ -211,6 +211,8 @@ export function SalutePanel() {
     ['Aggiornamenti', diretta === 'live' ? 'ok' : '', source.modo === 'demo' ? 'dati locali (nessuna diretta)' : diretta === 'live' ? 'Realtime attivo' : 'polling ogni 20 s', '—'],
     ['Bridge dei PC', pcOn ? 'ok' : 'warn', `${pcOn}/${snap?.devices.length ?? 0} PC online`, 'heartbeat < 120 s'],
     ['Agenti', conSegnale ? 'ok' : 'warn', `${conSegnale}/${snap?.agents.length ?? 0} con segnale`, 'bridge < 180 s'],
+    ['Cervello (PC del titolare)', cervelloOnline(snap?.cervello) ? 'ok' : '', cervelloOnline(snap?.cervello) ? `online · ${snap?.cervello?.modello ?? ''}` : 'offline: risposte solo dai dati',
+      snap?.cervello?.ultimo_battito ? fa(snap.cervello.ultimo_battito) : '—'],
     ['Planner AI', '', 'nel Guardian classico (le chiavi non stanno nel browser)', '—'],
   ];
   return (<table className="data"><thead><tr><th>Componente</th><th>Stato</th><th>Ultimo controllo</th></tr></thead>

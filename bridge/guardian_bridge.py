@@ -317,6 +317,11 @@ def cmd_run(client, args):
     return 0
 
 
+def cmd_cervello(client, args):
+    from bridge.cervello import servi
+    return servi(client, intervallo=args.intervallo, giri=args.giri)
+
+
 def cmd_claim(client, args):
     t = client.call("bridge_claim_task", agent_id=args.agent, task_id=args.id)
     print(f"Task #{t['id']} preso da {args.agent}: {t['titolo']} → running. Ora passalo tu al tuo agente.")
@@ -384,6 +389,9 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--ogni", type=int, default=30, help="Secondi tra un giro e l'altro (min 15)")
     r.add_argument("--giri", type=int, default=0, help="Fermati dopo N giri (0 = mai; utile per i test)")
     sub.add_parser("agent-register", help="Registra gli agenti configurati in bridge/.env")
+    cv = sub.add_parser("cervello", help="Fa da cervello di Guardian con Claude Code (solo PC dell'admin, sola risposta)")
+    cv.add_argument("--intervallo", type=float, default=1.5)
+    cv.add_argument("--giri", type=int, default=0, help=argparse.SUPPRESS)
     cl = sub.add_parser("claim", help="Prendi in carico un task ready assegnato a te")
     cl.add_argument("id", type=int)
     cl.add_argument("--agent", required=True)
@@ -399,7 +407,7 @@ def parser() -> argparse.ArgumentParser:
 COMANDI = {"heartbeat": cmd_heartbeat, "event": cmd_event, "task-update": cmd_task_update,
            "checkpoint": cmd_checkpoint, "pull": cmd_pull, "sync-registro": cmd_sync_registro, "run": cmd_run,
            "agent-register": cmd_agent_register, "claim": cmd_claim, "handoff-take": cmd_handoff_take,
-           "memory": cmd_memory}
+           "memory": cmd_memory, "cervello": cmd_cervello}
 
 
 def main(argv=None) -> int:

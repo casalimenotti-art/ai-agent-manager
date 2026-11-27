@@ -70,6 +70,11 @@ CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, 
 CREATE TABLE IF NOT EXISTS memory (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER REFERENCES projects(id),
   task_id INTEGER REFERENCES tasks(id), kind TEXT NOT NULL, content TEXT NOT NULL, source TEXT NOT NULL,
   created_by TEXT, created_at TEXT NOT NULL, superseded_by INTEGER REFERENCES memory(id));
+CREATE TABLE IF NOT EXISTS guardian_cervello (id INTEGER PRIMARY KEY CHECK (id = 1), device_id INTEGER, modello TEXT, ultimo_battito TEXT);
+CREATE TABLE IF NOT EXISTS guardian_richieste (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, testo TEXT NOT NULL,
+  contesto TEXT NOT NULL DEFAULT '{}', stato TEXT NOT NULL DEFAULT 'nuova', device_id INTEGER, created_at TEXT NOT NULL, presa_at TEXT);
+CREATE TABLE IF NOT EXISTS guardian_risposte (id INTEGER PRIMARY KEY AUTOINCREMENT, richiesta_id INTEGER NOT NULL, seq INTEGER NOT NULL,
+  testo TEXT NOT NULL DEFAULT '', fine INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, UNIQUE (richiesta_id, seq));
 CREATE INDEX IF NOT EXISTS idx_events_ts ON activity_events(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_tasks_stato ON tasks(stato);
 CREATE INDEX IF NOT EXISTS idx_logs_ts ON agent_logs(ts DESC);
@@ -676,6 +681,51 @@ class SqliteStore:
             args.append(al)
         w = (" WHERE " + " AND ".join(where)) if where else ""
         return self._q(f"SELECT * FROM agent_logs{w} ORDER BY ts DESC, id DESC LIMIT ?", (*args, limit))
+
+    # --- cervello di Guardian (specchio di supabase/migrations/006_cervello.sql) ------------------------
+    def crea_richiesta(self, user_id: str, testo: str, contesto: dict | None = None) -> int:
+        return self._insert("guardian_richieste", {"user_id": user_id, "testo": pulisci(testo, 2000, True, "domanda"),
+                                                   "contesto": json.dumps(contesto or {}), "created_at": adesso()})
+
+    def risposte(self, richiesta_id: int) -> list[dict]:
+        return self._q("SELECT * FROM guardian_risposte WHERE richiesta_id=? ORDER BY seq", (richiesta_id,))
+
+    def richiesta(self, richiesta_id: int) -> dict | None:
+        r = self._q("SELECT * FROM guardian_richieste WHERE id=?", (richiesta_id,))
+        return r[0] if r else None
+
+    def _device_cervello(self, token) -> dict:
+        d = self._device_by_token(token)
+        if not self._q("SELECT 1 FROM users WHERE id=? AND accesso='admin' AND stato='attivo'", (d["user_id"],)):
+            raise PermissionError("Solo il PC di un admin può fare da cervello.")
+        return d
+
+    def bridge_cervello_battito(self, token, modello=None) -> None:
+        d = self._device_cervello(token)
+        self._x("INSERT INTO guardian_cervello (id, device_id, modello, ultimo_battito) VALUES (1,?,?,?) ON CONFLICT(id) DO UPDATE SET "
+                "device_id=excluded.device_id, modello=COALESCE(excluded.modello, guardian_cervello.modello), ultimo_battito=excluded.ultimo_battito",
+                (d["id"], modello, adesso()))
+
+    def bridge_prendi_richiesta(self, token) -> dict | None:
+        d = self._device_cervello(token)
+        with self._lock:
+            r = self._q("SELECT * FROM guardian_richieste WHERE stato='nuova' ORDER BY created_at, id LIMIT 1")
+            if not r:
+                return None
+            r = r[0]
+            self._x("UPDATE guardian_richieste SET stato='presa', presa_at=?, device_id=? WHERE id=?", (adesso(), d["id"], r["id"]))
+        u = self._q("SELECT nome FROM users WHERE id=?", (r["user_id"],))
+        return {"id": r["id"], "testo": r["testo"], "contesto": json.loads(r["contesto"] or "{}"), "utente": u[0]["nome"] if u else r["user_id"]}
+
+    def bridge_rispondi(self, token, richiesta_id, seq, testo, fine=False, errore=False) -> None:
+        self._device_cervello(token)
+        try:
+            self._insert("guardian_risposte", {"richiesta_id": richiesta_id, "seq": seq, "testo": (testo or "")[:2000],
+                                               "fine": int(bool(fine)), "created_at": adesso()})
+        except sqlite3.IntegrityError:
+            pass
+        if fine:
+            self._x("UPDATE guardian_richieste SET stato=? WHERE id=?", ("errore" if errore else "completata", richiesta_id))
 
     def bridge_import_registro(self, token, rows: list[dict]) -> int:
         self._device_by_token(token)

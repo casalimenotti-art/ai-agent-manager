@@ -150,6 +150,29 @@ ok(await p.locator('.drawer table.data').count() >= 1, 'grafico → vista tabell
   await q.close();
 }
 
+
+// 8d. cervello (finto, SOLO in demo con ?cervello=finto): domande aperte → risposta a frasi, anche a voce
+{
+  const q = await b.newPage({ viewport: { width: 1440, height: 1000 } });
+  const err4 = []; q.on('pageerror', (e) => err4.push(e.message));
+  await q.goto(URL); await q.fill('input', 'menotti'); await q.click('button[type=submit]'); await q.waitForSelector('text=Prossime azioni');
+  ok(await q.locator('.pill:has-text("Cervello offline")').count() === 1, 'senza cervello: stato offline dichiarato');
+  await q.close();
+  const c = await b.newPage({ viewport: { width: 1440, height: 1000 } });
+  await c.goto(URL + '?cervello=finto&voce=finta'); await c.fill('input', 'menotti'); await c.click('button[type=submit]'); await c.waitForSelector('text=Prossime azioni');
+  ok(await c.locator('.pill:has-text("Cervello online")').count() === 1, 'cervello online mostrato');
+  await c.fill('.dock input', 'Scrivimi un piano per domani'); await c.press('.dock input', 'Enter');
+  await c.waitForSelector('.msg.guardian:has-text("Risposta di prova del cervello")');
+  ok((await c.locator('.msg.guardian').last().textContent()).includes('cervello sul PC'), 'chat: domanda aperta → cervello, con la fonte');
+  await c.click('.conv-btn'); await c.waitForSelector('.conv-barra[data-fase="ascolto"]');
+  await c.evaluate(() => window.__guardianDici('Raccontami una storia breve'));
+  await c.waitForFunction(() => (window.__guardianParlato || []).length >= 2, null, { timeout: 6000 });
+  ok((await c.evaluate(() => window.__guardianParlato.join(' '))).includes('Ho ricevuto'), 'voce: il cervello risponde a voce frase per frase');
+  await c.click('.conv-barra button:has-text("Termina")');
+  ok(err4.length === 0, `cervello: nessun errore in console ${err4.slice(0, 2).join(' | ')}`);
+  await c.close();
+}
+
 // 9. accessibilità (axe) sulla vista centrale
 await p.keyboard.press('Escape');
 await p.addScriptTag({ content: axe });

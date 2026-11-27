@@ -69,4 +69,6 @@ export interface AgentLog {
 export interface Snapshot {
   users: User[]; devices: Device[]; agents: Agent[]; projects: Project[]; tasks: Task[]; events: ActivityEvent[];
   approvals: Approval[]; notifications: Notification[]; handoffs: Handoff[]; stanze: Stanza[];
+  /** Stato del cervello sul PC del titolare (migrazione 006); null se non configurato. */
+  cervello: { modello?: string | null; ultimo_battito?: string | null } | null;
 }

@@ -24,3 +24,5 @@ for i in 1 2; do "${P[@]}" -d g -f "$REPO/supabase/migrations/004_memoria_handof
 "${P[@]}" -d g -t -A -f "$QUI/check_004.sql"
 for i in 1 2; do "${P[@]}" -d g -f "$REPO/supabase/migrations/005_stanze.sql" 2>&1 | sed -E "/NOTICE|already exists|does not exist/d"; done
 "${P[@]}" -d g -t -A -f "$QUI/check_005.sql"
+for i in 1 2; do "${P[@]}" -d g -f "$REPO/supabase/migrations/006_cervello.sql" 2>&1 | sed -E "/NOTICE|already exists|does not exist/d"; done
+"${P[@]}" -d g -t -A -f "$QUI/check_006.sql"

@@ -29,6 +29,7 @@ pannelli con URL `?p=&id=&f=`, conversazione) · `src/ui/` (Shell, CommandCenter
 | Attività per giorno (14 g) | eventi e completati per giorno | `activity_events` (ultimi 400) | idem | giorni a zero |
 | Task aperti per agente | task non chiusi con `assigned_agent_id` | `tasks` | idem | "nessun agente" |
 | Utilizzo 5 h / 7 g | `% used` letto dalla statusline di Claude Code | `agents.usage` (bridge) | dal bridge | non mostrato |
+| Cervello online | battito del PC del titolare < 60 s | `guardian_cervello` | Realtime/polling | «Cervello offline · risposte dai dati» |
 | Latenza DB | tempo di `select id from users limit 1` | ping ogni 30 s | 30 s | "non raggiungibile" |
 | Riepilogo di una stanza (attivi, in corso, fermi, da approvare, completati) | conteggi sui task della stanza (progetto con `stanza_id`, oppure task senza progetto del responsabile della stanza) | `stanze`, `projects`, `tasks`, `approvals` | Realtime o polling | 0 / "stanze non configurate (migrazione 005)" |
 | Agenti di una stanza | agenti il cui `user_id` è il responsabile della stanza | `agents`, `stanze.responsabile` | idem | "nessun agente collegato" |
@@ -73,6 +74,7 @@ pannelli con URL `?p=&id=&f=`, conversazione) · `src/ui/` (Shell, CommandCenter
 | Conversazione (hero e dock) | centro, dock | avvia/termina la modalità conversazione (microfono, VAD, risposta a voce frase per frase) | barra dei sottotitoli | `useRispondi` | fase "Ti ascolto" | permesso negato / microfono assente: messaggio |
 | Silenzio / Termina | barra conversazione | zittisce Guardian / chiude | — | motore | — | — |
 | Voce: «basta», «silenzio», «apri …», «approva …», domande | conversazione | come la chat; «approva» apre solo il pannello | pannello/stanza | `useRispondi` | risposta parlata | "non ho una risposta dai dati" |
+| Domanda aperta (chat o voce) con cervello online | dock / conversazione | va al cervello sul PC; risposta a frasi | conversazione | `chiediCervello` | risposta con fonte «cervello sul PC» | timeout 60 s: «forse il PC è spento» |
 | Parlare sopra Guardian (barge-in) | conversazione | interrompe la voce e ascolta | — | livello reale del microfono | — | — |
 
 ### Controlli disabilitati (con motivo)

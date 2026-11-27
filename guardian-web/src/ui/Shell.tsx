@@ -101,7 +101,9 @@ function Dock() {
   const chiedi = async (q: string) => {
     if (!q.trim()) return;
     setAperta(true); setTesto('');
-    const t = await rispondi(q);
+    const r = await rispondi(q);
+    let t = '';
+    if (typeof r === 'string') t = r; else { const parti: string[] = []; for await (const f of r) parti.push(f); t = parti.join(' '); }
     if (t && conv.fase === 'spento' && leggiPreferenze().voce) parla(t);
   };
   useEffect(() => {

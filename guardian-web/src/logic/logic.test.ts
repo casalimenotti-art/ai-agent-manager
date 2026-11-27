@@ -13,7 +13,7 @@ const agente = (p: Partial<Agent>): Agent => ({ id: 'a', user_id: 'menotti', nom
 const task = (p: Partial<Task>): Task => ({ id: 1, titolo: 'T', priorita: 'media', stato: 'ready', files_changed: [], depends_on: [],
   created_at: iso(60), updated_at: iso(10), ...p });
 const snap = (p: Partial<Snapshot>): Snapshot => ({ users: [], devices: [], agents: [], projects: [], tasks: [], events: [],
-  approvals: [], notifications: [], handoffs: [], stanze: [], ...p });
+  approvals: [], notifications: [], handoffs: [], stanze: [], cervello: null, ...p });
 
 describe('stati reali', () => {
   it('agente unknown se il bridge tace, PC offline se heartbeat vecchio', () => {
