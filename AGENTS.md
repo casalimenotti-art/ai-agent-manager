@@ -26,6 +26,29 @@ Regole del registro:
 - Scrivi **solo** nel tuo file `registro/<tuo-id>.jsonl`. Mai modificare o cancellare righe esistenti.
 - Mai password, chiavi API, token, codici, né dati personali dei clienti (telefoni, email): solo cosa hai fatto e quali file.
 
+## Passaggio di lavoro tra agenti (Claude ↔ Codex)
+
+Se un agente sta per fermarsi (utilizzo quasi finito, fine giornata, compito da passare), **non lascia il lavoro a metà in silenzio**:
+1. Fa commit e push di quello che ha fatto, anche se incompleto, sul suo branch.
+2. Apre un passaggio:
+   ```
+   python registro/passa.py apri --da <tuo-id> --agente <claude-code|codex> --per <id o chiunque> --compito "..." --fatto "..." --prossimi "..." --file ...
+   ```
+   Crea `passaggi/<data>-<id>.md` con cosa stava facendo, cosa è fatto, i prossimi passi e il branch. Commit e push.
+
+**All'inizio di ogni compito** controlla i passaggi aperti: `python registro/passa.py aperti` (dopo `git pull`/`git fetch`).
+Se ce n'è uno per te o per «chiunque» e la persona ti chiede di continuare: `passa.py prendi passaggi/<file>.md --chi <tuo-id>`,
+parti dal branch indicato, e a lavoro finito `passa.py chiudi ...`. Commit e push ogni volta.
+
+**Ritorno a Claude:** quando un Codex finisce un lavoro che gli ha passato Claude, chiude il passaggio e ne apre uno di ritorno
+`--per menotti` con cosa ha fatto, branch/PR e cosa resta: Claude lo riassume a Menotti, che decide come continuare.
+(Claude passa il lavoro lungo quando arriva al 60% di utilizzo: il 40% resta a Menotti per le sue richieste.)
+
+## Aggiornare GitHub passo passo
+
+Dopo **ogni passo che funziona** (test verdi): commit piccolo con messaggio chiaro + riga nel registro + push sul tuo branch.
+Così gli altri vedono sempre la versione più recente e possono continuare da lì.
+
 ## Come si lavora insieme
 
 - Ognuno lavora sul proprio branch e apre una pull request verso `main`. Nessuno modifica i file di un altro senza PR.

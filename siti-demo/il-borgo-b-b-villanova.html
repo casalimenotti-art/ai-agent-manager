@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="it" data-lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Il Borgo (B&amp;B Villanova) – bozza dimostrativa del sito</title>
+<meta name="description" content="Bozza dimostrativa di sito con richiesta di disponibilità diretta per Il Borgo (B&amp;B Villanova), Via San Giovanni 194, Cagliari. Non pubblicata.">
+<meta name="robots" content="noindex,nofollow">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--ff);line-height:1.6;font-size:1.0625rem}
+html[data-lang="it"] [lang="en"]{display:none}
+html[data-lang="en"] [lang="it"]{display:none}
+img{max-width:100%;display:block}
+a{color:var(--ac)}
+:focus-visible{outline:3px solid var(--fo);outline-offset:3px}
+.skip{position:absolute;left:-999px;top:0;background:#fff;color:#000;padding:.6rem 1rem;z-index:99}
+.skip:focus{left:8px;top:8px}
+.wrap{width:min(1080px,100% - 2rem);margin-inline:auto}
+header.top{background:var(--hb);color:var(--ht)}
+header.top .wrap{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:space-between;padding:.8rem 0}
+.brand{font-family:var(--fh);font-weight:700;font-size:1.25rem;color:inherit;text-decoration:none}
+nav ul{display:flex;flex-wrap:wrap;gap:.2rem 1rem;list-style:none;margin:0;padding:0}
+nav a{color:inherit;text-decoration:none;padding:.3rem .1rem;border-bottom:2px solid transparent;transition:border-color .25s}
+nav a:hover{border-color:currentColor}
+.lang{display:flex;gap:.25rem}
+.lang button{font:inherit;font-size:.9rem;min-width:2.75rem;min-height:2.5rem;border:2px solid currentColor;background:transparent;color:inherit;border-radius:.4rem;cursor:pointer;transition:background .25s,color .25s}
+.lang button[aria-pressed="true"]{background:var(--ht);color:var(--hb)}
+h1,h2,h3{font-family:var(--fh);line-height:1.15;margin:0 0 .6rem}
+h1{font-size:clamp(2rem,6.5vw,3.6rem)}
+h2{font-size:clamp(1.55rem,4.5vw,2.3rem)}
+section{padding:3.2rem 0}
+.hero .wrap{display:grid;gap:2rem;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:2.9rem;padding:.6rem 1.3rem;border-radius:var(--r);font:inherit;font-weight:700;text-decoration:none;border:2px solid var(--ac);background:var(--ac);color:var(--on);cursor:pointer;transition:transform .25s,box-shadow .25s,background .25s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(0,0,0,.18)}
+.btn.alt{background:transparent;color:var(--ac)}
+.btn[aria-disabled="true"]{background:transparent;border-style:dashed;color:var(--tx);border-color:var(--tx);cursor:not-allowed}
+.btn[aria-disabled="true"]:hover{transform:none;box-shadow:none}
+.cta{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:1.3rem}
+.ph{border-radius:var(--r);width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;background:var(--card)}
+form.av{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));background:var(--card);border:var(--bd);border-radius:var(--r);padding:1.4rem}
+form.av .full{grid-column:1/-1}
+label{display:block;font-weight:700;margin-bottom:.3rem}
+input,textarea{width:100%;font:inherit;padding:.65rem .7rem;border:2px solid var(--ln);border-radius:calc(var(--r)/2);background:#fff;color:#111;min-height:2.9rem}
+.status{margin:0;font-weight:700;min-height:1.6em}
+.note{font-size:.95rem}
+.grid3{display:grid;gap:1.2rem;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.card{background:var(--card);border:var(--bd);border-radius:var(--r);padding:1rem;transition:transform .3s,box-shadow .3s}
+.card:hover{transform:translateY(-4px);box-shadow:0 12px 24px rgba(0,0,0,.12)}
+.card h3{font-size:1.25rem;margin-top:.8rem}
+.card p{margin:.3rem 0}
+.rev{border:2px dashed var(--ln);border-radius:var(--r);padding:1.4rem;background:var(--card)}
+address{font-style:normal}
+footer{background:var(--hb);color:var(--ht);padding:1.6rem 0;text-align:center;font-size:.95rem}
+.rise{opacity:0;transform:translateY(18px);animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards}
+.d1{animation-delay:.1s}.d2{animation-delay:.25s}.d3{animation-delay:.4s}
+@keyframes rise{to{opacity:1;transform:none}}
+@media(min-width:820px){.hero .wrap{grid-template-columns:1.1fr .9fr}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.rise{opacity:1;transform:none}}
+
+:root{--bg:#f4ece0;--tx:#2b2118;--ac:#8a3b1e;--on:#fff;--fo:#0b3d91;--hb:#3a2517;--ht:#f7eddc;--ff:Georgia,"Times New Roman",serif;--fh:Georgia,"Times New Roman",serif;--r:.25rem;--card:#fbf6ec;--ln:#7a6246;--bd:1px solid #b79f7d}
+.hero{border-bottom:6px double #8a3b1e}
+.hero .wrap{text-align:center}
+.hero .wrap>div{max-width:40rem;margin-inline:auto}
+.hero .cta{justify-content:center}
+.hero .ph{border:10px solid #fbf6ec;outline:1px solid #8a3b1e;box-shadow:0 10px 30px rgba(58,37,23,.25)}
+@media(min-width:820px){.hero .wrap{grid-template-columns:1fr}.hero .ph{max-width:560px;margin-inline:auto}}
+h2{text-align:center;font-variant:small-caps;letter-spacing:.06em}
+h2::after{content:"\2766";display:block;color:var(--ac);font-size:1.1rem;margin:.2rem auto 0}
+#zona p,#recensioni .rev,#contatti address{max-width:42rem;margin-inline:auto}
+#contatti address,#zona p{text-align:center}
+</style>
+</head>
+<body>
+<a class="skip" href="#main"><span lang="it">Vai al contenuto</span><span lang="en">Skip to content</span></a>
+<header class="top"><div class="wrap">
+<a class="brand" href="#top">Il Borgo (B&amp;B Villanova)</a>
+<nav aria-label="Menu"><ul>
+<li><a href="#disponibilita"><span lang="it">Disponibilità</span><span lang="en">Availability</span></a></li>
+<li><a href="#camere"><span lang="it">Camere</span><span lang="en">Rooms</span></a></li>
+<li><a href="#zona"><span lang="it">La zona</span><span lang="en">The area</span></a></li>
+<li><a href="#recensioni"><span lang="it">Recensioni</span><span lang="en">Reviews</span></a></li>
+<li><a href="#contatti"><span lang="it">Contatti</span><span lang="en">Contact</span></a></li>
+</ul></nav>
+<div class="lang" role="group" aria-label="Lingua / Language">
+<button type="button" data-set="it" aria-pressed="true">IT</button>
+<button type="button" data-set="en" aria-pressed="false">EN</button></div>
+</div></header>
+<main id="main">
+<section class="hero" id="top"><div class="wrap">
+<div>
+<p class="rise"><span lang="it">B&amp;B nel quartiere storico di Villanova, Cagliari</span><span lang="en">B&amp;B in the historic Villanova district, Cagliari</span></p>
+<h1 class="rise d1">Il Borgo (B&amp;B Villanova)</h1>
+<p class="rise d2"><span lang="it">Chiedi la disponibilità direttamente alla struttura, senza passare da un portale.</span><span lang="en">Ask the property for availability directly, without going through a portal.</span></p>
+<div class="cta rise d3"><a class="btn" href="#disponibilita"><span lang="it">Richiedi disponibilità</span><span lang="en">Request availability</span></a><span class="btn alt" aria-disabled="true"><span lang="it">WhatsApp (numero da inserire)</span><span lang="en">WhatsApp (number to be added)</span></span></div>
+</div>
+<img class="ph rise d2" src="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%20400%20300%27%3E%3Crect%20width=%27400%27%20height=%27300%27%20fill=%27%23e6d3b8%27/%3E%3Crect%20x=%27150%27%20y=%27100%27%20width=%27100%27%20height=%2780%27%20rx=%278%27%20fill=%27none%27%20stroke=%27%237a3418%27%20stroke-width=%276%27/%3E%3Ccircle%20cx=%27180%27%20cy=%27125%27%20r=%279%27%20fill=%27%237a3418%27/%3E%3Cpath%20d=%27M150%20180l35-30%2025%2020%2020-15%2020%2025z%27%20fill=%27%237a3418%27/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300">
+</div></section>
+
+<section id="disponibilita"><div class="wrap">
+<h2><span lang="it">Richiedi la disponibilità</span><span lang="en">Request availability</span></h2>
+<p class="note"><span lang="it">Modulo dimostrativo: in questa bozza non viene inviato nulla.</span><span lang="en">Demo form: nothing is sent from this draft.</span></p>
+<form class="av" id="f" novalidate>
+<div><label for="arr"><span lang="it">Arrivo</span><span lang="en">Check-in</span></label><input type="date" id="arr" name="arr"></div>
+<div><label for="par"><span lang="it">Partenza</span><span lang="en">Check-out</span></label><input type="date" id="par" name="par"></div>
+<div><label for="osp"><span lang="it">Ospiti</span><span lang="en">Guests</span></label><input type="number" id="osp" name="osp" min="1" max="20" value="2"></div>
+<div class="full"><label for="msg"><span lang="it">Note (facoltative)</span><span lang="en">Notes (optional)</span></label><textarea id="msg" name="msg" rows="3"></textarea></div>
+<div class="full"><button class="btn" type="submit"><span lang="it">Invia richiesta</span><span lang="en">Send request</span></button></div>
+<p class="status full" id="st" role="status" aria-live="polite"></p>
+</form>
+</div></section>
+
+<section id="camere"><div class="wrap">
+<h2><span lang="it">Camere</span><span lang="en">Rooms</span></h2>
+<div class="grid3"><article class="card"><img class="ph" src="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%20400%20300%27%3E%3Crect%20width=%27400%27%20height=%27300%27%20fill=%27%23e6d3b8%27/%3E%3Crect%20x=%27150%27%20y=%27100%27%20width=%27100%27%20height=%2780%27%20rx=%278%27%20fill=%27none%27%20stroke=%27%237a3418%27%20stroke-width=%276%27/%3E%3Ccircle%20cx=%27180%27%20cy=%27125%27%20r=%279%27%20fill=%27%237a3418%27/%3E%3Cpath%20d=%27M150%20180l35-30%2025%2020%2020-15%2020%2025z%27%20fill=%27%237a3418%27/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3><span lang="it">Camera 1 (nome da inserire)</span><span lang="en">Room 1 (name to be added)</span></h3><p><span lang="it">Descrizione, posti letto e servizi: da inserire con il titolare.</span><span lang="en">Description, beds and amenities: to be added with the owner.</span></p></article><article class="card"><img class="ph" src="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%20400%20300%27%3E%3Crect%20width=%27400%27%20height=%27300%27%20fill=%27%23e6d3b8%27/%3E%3Crect%20x=%27150%27%20y=%27100%27%20width=%27100%27%20height=%2780%27%20rx=%278%27%20fill=%27none%27%20stroke=%27%237a3418%27%20stroke-width=%276%27/%3E%3Ccircle%20cx=%27180%27%20cy=%27125%27%20r=%279%27%20fill=%27%237a3418%27/%3E%3Cpath%20d=%27M150%20180l35-30%2025%2020%2020-15%2020%2025z%27%20fill=%27%237a3418%27/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3><span lang="it">Camera 2 (nome da inserire)</span><span lang="en">Room 2 (name to be added)</span></h3><p><span lang="it">Descrizione, posti letto e servizi: da inserire con il titolare.</span><span lang="en">Description, beds and amenities: to be added with the owner.</span></p></article><article class="card"><img class="ph" src="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%20400%20300%27%3E%3Crect%20width=%27400%27%20height=%27300%27%20fill=%27%23e6d3b8%27/%3E%3Crect%20x=%27150%27%20y=%27100%27%20width=%27100%27%20height=%2780%27%20rx=%278%27%20fill=%27none%27%20stroke=%27%237a3418%27%20stroke-width=%276%27/%3E%3Ccircle%20cx=%27180%27%20cy=%27125%27%20r=%279%27%20fill=%27%237a3418%27/%3E%3Cpath%20d=%27M150%20180l35-30%2025%2020%2020-15%2020%2025z%27%20fill=%27%237a3418%27/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3><span lang="it">Camera 3 (nome da inserire)</span><span lang="en">Room 3 (name to be added)</span></h3><p><span lang="it">Descrizione, posti letto e servizi: da inserire con il titolare.</span><span lang="en">Description, beds and amenities: to be added with the owner.</span></p></article></div>
+</div></section>
+
+<section id="zona"><div class="wrap">
+<h2><span lang="it">La zona: Villanova</span><span lang="en">The area: Villanova</span></h2>
+<p><span lang="it">Villanova è uno dei quartieri storici di Cagliari, fatto di strade strette e chiese antiche, all'interno della città. Distanze e tempi a piedi verso il centro e le altre zone: da inserire con il titolare.</span><span lang="en">Villanova is one of Cagliari's historic districts, with narrow streets and old churches, inside the city. Walking distances and times to the centre and other areas: to be added with the owner.</span></p>
+</div></section>
+
+<section id="recensioni"><div class="wrap">
+<h2><span lang="it">Recensioni</span><span lang="en">Reviews</span></h2>
+<div class="rev"><p><span lang="it">Spazio da collegare: qui compariranno le recensioni degli ospiti, riprese dalle fonti originali e solo con il consenso del titolare.</span><span lang="en">Space to be linked: guest reviews will appear here, taken from the original sources and only with the owner's consent.</span></p></div>
+</div></section>
+
+<section id="contatti"><div class="wrap">
+<h2><span lang="it">Contatti</span><span lang="en">Contact</span></h2>
+<address><p>Il Borgo (B&amp;B Villanova)<br>Via San Giovanni 194, Cagliari</p><p><span lang="it">WhatsApp (numero da inserire)</span><span lang="en">WhatsApp (number to be added)</span></p></address>
+</div></section>
+</main>
+<footer><div class="wrap"><p>Bozza dimostrativa preparata per Il Borgo (B&amp;B Villanova) — non pubblicata</p></div></footer>
+<script>
+(function(){
+var root=document.documentElement;
+function msg(){return root.getAttribute('data-lang')==='en'?'demo: no data sent':'demo: nessun dato inviato'}
+document.querySelectorAll('.lang button').forEach(function(bt){bt.addEventListener('click',function(){
+var l=bt.getAttribute('data-set');root.setAttribute('data-lang',l);root.setAttribute('lang',l);
+document.querySelectorAll('.lang button').forEach(function(x){x.setAttribute('aria-pressed',String(x===bt))});
+var st=document.getElementById('st');if(st.textContent){st.textContent=msg()}
+})});
+document.getElementById('f').addEventListener('submit',function(e){e.preventDefault();document.getElementById('st').textContent=msg()});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gisella B&B, Selargius - bozza demo</title>
+<meta name="description" content="Bozza dimostrativa del sito di Gisella B&B a Selargius (CA). Non pubblicata.">
+<meta name="robots" content="noindex,nofollow">
+<style>
+:root{--bg:#fbf4ec;--tx:#2b2118;--ac:#9a3b1f;--on:#fff;--fc:#1a4f8b;--card:#fff;--bd:#e7d6c3;--ib:#7a5c44;--r:14px;--ff:Georgia,'Times New Roman',serif;--fh:Georgia,serif}
+
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--tx);font:1.0625rem/1.65 var(--ff);-webkit-text-size-adjust:100%}
+img{max-width:100%;display:block;height:auto}
+a{color:var(--ac)}
+:focus-visible{outline:3px solid var(--fc);outline-offset:3px}
+.skip{position:absolute;left:-999px;top:0;background:var(--ac);color:var(--on);padding:.6rem 1rem;z-index:20}
+.skip:focus{left:0}
+.wrap{max-width:68rem;margin:0 auto;padding:0 1.25rem}
+header.top{display:flex;gap:1rem;align-items:center;justify-content:space-between;padding:.9rem 1.25rem;max-width:68rem;margin:0 auto;flex-wrap:wrap}
+.brand{font-family:var(--fh);font-weight:700;font-size:1.25rem;text-decoration:none;color:var(--tx)}
+.lang button{font:inherit;background:transparent;color:var(--tx);border:2px solid var(--ac);padding:.35rem .8rem;border-radius:var(--r);cursor:pointer;min-height:44px}
+.lang button[aria-pressed=true]{background:var(--ac);color:var(--on)}
+h1,h2,h3{font-family:var(--fh);line-height:1.2;margin:0 0 .6em}
+h1{font-size:clamp(2rem,7vw,3.6rem)}h2{font-size:clamp(1.5rem,4.5vw,2.2rem)}
+section{padding:3rem 0}
+.hero{padding:2.5rem 0 3rem}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:.7rem 1.4rem;border-radius:var(--r);background:var(--ac);color:var(--on);font:inherit;font-weight:700;text-decoration:none;border:2px solid var(--ac);cursor:pointer;transition:transform .25s ease,box-shadow .25s ease}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.btn.alt{background:transparent;color:var(--ac)}
+.actions{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.4rem}
+.ph{border-radius:var(--r);width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--card)}
+.cards{display:grid;gap:1.25rem;grid-template-columns:1fr}
+.card{background:var(--card);border-radius:var(--r);padding:1rem;border:1px solid var(--bd);transition:transform .3s ease,box-shadow .3s ease}
+.card:hover{transform:translateY(-4px);box-shadow:0 10px 24px rgba(0,0,0,.14)}
+.card h3{margin:.8rem 0 .3rem;font-size:1.2rem}
+form.req{background:var(--card);border:1px solid var(--bd);border-radius:var(--r);padding:1.25rem;display:grid;gap:1rem;max-width:36rem}
+form.req label{display:grid;gap:.3rem;font-weight:600}
+form.req input{font:inherit;padding:.65rem;min-height:48px;border:2px solid var(--ib);border-radius:calc(var(--r)/2);background:var(--bg);color:var(--tx)}
+.status{min-height:1.5em;font-weight:700;margin:0}
+.note{font-size:.95rem}
+.reviews{border:2px dashed var(--ac);border-radius:var(--r);padding:1.5rem;background:var(--card)}
+ul.zone{padding-left:1.2rem}
+footer{padding:2rem 1.25rem 4rem;text-align:center;border-top:1px solid var(--bd);font-size:.95rem}
+.rv{opacity:0;transform:translateY(18px);animation:rv .8s ease forwards}
+.rv.d1{animation-delay:.15s}.rv.d2{animation-delay:.3s}
+@keyframes rv{to{opacity:1;transform:none}}
+@media(min-width:44rem){.cards{grid-template-columns:repeat(3,1fr)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}.rv{opacity:1;transform:none}}
+
+.hero{text-align:center}.hero .actions{justify-content:center}.hero .ph{max-width:34rem;margin:0 auto;border-radius:200px 200px 14px 14px}form.req{margin:0 auto}section h2{text-align:center}.zone{max-width:36rem;margin:0 auto}#contatti .wrap{text-align:center}
+</style>
+</head>
+<body class="gis">
+<a class="skip" href="#main"><span data-it="Vai al contenuto" data-en="Skip to content">Vai al contenuto</span></a>
+<header class="top">
+<a class="brand" href="#main">Gisella B&amp;B</a>
+<div class="lang" role="group" aria-label="Lingua / Language"><button type="button" data-l="it" aria-pressed="true">IT</button> <button type="button" data-l="en" aria-pressed="false">EN</button></div>
+</header>
+<main id="main">
+<section class="hero"><div class="wrap">
+<h1 class="rv"><span data-it="Una pausa tranquilla a Selargius" data-en="A quiet stay in Selargius">Una pausa tranquilla a Selargius</span></h1>
+<p class="rv d1"><span data-it="Gisella B&amp;B: richiedi direttamente le date che ti interessano." data-en="Gisella B&amp;B: ask directly for the dates you need.">Gisella B&amp;B: richiedi direttamente le date che ti interessano.</span></p>
+<div class="actions rv d2"><a class="btn" href="#disponibilita"><span data-it="Richiedi disponibilità" data-en="Check availability">Richiedi disponibilità</span></a><a class="btn" href="tel:+393464003577"><span data-it="Chiama 346 4003577" data-en="Call 346 4003577">Chiama 346 4003577</span></a><span class="btn alt" aria-disabled="true"><span data-it="WhatsApp (da confermare con il titolare)" data-en="WhatsApp (to be confirmed)">WhatsApp (da confermare con il titolare)</span></span></div>
+<div class="rv d2 heroimg" style="margin-top:2rem"><img class="ph" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20400%20300%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23e9cfb5%22/%3E%3Cpath%20d%3D%22M0%20240%20L110%20130%20L190%20205%20L270%20110%20L400%20240%20Z%22%20fill%3D%22%239a3b1f%22%20opacity%3D%22.35%22/%3E%3Ccircle%20cx%3D%22310%22%20cy%3D%2270%22%20r%3D%2228%22%20fill%3D%22%239a3b1f%22%20opacity%3D%22.5%22/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300"></div>
+</div></section>
+<section id="camere"><div class="wrap">
+<h2><span data-it="Le camere" data-en="Rooms">Le camere</span></h2>
+<div class="cards"><article class="card"><img class="ph" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20400%20300%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23e9cfb5%22/%3E%3Cpath%20d%3D%22M0%20240%20L110%20130%20L190%20205%20L270%20110%20L400%20240%20Z%22%20fill%3D%22%239a3b1f%22%20opacity%3D%22.35%22/%3E%3Ccircle%20cx%3D%22310%22%20cy%3D%2270%22%20r%3D%2228%22%20fill%3D%22%239a3b1f%22%20opacity%3D%22.5%22/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3><span data-it="Camera 1 [nome da inserire]" data-en="Room 1 [name to be added]">Camera 1 [nome da inserire]</span></h3><p class="note"><span data-it="Descrizione, letti e servizi: da inserire a cura del titolare." data-en="Description, beds and amenities: to be added by the owner.">Descrizione, letti e servizi: da inserire a cura del titolare.</span></p></article><article class="card"><img class="ph" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20400%20300%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23e9cfb5%22/%3E%3Cpath%20d%3D%22M0%20240%20L110%20130%20L190%20205%20L270%20110%20L400%20240%20Z%22%20fill%3D%22%239a3b1f%22%20opacity%3D%22.35%22/%3E%3Ccircle%20cx%3D%22310%22%20cy%3D%2270%22%20r%3D%2228%22%20fill%3D%22%239a3b1f%22%20opacity%3D%22.5%22/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3><span data-it="Camera 2 [nome da inserire]" data-en="Room 2 [name to be added]">Camera 2 [nome da inserire]</span></h3><p class="note"><span data-it="Descrizione, letti e servizi: da inserire a cura del titolare." data-en="Description, beds and amenities: to be added by the owner.">Descrizione, letti e servizi: da inserire a cura del titolare.</span></p></article><article class="card"><img class="ph" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20400%20300%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23e9cfb5%22/%3E%3Cpath%20d%3D%22M0%20240%20L110%20130%20L190%20205%20L270%20110%20L400%20240%20Z%22%20fill%3D%22%239a3b1f%22%20opacity%3D%22.35%22/%3E%3Ccircle%20cx%3D%22310%22%20cy%3D%2270%22%20r%3D%2228%22%20fill%3D%22%239a3b1f%22%20opacity%3D%22.5%22/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3><span data-it="Camera 3 [nome da inserire]" data-en="Room 3 [name to be added]">Camera 3 [nome da inserire]</span></h3><p class="note"><span data-it="Descrizione, letti e servizi: da inserire a cura del titolare." data-en="Description, beds and amenities: to be added by the owner.">Descrizione, letti e servizi: da inserire a cura del titolare.</span></p></article></div>
+</div></section>
+<section id="disponibilita"><div class="wrap">
+<h2><span data-it="Richiesta di disponibilità diretta" data-en="Direct availability request">Richiesta di disponibilità diretta</span></h2>
+<p><span data-it="Indica date e numero di ospiti: è un modulo dimostrativo." data-en="Choose your dates and number of guests: this is a demo form.">Indica date e numero di ospiti: è un modulo dimostrativo.</span></p>
+<form class="req" id="req" novalidate>
+<label><span data-it="Arrivo" data-en="Arrival">Arrivo</span><input type="date" name="arrivo" required></label>
+<label><span data-it="Partenza" data-en="Departure">Partenza</span><input type="date" name="partenza" required></label>
+<label><span data-it="Ospiti" data-en="Guests">Ospiti</span><input type="number" name="ospiti" min="1" max="20" value="2" required></label>
+<button class="btn" type="submit"><span data-it="Invia richiesta" data-en="Send request">Invia richiesta</span></button>
+<p class="status" id="status" role="status" aria-live="polite"></p>
+<p class="note"><span data-it="Modulo dimostrativo: non invia nulla." data-en="Demo form: it sends nothing.">Modulo dimostrativo: non invia nulla.</span></p>
+</form>
+</div></section>
+<section id="zona"><div class="wrap">
+<h2><span data-it="La zona" data-en="The area">La zona</span></h2>
+<ul class="zone"><li><span data-it="Selargius si trova nell'area di Cagliari, in Sardegna." data-en="Selargius is in the Cagliari area, in Sardinia.">Selargius si trova nell'area di Cagliari, in Sardegna.</span></li><li><span data-it="Indicazioni su Cagliari e sul mare: da aggiungere a cura del titolare." data-en="Directions to Cagliari and the sea: to be added by the owner.">Indicazioni su Cagliari e sul mare: da aggiungere a cura del titolare.</span></li></ul>
+</div></section>
+<section id="recensioni"><div class="wrap">
+<h2><span data-it="Recensioni" data-en="Reviews">Recensioni</span></h2>
+<div class="reviews"><p><span data-it="Spazio da collegare alle recensioni reali degli ospiti (ad esempio dai portali di prenotazione). Nessuna recensione è inserita in questa bozza." data-en="Space to be linked to real guest reviews (for example from booking portals). No reviews are included in this draft.">Spazio da collegare alle recensioni reali degli ospiti (ad esempio dai portali di prenotazione). Nessuna recensione è inserita in questa bozza.</span></p></div>
+</div></section>
+<section id="contatti"><div class="wrap">
+<h2><span data-it="Contatti" data-en="Contact">Contatti</span></h2>
+<p>Via Canova 11, Selargius (CA)</p><p><span data-it="Telefono:" data-en="Phone:">Telefono:</span> <a href="tel:+393464003577">346 4003577</a></p><p>WhatsApp: da confermare con il titolare</p>
+</div></section>
+</main>
+<footer><p>Bozza dimostrativa preparata per Gisella B&amp;B &mdash; non pubblicata</p></footer>
+<script>
+(function(){
+var L='it';
+function set(l){L=l;document.documentElement.lang=l;
+document.querySelectorAll('[data-it]').forEach(function(e){e.textContent=e.getAttribute('data-'+l)});
+document.querySelectorAll('.lang button').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.l===l)});}
+document.querySelectorAll('.lang button').forEach(function(b){b.addEventListener('click',function(){set(b.dataset.l)})});
+var f=document.getElementById('req'),s=document.getElementById('status');
+f.addEventListener('submit',function(e){e.preventDefault();
+var a=f.arrivo.value,p=f.partenza.value;
+if(a&&p&&p<=a){s.textContent=L==='it'?'La partenza deve essere dopo l\u2019arrivo.':'Departure must be after arrival.';return;}
+s.textContent='demo: nessun dato inviato';});
+})();
+</script>
+</body>
+</html>

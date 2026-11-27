@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="it" data-title-it="Il Cagliarese B&amp;B — Marina, Cagliari | Bozza demo" data-title-en="Il Cagliarese B&amp;B — Marina, Cagliari | Demo draft">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Il Cagliarese B&amp;B — Marina, Cagliari | Bozza demo</title>
+<meta name="description" content="Bozza dimostrativa del sito proprio de Il Cagliarese B&amp;B, Via Porcile 19, Cagliari (Marina): richiesta di disponibilità diretta, camere, quartiere.">
+<meta name="robots" content="noindex">
+<style>
+
+*{box-sizing:border-box}html{scroll-behavior:smooth}img{max-width:100%;height:auto;display:block}
+.skip{position:absolute;left:-999px;top:0;background:#fff;color:#000;padding:.6rem 1rem;z-index:99}.skip:focus{left:0}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+button,input{font:inherit}
+.lang button{cursor:pointer}
+address{font-style:normal}
+.cards{list-style:none;padding:0;margin:1.5rem 0 0;display:grid;gap:1.25rem}
+.two{display:grid;gap:1.5rem;align-items:center}
+.f{display:flex;flex-direction:column;gap:.35rem}
+.msg{font-weight:700;min-height:1.6em}
+.note,.small{font-size:.9rem}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media(min-width:760px){.cards{grid-template-columns:repeat(3,1fr)}.two{grid-template-columns:1.2fr 1fr}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+:root{--bg:#0e2638;--bg2:#143349;--tx:#f4eee3;--mut:#c9d3da;--ac:#e8c98e;--acd:#14212b;--focus:#ffd479}
+body{margin:0;background:var(--bg);color:var(--tx);font:1.05rem/1.65 Georgia,'Times New Roman',serif}
+h1,h2,h3{font-weight:400;line-height:1.15;letter-spacing:.01em}
+h1{font-size:clamp(2.4rem,9vw,4.6rem);margin:.3rem 0 1rem}h2{font-size:clamp(1.7rem,5vw,2.4rem);margin:0 0 1rem}
+a{color:var(--ac)}
+.top{display:flex;flex-wrap:wrap;gap:.6rem 1.2rem;align-items:center;justify-content:space-between;padding:.8rem 1.1rem;border-bottom:1px solid #2c4a60;position:sticky;top:0;background:rgba(14,38,56,.96);z-index:5}
+.brand{color:var(--tx);text-decoration:none;font-size:1.15rem;letter-spacing:.06em;text-transform:uppercase}
+nav{display:flex;gap:1rem;flex-wrap:wrap;font-family:system-ui,sans-serif;font-size:.9rem}nav a{color:var(--tx);text-decoration:none;padding:.3rem 0;border-bottom:1px solid transparent;transition:border-color .3s}nav a:hover{border-color:var(--ac)}
+.lang{font-family:system-ui,sans-serif}.lang button{background:none;color:var(--tx);border:1px solid #8aa0b0;padding:.3rem .7rem;transition:background .3s}.lang button[aria-pressed=true]{background:var(--ac);color:var(--acd);border-color:var(--ac)}
+section{padding:3.5rem 1.1rem;max-width:1080px;margin:0 auto}
+.hero{position:relative;display:grid;gap:2rem;padding-top:3rem;overflow:hidden;padding-bottom:6rem}
+.hero::before{content:"";position:absolute;left:-10%;right:-10%;bottom:0;height:90px;background:repeating-radial-gradient(ellipse at 50% 100%,transparent 0 22px,rgba(232,201,142,.18) 23px 24px);animation:drift 14s linear infinite;pointer-events:none}
+@keyframes drift{to{transform:translateX(-48px)}}
+.hero-in{animation:rise .9s ease both}.kicker{font-family:system-ui,sans-serif;text-transform:uppercase;letter-spacing:.16em;font-size:.8rem;color:var(--ac);margin:0}
+.lead{color:var(--mut);max-width:34em}
+.hero-img{border:1px solid #3a5970;animation:rise 1.1s .15s ease both;width:100%}
+.btn{display:inline-block;background:var(--ac);color:var(--acd);border:0;padding:.8rem 1.4rem;font-family:system-ui,sans-serif;font-weight:700;text-decoration:none;cursor:pointer;transition:transform .25s,box-shadow .25s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.btn.sec{background:transparent;color:var(--ac);border:1px solid var(--ac)}
+.cta{display:flex;flex-wrap:wrap;gap:.8rem;margin:1.5rem 0}
+.alt{max-width:none;background:var(--bg2)}.alt>*{max-width:1080px;margin-left:auto;margin-right:auto}
+.avail{max-width:none;background:#f4eee3;color:#14212b}.avail>*{max-width:1080px;margin-left:auto;margin-right:auto}
+.avail .btn{background:#14212b;color:#f4eee3}
+form{display:grid;gap:1rem}label{font-family:system-ui,sans-serif;font-weight:700;font-size:.9rem}
+input{padding:.7rem;border:2px solid #4b5f6e;background:#fff;color:#14212b;border-radius:2px}
+@media(min-width:760px){form{grid-template-columns:repeat(3,1fr) auto;align-items:end}}
+.card{background:var(--bg2);border:1px solid #2c4a60;padding:1rem;transition:transform .3s}.card:hover{transform:translateY(-4px)}
+.card h3{font-size:1.2rem;margin:.9rem 0 .3rem}.card p{color:var(--mut);margin:0}
+.note,.small{color:var(--mut);font-family:system-ui,sans-serif}.avail .note{color:#33424d}
+.slot{border:2px dashed #8aa0b0;padding:1.4rem;color:var(--mut)}
+footer{border-top:1px solid #2c4a60;padding:1.5rem 1.1rem;text-align:center;font-family:system-ui,sans-serif;font-size:.9rem;color:var(--mut)}footer p{margin:.2rem}
+
+
+/*dz2*/:root{--dz-bg:#0e2638;--dz-tx:#f4eee3;--dz-b:#e8c98e;--dz-bt:#14212b}
+html{scroll-padding-top:4.5rem}body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.skip{z-index:99!important}
+header.top,.top{position:sticky;top:0;z-index:20}
+main h1{text-wrap:balance;overflow-wrap:anywhere}main h2{text-wrap:balance}
+main section h2::after{content:"";display:block;width:2.75rem;height:4px;background:var(--dz-b);margin-top:.55rem;border-radius:2px;transition:width .5s cubic-bezier(.2,.7,.2,1)}
+main section:hover h2::after{width:4.5rem}
+main section[id]{scroll-margin-top:4.5rem}
+.btn{transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s ease,background-color .25s ease}.btn:active{transform:scale(.97)}
+.hero .btn{min-height:52px;font-size:1.05rem;padding-inline:1.5rem}
+li,dd,td{font-variant-numeric:tabular-nums}
+.card,.menu-sec,.room,article{transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s ease}
+.js .dz-r{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.js .dz-r.dz-in{opacity:1;transform:none}
+.dz-bar{display:none}
+@media(max-width:44.99rem){
+body{padding-bottom:calc(5rem + env(safe-area-inset-bottom))}
+.dz-bar{display:flex;gap:.6rem;position:fixed;left:0;right:0;bottom:0;z-index:30;padding:.6rem .8rem calc(.6rem + env(safe-area-inset-bottom));background:var(--dz-bg);border-top:3px solid var(--dz-b);box-shadow:0 -8px 24px rgba(0,0,0,.18)}
+.dz-bar a{flex:1 1 0;display:flex;align-items:center;justify-content:center;min-height:48px;padding:.4rem .6rem;border-radius:12px;border:2px solid var(--dz-tx);color:var(--dz-tx);background:transparent;font:700 1rem/1.15 system-ui,-apple-system,'Segoe UI',sans-serif;text-align:center;text-decoration:none;transition:transform .2s ease}
+.dz-bar a.p{flex:1.5 1 0;background:var(--dz-b);border-color:var(--dz-b);color:var(--dz-bt)}
+.dz-bar a:active{transform:scale(.96)}
+.dz-bar a:focus-visible{outline:3px solid var(--dz-tx);outline-offset:2px}
+}
+@media(min-width:45rem){.hero .btn{min-height:54px}}
+@media(prefers-reduced-motion:reduce){.js .dz-r{opacity:1;transform:none;transition:none}.btn,.dz-bar a{transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main" data-en="Skip to content">Vai al contenuto</a>
+<header class="top">
+<a class="brand" href="#top">Il Cagliarese B&amp;B</a>
+<nav aria-label="Principale"><a href="#camere" data-en="Rooms">Camere</a><a href="#quartiere" data-en="Area">Quartiere</a><a href="#recensioni" data-en="Reviews">Recensioni</a><a href="#disponibilita" data-en="Availability">Disponibilità</a></nav>
+<div class="lang" role="group" aria-label="Lingua / Language"><button type="button" data-lang="it" aria-pressed="true">IT</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div>
+</header>
+<main id="main">
+<section class="hero" id="top">
+<div class="hero-in">
+<p class="kicker" data-en="B&amp;B in Cagliari — Marina district">B&amp;B a Cagliari — quartiere Marina</p>
+<h1>Il Cagliarese B&amp;B</h1>
+<p class="lead" data-en="Your own website, with a direct availability request, to welcome guests without intermediaries.">Il vostro sito, con richiesta di disponibilità diretta, per accogliere gli ospiti senza intermediari.</p>
+<p class="cta"><a class="btn" href="#disponibilita" data-en="Request availability">Richiedi disponibilità</a> <a class="btn sec" href="#contatti" data-en="WhatsApp (number to be added)">WhatsApp (numero da inserire)</a></p>
+<address>Via Porcile 19, Cagliari (Marina)</address>
+</div>
+<img class="hero-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Cpath d='M0 240l110-90 80 60 70-50 140 100v40H0z' fill='%23aaa'/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300">
+</section>
+
+<section id="disponibilita" class="avail" aria-labelledby="h-av">
+<h2 id="h-av" data-en="Request availability directly">Richiedi disponibilità direttamente</h2>
+<p data-en="Write to the host directly, no portal in between. This form is a demonstration: it sends nothing.">Scrivi direttamente alla struttura, senza passare dal portale. Questo modulo è dimostrativo: non invia nulla.</p>
+<form id="avail" novalidate>
+<div class="f"><label for="ci" data-en="Check-in">Arrivo</label><input type="date" id="ci" name="ci"></div>
+<div class="f"><label for="co" data-en="Check-out">Partenza</label><input type="date" id="co" name="co"></div>
+<div class="f"><label for="gu" data-en="Guests">Ospiti</label><input type="number" id="gu" name="gu" min="1" max="20" value="2"></div>
+<button class="btn" type="submit" data-en="Check availability">Verifica disponibilità</button>
+</form>
+<p id="msg" class="msg" role="status" aria-live="polite"></p>
+</section>
+
+<section id="camere" aria-labelledby="h-r">
+<h2 id="h-r" data-en="Rooms">Camere</h2>
+<p class="note" data-en="Placeholders: room names, descriptions, capacity and rates to be provided by the host.">Segnaposto: nomi, descrizioni, capienza e tariffe da fornire a cura del titolare.</p>
+<ul class="cards"><li class="card"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Cpath d='M0 240l110-90 80 60 70-50 140 100v40H0z' fill='%23aaa'/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3 data-en="Room 1 (name to be added)">Camera 1 (nome da inserire)</h3><p data-en="Description, bed setup and amenities to be added.">Descrizione, letti e dotazioni da inserire.</p></li><li class="card"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Cpath d='M0 240l110-90 80 60 70-50 140 100v40H0z' fill='%23aaa'/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3 data-en="Room 2 (name to be added)">Camera 2 (nome da inserire)</h3><p data-en="Description, bed setup and amenities to be added.">Descrizione, letti e dotazioni da inserire.</p></li><li class="card"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Cpath d='M0 240l110-90 80 60 70-50 140 100v40H0z' fill='%23aaa'/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy"><h3 data-en="Room 3 (name to be added)">Camera 3 (nome da inserire)</h3><p data-en="Description, bed setup and amenities to be added.">Descrizione, letti e dotazioni da inserire.</p></li></ul>
+</section>
+
+<section id="quartiere" class="alt" aria-labelledby="h-q">
+<h2 id="h-q" data-en="The neighbourhood: Marina district">Il quartiere: quartiere Marina</h2>
+<div class="two">
+<div><p data-en="The Marina is one of the historic districts of Cagliari, facing the port. It is a district of narrow streets, small shops, restaurants and cafés.">La Marina è uno dei quartieri storici di Cagliari e si affaccia sul porto. È un quartiere di strade strette, piccole botteghe, ristoranti e locali.</p>
+<p data-en="Suited to those who like to explore a city on foot.">Adatto a chi ama scoprire la città a piedi.</p>
+<p class="note" data-en="To be completed with the host's own tips; no distances are stated here.">Da completare con i consigli del titolare; qui non sono indicate distanze.</p></div>
+<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23ccc'/%3E%3Cpath d='M0 240l110-90 80 60 70-50 140 100v40H0z' fill='%23aaa'/%3E%3C/svg%3E" alt="foto da inserire (con permesso del titolare)" width="400" height="300" loading="lazy">
+</div>
+</section>
+
+<section id="recensioni" aria-labelledby="h-rec">
+<h2 id="h-rec" data-en="Your reviews">Le vostre recensioni</h2>
+<div class="slot">
+<p data-en="Area to connect: the guests' real reviews (from the portal, with the host's consent) and the host's replies will appear here.">Area da collegare: qui compariranno le recensioni reali degli ospiti (dal portale, con il consenso del titolare) e le risposte della struttura.</p>
+<p class="small" data-en="No review is shown in this draft.">In questa bozza non è mostrata nessuna recensione.</p>
+</div>
+</section>
+
+<section id="contatti" class="alt" aria-labelledby="h-c">
+<h2 id="h-c" data-en="Contact">Contatti</h2>
+<address>Via Porcile 19, Cagliari (Marina)</address>
+<p data-en="Phone and email: not published, to be added by the host.">Telefono ed email: non pubblicati, da inserire a cura del titolare.</p><p><a class="btn sec" href="#contatti" data-en="WhatsApp (number to be added)">WhatsApp (numero da inserire)</a></p>
+</section>
+</main>
+<footer>
+<p>Bozza dimostrativa preparata per Il Cagliarese B&amp;B — non pubblicata</p>
+<p lang="en">Demo draft prepared for Il Cagliarese B&amp;B — not published</p>
+</footer>
+<script>
+(function(){
+var els=document.querySelectorAll('[data-en]');
+els.forEach(function(e){e.setAttribute('data-it',e.innerHTML)});
+var btns=document.querySelectorAll('[data-lang]');
+var root=document.documentElement;
+function msg(){var m=document.getElementById('msg');if(m.getAttribute('data-shown')){m.textContent=root.lang==='en'?'demo: no data sent':'demo: nessun dato inviato'}}
+function set(l){root.lang=l;
+els.forEach(function(e){e.innerHTML=e.getAttribute(l==='en'?'data-en':'data-it')});
+btns.forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-lang')===l))});
+document.title=root.getAttribute(l==='en'?'data-title-en':'data-title-it');msg()}
+btns.forEach(function(b){b.addEventListener('click',function(){set(b.getAttribute('data-lang'))})});
+document.getElementById('avail').addEventListener('submit',function(ev){ev.preventDefault();document.getElementById('msg').setAttribute('data-shown','1');msg()});
+var ci=document.getElementById('ci'),co=document.getElementById('co');
+ci.addEventListener('change',function(){co.min=ci.value});
+})();
+</script>
+<nav class="dz-bar" aria-label="Azioni rapide"><a href="#contatti" data-en="Contacts">Contatti</a><a class="p" href="#disponibilita" data-en="Request availability">Richiedi disponibilità</a></nav>
+<script>(function(){try{var d=document;if(!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion:reduce)').matches)return;d.documentElement.classList.add('js');var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('dz-in');io.unobserve(e.target)}})},{rootMargin:'0px 0px -8%'});d.querySelectorAll('main section:not(.hero)').forEach(function(s){var c=s.children.length==1&&s.firstElementChild.tagName=='DIV'?s.firstElementChild:s;Array.prototype.forEach.call(c.children,function(k,i){if(k.tagName=='SCRIPT')return;k.classList.add('dz-r');k.style.transitionDelay=Math.min(i,4)*60+'ms';io.observe(k)})})}catch(x){}})();</script>
+</body>
+</html>

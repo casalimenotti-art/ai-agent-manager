@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4 Canti Bistrot, Quartu Sant'Elena - bozza dimostrativa</title>
+<meta name="description" content="Bozza dimostrativa del sito di 4 Canti Bistrot, Quartu Sant'Elena: orari, menu e prenotazione del tavolo.">
+<meta name="robots" content="noindex, nofollow">
+<style>
+:root{--bg:#fff8e6;--ink:#10303a;--muted:#35525b;--teal:#0b6b78;--teal-d:#084c56;--sun:#ffc83d;--coral:#c8321f;--card:#fff;--line:#10303a}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:1.0625rem/1.6 "Trebuchet MS",Verdana,sans-serif}
+h1,h2,h3{margin:0;line-height:1.15}
+a{color:var(--teal-d)}
+:focus-visible{outline:4px solid var(--coral);outline-offset:3px}
+.skip{position:absolute;left:-999px;top:0;background:#fff;padding:.6rem 1rem;z-index:10}
+.skip:focus{left:8px;top:8px}
+.wrap{max-width:60rem;margin:0 auto;padding:0 1rem}
+header{background:var(--teal);color:#fff;border-bottom:5px solid var(--sun)}
+header .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.5rem 1rem;padding-top:.8rem;padding-bottom:.8rem}
+.logo{font-weight:800;font-size:1.3rem}
+nav a{color:#fff;font-weight:700;margin-left:1rem;text-decoration:none;display:inline-block;padding:.3rem 0;transition:color .2s}
+nav a:hover{color:var(--sun)}
+.hero{padding:2.5rem 0 2rem;background:radial-gradient(circle at 90% 10%,var(--sun) 0 70px,transparent 71px),var(--bg)}
+.hero .wrap{display:grid;gap:1.5rem}
+.hero h1{font-size:clamp(2.2rem,9vw,4rem);color:var(--teal-d)}
+.tag{display:inline-block;background:var(--sun);color:var(--ink);font-weight:800;padding:.25rem .8rem;border-radius:999px;margin-bottom:.8rem;transform:rotate(-2deg)}
+.btns{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:1.2rem}
+.btn{display:inline-block;font:700 1rem "Trebuchet MS",Verdana,sans-serif;padding:.85rem 1.3rem;border-radius:14px;border:3px solid var(--line);background:var(--coral);color:#fff;text-decoration:none;box-shadow:4px 4px 0 var(--line);cursor:pointer;transition:transform .2s,box-shadow .2s}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--line)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--line)}
+.btn.alt{background:var(--sun);color:var(--ink)}
+.ph{width:100%;height:auto;display:block;border:3px solid var(--line);border-radius:18px;box-shadow:6px 6px 0 var(--line)}
+section{padding:2.5rem 0}
+h2{font-size:clamp(1.7rem,6vw,2.4rem);color:var(--teal-d);margin-bottom:.4rem}
+.lead{color:var(--muted);margin:0 0 1.4rem}
+.cards{display:grid;gap:1rem}
+.card{background:var(--card);border:3px solid var(--line);border-radius:18px;padding:1.1rem;box-shadow:5px 5px 0 var(--line)}
+.card h3{font-size:1.3rem;margin-bottom:.4rem}
+.card ul{list-style:none;margin:0;padding:0}
+.card li{display:flex;justify-content:space-between;gap:1rem;padding:.55rem 0;border-top:2px dashed #9db4b9}
+.card li:first-child{border-top:0}
+.p{white-space:nowrap;font-weight:700;color:var(--teal-d)}
+.todo{font-style:italic;color:var(--muted)}
+.orari{background:var(--teal);color:#fff}
+.orari h2{color:#fff}
+.orari table{border-collapse:collapse;width:100%;max-width:30rem;background:#fff;color:var(--ink);border:3px solid var(--line);border-radius:12px;overflow:hidden}
+.orari th,.orari td{text-align:left;padding:.6rem .8rem;border-bottom:2px solid #cfe0e3}
+.orari th{width:35%;background:var(--sun)}
+form{background:#fff;border:3px solid var(--line);border-radius:18px;padding:1.2rem;display:grid;gap:1rem;box-shadow:5px 5px 0 var(--line)}
+label{display:grid;gap:.3rem;font-weight:700}
+input,select,textarea{font:inherit;padding:.65rem;border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+.row{display:grid;gap:1rem}
+#esito{font-weight:700;background:#d6f5dc;color:#0d4a1e;border:2px solid #0d4a1e;border-radius:10px;padding:.7rem;margin:0}
+#esito:empty{display:none}
+.small{font-size:.92rem;color:var(--muted);margin:0}
+footer{background:var(--ink);color:#fff;text-align:center;padding:1.4rem 1rem;font-size:.92rem}
+@media(min-width:720px){.hero .wrap{grid-template-columns:1.2fr 1fr;align-items:center}.cards{grid-template-columns:repeat(3,1fr)}.row{grid-template-columns:1fr 1fr}}
+@keyframes pop{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+.hero .wrap>*,.card{animation:pop .6s cubic-bezier(.3,1.3,.5,1) both}
+.card:nth-child(2){animation-delay:.1s}.card:nth-child(3){animation-delay:.2s}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.tag{transform:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#principale">Vai al contenuto</a>
+<header><div class="wrap"><div class="logo">4 Canti Bistrot</div>
+<nav aria-label="Principale"><a href="#menu">Menu</a><a href="#orari">Orari</a><a href="#prenota">Prenota</a></nav></div></header>
+<main id="principale">
+<div class="hero"><div class="wrap">
+<div><span class="tag">Quartu Sant'Elena</span>
+<h1>4 Canti Bistrot</h1>
+<p>Orari, menu e prenotazione in un unico posto, pensati per il telefono. Descrizione del locale: da inserire.</p>
+<div class="btns"><a class="btn" href="tel:3891738703">Chiama 389 173 8703</a><a class="btn alt" href="#prenota">Prenota</a></div></div>
+<img class="ph" width="600" height="450" alt="foto da inserire (con permesso del titolare)" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 450'%3E%3Crect width='600' height='450' fill='%23bfe3e8'/%3E%3Ctext x='300' y='230' text-anchor='middle' font-family='Verdana' font-size='24' fill='%2310303a'%3Efoto da inserire%3C/text%3E%3C/svg%3E">
+</div></div>
+
+<section id="menu"><div class="wrap">
+<h2>Menu</h2>
+<p class="lead">Struttura proposta: sezioni, voci e prezzi sono da inserire.</p>
+<div class="cards">
+<article class="card"><h3>Mattino</h3><ul><li><span class="todo">Voce da inserire</span><span class="p">€ da inserire</span></li><li><span class="todo">Voce da inserire</span><span class="p">€ da inserire</span></li></ul></article>
+<article class="card"><h3>Pranzo</h3><ul><li><span class="todo">Voce da inserire</span><span class="p">€ da inserire</span></li><li><span class="todo">Voce da inserire</span><span class="p">€ da inserire</span></li></ul></article>
+<article class="card"><h3>Sera</h3><ul><li><span class="todo">Voce da inserire</span><span class="p">€ da inserire</span></li><li><span class="todo">Voce da inserire</span><span class="p">€ da inserire</span></li></ul></article>
+</div></div></section>
+
+<section class="orari" id="orari"><div class="wrap">
+<h2>Orari</h2>
+<table><caption class="small" style="text-align:left;color:#fff;padding-bottom:.4rem">Orari come da scheda italia.it, verificati</caption>
+<tbody><tr><th scope="row">Lun-gio</th><td>7:00-17:00</td></tr>
+<tr><th scope="row">Venerdì</th><td>7:00-15:30 e 18:30-23:00</td></tr>
+<tr><th scope="row">Sabato</th><td>7:00-15:30</td></tr>
+<tr><th scope="row">Domenica</th><td>Chiuso</td></tr></tbody></table>
+</div></section>
+
+<section id="prenota"><div class="wrap">
+<h2>Prenota un tavolo</h2>
+<p class="lead">Modulo dimostrativo: non invia nulla.</p>
+<form id="f" novalidate>
+<div class="row"><label for="nome">Nome<input id="nome" name="nome" autocomplete="name" required></label>
+<label for="pers">Persone<input id="pers" name="pers" type="number" min="1" max="30" value="2" required></label></div>
+<div class="row"><label for="data">Data<input id="data" name="data" type="date" required></label>
+<label for="ora">Ora<input id="ora" name="ora" type="time" required></label></div>
+<label for="note">Note<textarea id="note" name="note" rows="3"></textarea></label>
+<button class="btn" type="submit">Richiedi prenotazione</button>
+<p id="esito" role="status" aria-live="polite"></p>
+<p class="small">Per prenotare davvero oggi: telefono 389 173 8703. Indirizzo: Via Guglielmo Marconi 170, 09045 Quartu Sant'Elena.</p>
+</form>
+<div class="btns"><a class="btn alt" href="tel:3891738703">Chiama 389 173 8703</a></div>
+<p class="small" style="margin-top:1rem">Email: da inserire (non pubblicata).</p>
+</div></section>
+</main>
+<footer><p>Bozza dimostrativa preparata per 4 Canti Bistrot — non pubblicata</p></footer>
+<script>
+document.getElementById('f').addEventListener('submit',function(e){e.preventDefault();document.getElementById('esito').textContent='demo: nessun dato inviato';});
+</script>
+</body>
+</html>
