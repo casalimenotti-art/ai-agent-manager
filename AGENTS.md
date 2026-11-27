@@ -40,6 +40,10 @@ Se un agente sta per fermarsi (utilizzo quasi finito, fine giornata, compito da 
 Se ce n'è uno per te o per «chiunque» e la persona ti chiede di continuare: `passa.py prendi passaggi/<file>.md --chi <tuo-id>`,
 parti dal branch indicato, e a lavoro finito `passa.py chiudi ...`. Commit e push ogni volta.
 
+**Ritorno a Claude:** quando un Codex finisce un lavoro che gli ha passato Claude, chiude il passaggio e ne apre uno di ritorno
+`--per menotti` con cosa ha fatto, branch/PR e cosa resta: Claude lo riassume a Menotti, che decide come continuare.
+(Claude passa il lavoro lungo quando arriva al 60% di utilizzo: il 40% resta a Menotti per le sue richieste.)
+
 ## Aggiornare GitHub passo passo
 
 Dopo **ogni passo che funziona** (test verdi): commit piccolo con messaggio chiaro + riga nel registro + push sul tuo branch.
