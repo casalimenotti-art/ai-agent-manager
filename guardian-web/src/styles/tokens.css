@@ -1,0 +1,50 @@
+/* Guardian · design token (unica fonte). Tema scuro "command center". */
+:root {
+  color-scheme: dark;
+  /* superfici */
+  --bg-0: #070b12;          /* fondo mezzanotte */
+  --bg-1: #0b111b;
+  --surface-1: #0f1622;     /* pannelli e superficie dei grafici (palette validata su questo) */
+  --surface-2: #141d2b;     /* elementi rialzati */
+  --surface-3: #1b2637;
+  --border-1: #223047;
+  --border-2: #2d3d57;
+  --glass: rgba(15, 22, 34, 0.72);
+  /* testo (AA su surface-1) */
+  --text-1: #e8eef6;
+  --text-2: #a8b6c8;
+  --text-3: #7d8ca1;
+  /* accento: intelligenza, focus, elementi attivi */
+  --accent: #22d3ee;
+  --accent-2: #7dd3fc;
+  --accent-soft: rgba(34, 211, 238, 0.14);
+  --violet: #a78bfa;
+  /* stato: riservati, sempre con icona + testo */
+  --ok: #34d399;    --ok-soft: rgba(52, 211, 153, 0.14);
+  --warn: #fbbf24;  --warn-soft: rgba(251, 191, 36, 0.14);
+  --serious: #fb923c; --serious-soft: rgba(251, 146, 60, 0.14);
+  --crit: #f87171;  --crit-soft: rgba(248, 113, 113, 0.16);
+  --muted-soft: rgba(125, 140, 161, 0.16);
+  /* serie categoriali dei grafici: ordine fisso, validate (dataviz, dark, surface #0f1622) */
+  --series-1: #338ced; --series-2: #e76624; --series-3: #00a888; --series-4: #d28e05;
+  --series-5: #e24d8b; --series-6: #0aac23; --series-7: #9887ef; --series-8: #eb6263;
+  /* tipografia */
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --fs-xs: 0.75rem; --fs-sm: 0.8125rem; --fs-md: 0.9375rem; --fs-lg: 1.125rem; --fs-xl: 1.5rem; --fs-2xl: 2rem;
+  /* spaziatura, raggi, ombre */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+  --r-1: 6px; --r-2: 10px; --r-3: 16px; --r-pill: 999px;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 0 1px rgba(34, 211, 238, 0.35), 0 0 24px rgba(34, 211, 238, 0.18);
+  /* movimento */
+  --t-micro: 150ms; --t-panel: 260ms; --t-large: 380ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* livelli e dimensioni */
+  --z-rail: 20; --z-header: 30; --z-dock: 40; --z-drawer: 50; --z-modal: 60; --z-palette: 70; --z-toast: 80;
+  --drawer-w: 480px; --drawer-w-lg: 720px; --rail-w: 72px; --header-h: 60px;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-micro: 0ms; --t-panel: 0ms; --t-large: 0ms; }
+}

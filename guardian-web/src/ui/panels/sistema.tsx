@@ -1,0 +1,243 @@
+// Pannelli di sistema: agenti, aziende, notifiche, attività, statistiche, workflow, PC, salute, impostazioni.
+import { Activity, Bell, Bot, Building2, Cpu, GitBranchPlus, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { attivitaPerGiorno, caricoPerAgente, completatiOggi, durataMediaOre, errori24h, tassoCompletamento } from '../../logic/metrics';
+import { report } from '../../logic/report';
+import { fa, statoAgente, statoDispositivo } from '../../logic/status';
+import { leggiPreferenze, salvaPreferenze, useG, type Pannello, type Preferenze } from '../../state';
+import { TASK_TERMINALI, type AgentLog, type Severita } from '../../types';
+import { GraficoBarre, GraficoLinee } from '../charts';
+import { Gravita, Scheletro, StatoAgente, StatoTask, Vuoto } from '../kit';
+import { supportoAscolto, supportoParlato } from '../voce';
+
+export function AgentiPanel() {
+  const { snap, apri } = useG();
+  if (!snap) return <Scheletro />;
+  return (<>
+    <p className="note">Lo stato arriva solo da eventi reali (hook di Claude Code, notify di Codex) inviati dal Guardian Bridge.
+      Un PC acceso non rende «online» il suo agente: senza segnali da 180 s lo stato è «sconosciuto».</p>
+    {snap.agents.length === 0 ? <Vuoto icona={Bot}>Nessun agente. Sul PC: GUARDIAN_CLAUDE_AGENT_ID o GUARDIAN_CODEX_AGENT_ID in bridge/.env, poi «guardian_bridge.py run».</Vuoto> :
+      <div className="list">{snap.agents.map((a) => (
+        <button key={a.id} className="item" onClick={() => apri({ p: 'agente', id: a.id })}>
+          <div style={{ flex: 1 }}><div className="t">{a.nome} <span className="dim mono" style={{ fontWeight: 400 }}>{a.id}</span></div>
+            <div className="s">{snap.users.find((u) => u.id === a.user_id)?.nome} · ultimo segnale {fa(a.last_heartbeat)}{a.disponibile ? '' : ' · non disponibile'}</div></div>
+          <StatoAgente s={statoAgente(a)} /></button>))}</div>}
+  </>);
+}
+
+export function AgentePanel({ id }: Pannello) {
+  const { snap, source, esegui, user, apri } = useG();
+  const [log, setLog] = useState<AgentLog[] | null>(null);
+  const [assegna, setAssegna] = useState('');
+  useEffect(() => { if (id) source.logAgente(id, 50).then(setLog).catch(() => setLog([])); }, [source, id]);
+  if (!snap) return <Scheletro />;
+  const a = snap.agents.find((x) => x.id === id);
+  if (!a) return <Vuoto>Agente non trovato.</Vuoto>;
+  const s = statoAgente(a); const pc = snap.devices.find((d) => d.id === a.device_id);
+  const suoi = snap.tasks.filter((t) => t.assigned_agent_id === a.id);
+  const liberi = snap.tasks.filter((t) => !t.assigned_agent_id && ['ready', 'planned', 'backlog'].includes(t.stato));
+  return (<>
+    <div className="row"><StatoAgente s={s} /><span className="pill mono">{a.tipo}</span>{!a.disponibile && <span className="pill warn">non disponibile</span>}</div>
+    <dl className="kv">
+      <dt>Collaboratore</dt><dd>{snap.users.find((u) => u.id === a.user_id)?.nome ?? a.user_id}</dd>
+      <dt>PC</dt><dd>{pc ? `${pc.nome} (${statoDispositivo(pc)})` : 'non indicato'}</dd>
+      <dt>Ultimo segnale</dt><dd>{fa(a.last_heartbeat)}</dd><dt>Ultima attività</dt><dd>{fa(a.last_activity)}</dd>
+      <dt>Capacità</dt><dd>{a.capabilities.length ? a.capabilities.join(', ') : '—'}</dd>
+      {a.usage && <><dt>Utilizzo</dt><dd className="mono">{a.usage.five_hour ? `5 h ${Math.round(a.usage.five_hour.pct)}%` : ''}{a.usage.seven_day ? ` · 7 g ${Math.round(a.usage.seven_day.pct)}%` : ''}</dd></>}
+      {a.error && <><dt>Errore</dt><dd style={{ color: 'var(--crit)' }}>{a.error}</dd></>}
+    </dl>
+    <div className="row">
+      <button className="btn" onClick={() => void esegui(() => source.disponibilitaAgente(a.id, !a.disponibile, user.id), 'Disponibilità aggiornata')}>
+        {a.disponibile ? 'Segna come non disponibile' : 'Segna come disponibile'}</button>
+      <button className="btn" onClick={() => apri({ p: 'handoff' })}>Apri handoff</button>
+    </div>
+    <form className="row" onSubmit={(e) => { e.preventDefault(); if (assegna) void esegui(() => source.modificaTask(Number(assegna), { assigned_agent_id: a.id }, user.id), 'Task assegnato'); }}>
+      <select className="input" style={{ flex: 1, minWidth: 180 }} value={assegna} onChange={(e) => setAssegna(e.target.value)} aria-label="Task da assegnare">
+        <option value="">Assegna un task libero…</option>{liberi.map((t) => <option key={t.id} value={t.id}>#{t.id} {t.titolo}</option>)}</select>
+      <button className="btn primary" type="submit" disabled={!assegna}>Assegna</button></form>
+    <h3 className="section-title">Task <span className="count">{suoi.length}</span></h3>
+    {suoi.length === 0 ? <Vuoto>Nessun task assegnato.</Vuoto> : <div className="list">{suoi.map((t) => (
+      <button key={t.id} className="item" onClick={() => apri({ p: 'task', id: String(t.id) })}><div style={{ flex: 1 }} className="t">#{t.id} {t.titolo}</div><StatoTask s={t.stato} /></button>))}</div>}
+    <h3 className="section-title">Log recenti</h3>
+    <p className="dim" style={{ fontSize: 12, margin: 0 }}>Solo metadati e richieste troncate a 200 caratteri, mai l'output degli strumenti.</p>
+    {log === null ? <Scheletro /> : log.length === 0 ? <Vuoto>Nessun log: arrivano dal bridge con gli hook attivi.</Vuoto> :
+      <table className="data"><thead><tr><th>Quando</th><th>Livello</th><th>Fonte</th><th>Messaggio</th></tr></thead>
+        <tbody>{log.map((l) => <tr key={l.id}><td className="mono">{fa(l.ts)}</td><td>{l.level}</td><td>{l.source}</td><td>{l.message}</td></tr>)}</tbody></table>}
+  </>);
+}
+
+export function AziendePanel() {
+  const { snap, source, esegui, user, apri } = useG();
+  const [f, setF] = useState({ nome: '', descrizione: '' });
+  if (!snap) return <Scheletro />;
+  return (<>
+    <p className="note">Le aziende sono i progetti di NEXO. Ricavi, spese e clienti non hanno ancora una fonte reale nel database: non vengono mostrati.</p>
+    {snap.projects.length === 0 ? <Vuoto icona={Building2}>Nessuna azienda.</Vuoto> : <div className="list">{snap.projects.map((p) => (
+      <button key={p.id} className="item" onClick={() => apri({ p: 'azienda', id: String(p.id) })}><Building2 size={16} aria-hidden />
+        <div style={{ flex: 1 }}><div className="t">{p.nome}</div><div className="s">{p.stato} · {snap.tasks.filter((t) => t.project_id === p.id && !TASK_TERMINALI.includes(t.stato)).length} task aperti</div></div></button>))}</div>}
+    <form className="card stack" onSubmit={async (e) => { e.preventDefault();
+      const ok = await esegui(() => source.creaProgetto(f.nome, f.descrizione, user.id), 'Azienda creata'); if (ok !== undefined) setF({ nome: '', descrizione: '' }); }}>
+      <h3 className="section-title" style={{ margin: 0 }}>Nuova azienda</h3>
+      <label className="field">Nome *<input className="input" required value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} /></label>
+      <label className="field">Descrizione<input className="input" value={f.descrizione} onChange={(e) => setF({ ...f, descrizione: e.target.value })} /></label>
+      <button className="btn primary" type="submit"><Plus size={16} aria-hidden />Crea</button></form>
+  </>);
+}
+
+export function AziendaPanel({ id }: Pannello) {
+  const { snap, apri } = useG();
+  if (!snap) return <Scheletro />;
+  const p = snap.projects.find((x) => String(x.id) === id);
+  if (!p) return <Vuoto>Azienda non trovata.</Vuoto>;
+  const ts = snap.tasks.filter((t) => t.project_id === p.id);
+  const agenti = [...new Set(ts.map((t) => t.assigned_agent_id).filter(Boolean))] as string[];
+  const ev = snap.events.filter((e) => e.project_id === p.id || ts.some((t) => t.id === e.task_id)).slice(0, 10);
+  const conta = (s: string) => ts.filter((t) => t.stato === s).length;
+  return (<>
+    {p.descrizione && <p style={{ margin: 0 }}>{p.descrizione}</p>}
+    <div className="kpis">{[['In esecuzione', conta('running')], ['Pronti', conta('ready')], ['Bloccati/falliti', conta('blocked') + conta('failed')], ['Completati', conta('completed')]]
+      .map(([l, v]) => <div key={l} className="kpi" style={{ cursor: 'default' }}><div className="v">{v}</div><div className="l">{l}</div></div>)}</div>
+    <h3 className="section-title">Agenti coinvolti</h3>
+    {agenti.length === 0 ? <Vuoto>Nessun agente assegnato ai task.</Vuoto> : <div className="row">{agenti.map((a) =>
+      <button key={a} className="pill accent" style={{ border: 0, cursor: 'pointer' }} onClick={() => apri({ p: 'agente', id: a })}>{a}</button>)}</div>}
+    <h3 className="section-title">Task <span className="count">{ts.length}</span></h3>
+    {ts.length === 0 ? <Vuoto>Nessun task.</Vuoto> : <div className="list">{ts.map((t) => (
+      <button key={t.id} className="item" onClick={() => apri({ p: 'task', id: String(t.id) })}><div style={{ flex: 1 }} className="t">#{t.id} {t.titolo}</div><StatoTask s={t.stato} /></button>))}</div>}
+    <h3 className="section-title">Eventi recenti</h3>
+    {ev.length === 0 ? <Vuoto>Nessun evento.</Vuoto> : ev.map((e) => <div key={e.id} className="item static"><div><div className="t" style={{ fontWeight: 500 }}>{e.message}</div><div className="s">{fa(e.timestamp)}</div></div></div>)}
+  </>);
+}
+
+export function NotifichePanel() {
+  const { snap, source, esegui, user, apri } = useG();
+  if (!snap) return <Scheletro />;
+  const destinazione = (t?: string | null, id?: string | null): Pannello | null =>
+    !id ? null : t === 'tasks' ? { p: 'task', id } : t === 'agents' ? { p: 'agente', id } : t === 'approvals' ? { p: 'approvazione', id } : t === 'handoffs' ? { p: 'handoff' } : null;
+  const nonLette = snap.notifications.filter((n) => !n.read_at).length;
+  return (<>
+    <div className="row between"><span className="muted">{nonLette} non lette</span>
+      <button className="btn sm" disabled={!nonLette} onClick={() => void esegui(() => source.segnaLetta(user.id), 'Tutte lette')}>Segna tutte come lette</button></div>
+    {snap.notifications.length === 0 ? <Vuoto icona={Bell}>Nessuna notifica. Arrivano per approvazioni, task falliti, agenti in errore e handoff verso di te.</Vuoto> :
+      <div className="list">{snap.notifications.map((n) => {
+        const dest = destinazione(n.ref_table, n.ref_id);
+        return (
+          <button key={n.id} className="item" onClick={() => { if (!n.read_at) void esegui(() => source.segnaLetta(user.id, n.id)); if (dest) apri(dest); }}>
+            {!n.read_at && <span className="pill accent">nuova</span>}
+            <div style={{ flex: 1 }}><div className="t">{n.message}</div><div className="s">{n.kind.replace(/_/g, ' ')} · {fa(n.created_at)}</div></div>
+          </button>);
+      })}</div>}
+  </>);
+}
+
+export function AttivitaPanel() {
+  const { snap } = useG();
+  const [sev, setSev] = useState<'' | Severita>(''); const [tipo, setTipo] = useState(''); const [ag, setAg] = useState('');
+  if (!snap) return <Scheletro />;
+  const tipi = [...new Set(snap.events.map((e) => e.event_type))].sort();
+  const lista = snap.events.filter((e) => (!sev || e.severity === sev) && (!tipo || e.event_type === tipo) && (!ag || e.agent_id === ag));
+  return (<>
+    <div className="row">
+      <select className="input" style={{ maxWidth: 160 }} value={sev} onChange={(e) => setSev(e.target.value as Severita | '')} aria-label="Gravità">
+        <option value="">Tutte le gravità</option><option value="info">info</option><option value="warning">attenzione</option><option value="error">errore</option><option value="critical">critico</option></select>
+      <select className="input" style={{ maxWidth: 200 }} value={tipo} onChange={(e) => setTipo(e.target.value)} aria-label="Tipo"><option value="">Tutti i tipi</option>{tipi.map((t) => <option key={t}>{t}</option>)}</select>
+      <select className="input" style={{ maxWidth: 200 }} value={ag} onChange={(e) => setAg(e.target.value)} aria-label="Agente"><option value="">Tutti gli agenti</option>{snap.agents.map((a) => <option key={a.id} value={a.id}>{a.id}</option>)}</select>
+    </div>
+    <p className="dim" style={{ fontSize: 12, margin: 0 }}>Ultimi {snap.events.length} eventi reali. I log dettagliati di ogni agente sono nel suo pannello.</p>
+    {lista.length === 0 ? <Vuoto icona={Activity}>Nessun evento con questi filtri.</Vuoto> : <div className="list">{lista.map((e) => (
+      <div key={e.id} className="item static"><div style={{ flex: 1 }}><div className="t" style={{ fontWeight: 500 }}>{e.message}</div>
+        <div className="s mono">{fa(e.timestamp)} · {e.event_type}{e.user_id ? ` · ${e.user_id}` : ''}{e.task_id ? ` · task #${e.task_id}` : ''}</div></div><Gravita s={e.severity} /></div>))}</div>}
+  </>);
+}
+
+export function StatistichePanel() {
+  const { snap } = useG();
+  if (!snap) return <Scheletro />;
+  const r = report(snap); const tasso = tassoCompletamento(snap); const durata = durataMediaOre(snap);
+  const giorni = attivitaPerGiorno(snap, 14);
+  const carico = caricoPerAgente(snap);
+  const fmt = (d: number) => new Date(d).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+  const tiles: [string, string, string][] = [
+    ['Completati oggi', String(completatiOggi(snap)), 'eventi task_completed di oggi'],
+    ['Tasso di completamento', tasso === null ? 'n.d.' : `${Math.round(tasso * 100)}%`, 'task chiusi negli ultimi 7 giorni'],
+    ['Durata media', durata === null ? 'n.d.' : `${durata.toFixed(1)} h`, 'da task_started a task_completed'],
+    ['Errori 24 h', String(errori24h(snap)), 'eventi con gravità errore o critica'],
+  ];
+  return (<>
+    <div className="kpis">{tiles.map(([l, v, f]) => <div key={l} className="kpi" style={{ cursor: 'default' }}><div className="v">{v}</div><div className="l">{l}</div><div className="f">{f}</div></div>)}</div>
+    <div className="card"><GraficoLinee titolo="Attività negli ultimi 14 giorni" etichette={giorni.map((g) => fmt(g.giorno))}
+      serie={[{ nome: 'Eventi', valori: giorni.map((g) => g.eventi) }, { nome: 'Task completati', valori: giorni.map((g) => g.completati) }]} /></div>
+    <div className="card">{carico.length === 0 ? <Vuoto>Nessun agente registrato.</Vuoto> :
+      <GraficoBarre titolo="Task aperti per agente" ordineColori={snap.agents.map((a) => a.id)}
+        barre={carico.map((c) => ({ id: c.id, nome: `${c.nome} · ${c.id}`, valore: c.aperti, extra: `${c.completati} completati` }))} />}</div>
+    <div className="card"><GraficoBarre titolo="Task per stato" ordineColori={Object.keys(r.conteggi)}
+      barre={Object.entries(r.conteggi).filter(([, v]) => v > 0).map(([k, v]) => ({ id: k, nome: k, valore: v }))} /></div>
+    <p className="dim" style={{ fontSize: 12 }}>Tutti i numeri sono calcolati dai dati del database. Ricavi e spese non hanno ancora una fonte: non vengono mostrati.</p>
+  </>);
+}
+
+export function WorkflowPanel() {
+  return (<Vuoto icona={GitBranchPlus}>
+    <b>Workflow non disponibile.</b><br />In Guardian non c'è ancora un motore di workflow: non mostriamo flussi finti.
+    I lavori ricorrenti si gestiscono come task; un motore minimo (task ricorrenti con approvazione) è una fase futura da approvare.
+  </Vuoto>);
+}
+
+export function DispositiviPanel() {
+  const { snap } = useG();
+  const classico = import.meta.env.VITE_GUARDIAN_CLASSICO_URL as string | undefined;
+  if (!snap) return <Scheletro />;
+  return (<>
+    <p className="note">Un PC è online se il bridge ha inviato un segnale negli ultimi 120 s. La registrazione di un PC (con il token mostrato una sola volta)
+      e la revoca si fanno dal Guardian classico{classico ? <> (<a href={classico} target="_blank" rel="noreferrer">apri</a>)</> : ''}.</p>
+    {snap.devices.length === 0 ? <Vuoto icona={Cpu}>Nessun PC registrato.</Vuoto> : <div className="list">{snap.devices.map((d) => {
+      const s = statoDispositivo(d);
+      return (<div key={d.id} className="item static"><Cpu size={18} aria-hidden /><div style={{ flex: 1 }}><div className="t">{d.nome}</div>
+        <div className="s">{snap.users.find((u) => u.id === d.user_id)?.nome} · ultimo segnale {fa(d.last_seen)} · checkpoint {fa(d.last_checkpoint)}</div></div>
+        <span className={`pill ${s === 'offline' ? '' : s === 'online' || s === 'occupato' ? 'ok' : 'warn'}`}>{s}</span></div>);
+    })}</div>}
+  </>);
+}
+
+export function SalutePanel() {
+  const { snap, source, pingOk, pingMs, pingAl, diretta, caricato, errore } = useG();
+  const pcOn = snap?.devices.filter((d) => statoDispositivo(d) !== 'offline').length ?? 0;
+  const conSegnale = snap?.agents.filter((a) => !['unknown', 'offline'].includes(statoAgente(a))).length ?? 0;
+  const righe: [string, string, string, string][] = [
+    ['App', 'ok', 'in esecuzione in questo browser', 'ora'],
+    ['Database', pingOk === false ? 'crit' : pingOk ? 'ok' : '', pingOk === false ? 'non raggiungibile' : pingMs !== null ? `${Math.round(pingMs)} ms` : 'verifica…', pingAl ? fa(new Date(pingAl).toISOString()) : '—'],
+    ['Dati', errore ? 'crit' : caricato ? 'ok' : '', errore ?? (caricato ? 'caricati' : 'in caricamento'), caricato ? fa(new Date(caricato).toISOString()) : '—'],
+    ['Aggiornamenti', diretta === 'live' ? 'ok' : '', source.modo === 'demo' ? 'dati locali (nessuna diretta)' : diretta === 'live' ? 'Realtime attivo' : 'polling ogni 20 s', '—'],
+    ['Bridge dei PC', pcOn ? 'ok' : 'warn', `${pcOn}/${snap?.devices.length ?? 0} PC online`, 'heartbeat < 120 s'],
+    ['Agenti', conSegnale ? 'ok' : 'warn', `${conSegnale}/${snap?.agents.length ?? 0} con segnale`, 'bridge < 180 s'],
+    ['Planner AI', '', 'nel Guardian classico (le chiavi non stanno nel browser)', '—'],
+  ];
+  return (<table className="data"><thead><tr><th>Componente</th><th>Stato</th><th>Ultimo controllo</th></tr></thead>
+    <tbody>{righe.map(([n, c, t, q]) => <tr key={n}><td>{n}</td><td><span className={`pill ${c}`}>{t}</span></td><td className="dim">{q}</td></tr>)}</tbody></table>);
+}
+
+export function ImpostazioniPanel() {
+  const { toast } = useG();
+  const [p, setP] = useState<Preferenze>(leggiPreferenze());
+  const salva = (n: Preferenze) => { setP(n); salvaPreferenze(n); toast('Preferenze salvate su questo dispositivo'); };
+  return (<>
+    <div className="card stack">
+      <h3 className="section-title" style={{ margin: 0 }}>Voce</h3>
+      {!supportoParlato && <p className="note">Questo browser non supporta la sintesi vocale: la voce resta disattivata.</p>}
+      <label className="row"><input type="checkbox" checked={p.voce} disabled={!supportoParlato} onChange={(e) => salva({ ...p, voce: e.target.checked })} />
+        Guardian legge ad alta voce risposte e annunci</label>
+      <p className="dim" style={{ fontSize: 12, margin: 0 }}>Microfono: {supportoAscolto ? 'disponibile (il riconoscimento può passare dai server del browser).' : 'non supportato da questo browser.'}</p>
+    </div>
+    <div className="card stack">
+      <h3 className="section-title" style={{ margin: 0 }}>Annunci</h3>
+      <label className="field">Livello<select className="input" value={p.livello} onChange={(e) => salva({ ...p, livello: e.target.value as Preferenze['livello'] })}>
+        <option value="silenzio">Silenzio</option><option value="critici">Solo critici (task falliti, agenti in errore)</option>
+        <option value="importanti">Importanti (+ approvazioni, handoff verso di me)</option><option value="tutti">Tutti</option></select></label>
+      <div className="grid2">
+        <label className="field">Silenzio dalle<input className="input" type="time" value={p.silenzioDa} onChange={(e) => salva({ ...p, silenzioDa: e.target.value })} /></label>
+        <label className="field">alle<input className="input" type="time" value={p.silenzioA} onChange={(e) => salva({ ...p, silenzioA: e.target.value })} /></label>
+      </div>
+      <p className="dim" style={{ fontSize: 12, margin: 0 }}>Al massimo 6 annunci vocali all'ora. Le preferenze restano su questo dispositivo.</p>
+    </div>
+    <p className="note">Provider AI, utenti e chiavi non si gestiscono da qui: nessuna chiave viene mai mostrata nel browser.</p>
+  </>);
+}
