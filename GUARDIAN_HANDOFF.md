@@ -55,3 +55,7 @@ Rinominato `guardian_hub/` → `guardian/`; store diviso in `store.py` (comuni +
 - Fatto: `Handoff` v2 (`tests_pending`, `dependencies`, `important_notes`, `from_agent_id`, `to_agent_id`, `stato`, `da_riga`); store: `handoff`, `take_handoff`, `close_handoff`, `memories`, `add_memory`, `supersede_memory` (SQLite + Supabase); migrazione `004_memoria_handoff.sql` (trigger di notifica, `bridge_checkpoint` v2, `bridge_handoff_take`, `bridge_memory_add/search`); bridge `checkpoint` v2, `handoff-take`, `memory add|search`; UI Memoria e Handoff v2; `python -m guardian.export_md`.
 - Test: 46 passati; `tests/pg/run.sh` → CHECK 002/003/004 OK; Playwright Handoff/Memoria a 1280/390 px: 0 eccezioni.
 - Prossimo passo: M5. `guardian/providers/` (base.py con Provider e costo free/local/paid; openai_compat.py con base_url+key da env, via stdlib o `openai`; router.py con ordine da config, `GUARDIAN_ALLOW_PAID=false`, fallback su errore/429, registro delle chiamate senza contenuti). Test con un server HTTP finto locale. Nessuna chiave è configurata: tutto deve risultare "non disponibile" senza errori.
+
+## Aggiornamento M5 (27/11)
+- Fatto: `guardian/providers/` (base, openai_compat con `estrai_json`, config da env/secrets, router con ALLOW_PAID e fallback). Test con un server HTTP finto: 6 nuovi, 52 in totale.
+- Prossimo passo: M6 (planner, assign, report, plans nello store, sezione "Guardian" nella UI).

@@ -1,5 +1,7 @@
 # GUARDIAN — decisioni (la più recente in alto; non cancellare le vecchie, segnarle come superate)
 
+- **2026-11-27 · M5: un solo adattatore, OpenAI-compatibile, con la libreria standard** (FreeLLMAPI, OpenRouter, Ollama, OpenAI). Nessun provider Anthropic dedicato finché non c'è una chiave; nessuna nuova dipendenza. Fallback solo su errori ritentabili (429, 5xx, rete, JSON non valido); 401/403 fermano la catena. Le tracce delle chiamate non contengono mai prompt né risposte.
+
 - **2026-11-27 · M4: ogni handoff con task crea una voce di memoria `ripresa`** (fonte `handoff #id`): la memoria del task contiene sempre l'ultimo punto da cui ripartire.
 - **2026-11-27 · M4: memoria con fonte obbligatoria**; le voci si "superano" (`superseded_by`), non si cancellano. Ricerca: full-text italiano in Postgres, parole chiave in SQLite.
 - **2026-11-27 · M4: evento `handoff` se c'è un destinatario, altrimenti `checkpoint`**; il destinatario riceve una notifica (trigger in Postgres). `bridge_checkpoint` ha una sola firma (quella di 001 viene eliminata in 004) per evitare ambiguità in PostgREST.
