@@ -14,13 +14,16 @@ Memoria del ciclo continuo descritto in `prompts/GUARDIAN_HQ_MASTER_V3.md`. Ogni
 | 7 | Stanza Amministrazione (scadenze, documenti, costi manuali, calendario) | 🟡 in parte | Scadenze e costi con fonte fatti (migrazione 008). Mancano documenti e calendario (serve l'ok al connettore) |
 | 8 | Mappa operativa, Realtime incrementale, aggiornamenti ottimistici, presence | ✅ fatto | Migrazione 007: i PC escono dal canale in diretta (non deve arrivare `token_hash` ai browser) |
 | 9 | 3D e suoni (nucleo 3D o busto di Niko), modalità parete | 🟡 in parte | Suoni (spenti di default) e parete `?parete=1` fatti. **Da decidere (titolare):** il look 3D (nucleo Three.js o il busto WebGL della PR #2 di Niko) |
-| 10 | PWA, notifiche push, briefing vocale del mattino | da fare | Ok alle notifiche |
+| 10 | PWA, notifiche push, briefing vocale del mattino | 🟡 in parte | App installabile + shell offline fatte. Push rimandate: servono chiavi VAPID e un servizio di invio (decisione del titolare) |
 
 ## Idee (massimo 3 per sessione, concrete)
 - Stanza: filtro "solo miei" e ordinamento per priorità dentro le colonne.
 - Nucleo compatto: piccolo indicatore di quanti agenti sono al lavoro **in quella stanza**, oltre al totale.
 
 ## Registro delle ondate
+- **27/11 · Ondata 10**: `public/manifest.webmanifest` (standalone, icone 192/512 + maskable + Apple, scorciatoia «Parete»),
+  `public/sw.js` (solo la shell dello stesso sito: pagina prima dalla rete, file con hash prima dalla cache; Supabase e voce locale mai in cache),
+  registrazione solo in produzione. Test E2E: manifest e icone, SW attivo, apertura senza rete, cache solo dello stesso sito.
 - **27/11 · Ondata 9**: `ui/suoni.ts` (note brevi generate con WebAudio, nessun file; spente di default, tacciono nell'orario di silenzio:
   notifiche, inizio e fine della conversazione), modalità parete `ui/Parete.tsx` (`?parete=1` o Impostazioni/palette: nucleo grande,
   numeri, tre stanze, prossime azioni, ultime attività, schermo intero, Esc per uscire). Il nucleo reagisce già al microfono reale;

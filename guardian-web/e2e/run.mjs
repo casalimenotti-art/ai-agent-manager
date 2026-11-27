@@ -268,6 +268,26 @@ ok(errori.length === 0, `nessun errore in console ${errori.slice(0, 2).join(' | 
   await m.close();
 }
 
+// 8f. Ondata 10: app installabile (manifest + service worker della sola shell)
+{
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
+  const q = await ctx.newPage();
+  await q.goto(URL);
+  const man = await q.evaluate(async () => { const l = document.querySelector('link[rel=manifest]'); return l ? (await fetch(l.href)).json() : null; });
+  ok(man?.display === 'standalone' && man.icons.some((i) => i.purpose === 'maskable') && man.icons.some((i) => i.sizes === '512x512'), 'manifest: standalone, icone 192/512 e maskable');
+  const icone = await q.evaluate(async (m) => Promise.all(m.icons.map(async (i) => (await fetch(i.src)).ok)), man);
+  ok(icone.every(Boolean), 'manifest: tutte le icone esistono');
+  const attivo = await q.evaluate(async () => { const r = await navigator.serviceWorker.ready; return !!r.active; });
+  ok(attivo, 'service worker attivo');
+  await q.reload(); await q.waitForTimeout(300); // la shell entra in cache
+  await ctx.setOffline(true);
+  await q.reload(); await q.waitForSelector('input', { timeout: 5000 }).catch(() => {});
+  ok(await q.locator('button[type=submit]').count() === 1, 'senza rete si apre comunque (shell dalla cache)');
+  const solo = await q.evaluate(async () => (await caches.keys()).length === 1 && (await (await caches.open((await caches.keys())[0])).keys()).every((r) => new URL(r.url).origin === location.origin));
+  ok(solo, 'in cache solo file dello stesso sito (nessun dato)');
+  await ctx.close();
+}
+
 // 10. larghezze: nessuno scroll orizzontale, screenshot
 for (const [w, h] of [[390, 844], [768, 1024], [1280, 900], [1920, 1080]]) {
   const r = await entra(w, h);

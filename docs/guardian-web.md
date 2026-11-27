@@ -36,7 +36,8 @@ Senza Supabase, **solo in locale**: `VITE_DEMO=1 npm run dev`. Dati di esempio i
 ```bash
 npm test                                             # logica (vitest)
 VITE_DEMO=1 npm run build && npm run preview &        # poi:
-npm run e2e                                          # Playwright: controlli, 4 larghezze, axe, console pulita
+npm run e2e                                          # Playwright: controlli, 4 larghezze, axe, console pulita, PWA offline
+npm run e2e:voce                                     # voce locale: microfono finto → servizio del bridge (riconoscitore di prova)
 ```
 La suite Python (`python -m pytest -q tests`) e `bash tests/pg/run.sh` restano quelle del backend.
 
@@ -51,6 +52,12 @@ Cloudflare Pages (consigliato), Vercel o Netlify: le impostazioni sono le stesse
 4. Supabase → *Authentication* → *URL Configuration*: aggiungi il dominio del sito in *Site URL* / *Redirect URLs*.
 5. Apri il sito ed entra con un account presente in `public.users` (come per Streamlit).
 6. Controlla che l'header dica "Live": la diretta usa la pubblicazione `supabase_realtime`, già configurata dalle migrazioni.
+7. Sul telefono: apri il sito → Chrome «Installa app» / «Aggiungi a schermata Home», Safari «Condividi → Aggiungi alla schermata Home».
+   Si apre a tutto schermo come un'app. Il service worker (`public/sw.js`) salva solo la grafica (HTML, JS, CSS, icone),
+   mai i dati: senza rete l'app si apre ma chiede la connessione per mostrare i dati.
+8. Per la voce locale sul PC (facoltativa): sul PC `GUARDIAN_HQ_ORIGINI=https://indirizzo-del-sito` e `python bridge/guardian_bridge.py voce`
+   (vedi `docs/guardian-setup.md` §3c).
+9. Schermo grande in ufficio: `https://indirizzo-del-sito/?parete=1`.
 
 ## Sicurezza
 - Nel browser c'è solo la anon key; ogni lettura e scrittura passa dalle regole RLS:
@@ -63,6 +70,7 @@ Cloudflare Pages (consigliato), Vercel o Netlify: le impostazioni sono le stesse
 - La logica "prossime azioni", le metriche e gli stati sono **duplicati in TypeScript** rispetto a Python, con test da
   entrambe le parti. Da spostare in RPC SQL se divergono.
 - Non esiste un motore di workflow: la sezione lo dice invece di mostrare flussi finti.
-- Non esistono ricavi, spese e clienti nel database: non vengono mostrati.
+- Ricavi e clienti non sono nel database. Pipeline, scadenze e costi (migrazione 008) ci sono solo se inseriti a mano con la fonte.
+- Notifiche push sul telefono: non ancora (servono chiavi VAPID e un piccolo servizio che le invii).
 - Non provato contro un Supabase reale da questo ambiente: va eseguito lo smoke test (`scripts/smoke_supabase.py`) e
   poi aperta la web app con un account vero.
