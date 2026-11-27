@@ -20,11 +20,13 @@ def test_seed_users(s):
 
 def test_task_lifecycle_and_events(s):
     t = s.create_task("Sito ottica", "demo", "menotti", "Claude Code", "alta", "bozza", created_by="menotti")
-    assert t["stato"] == "in attesa" and t["files_changed"] == []
-    t = s.update_task(t["id"], by="amico1", stato="in corso", files_changed="a.py\nb.html")
-    assert t["stato"] == "in corso" and t["files_changed"] == ["a.py", "b.html"]
+    assert t["stato"] == "backlog" and t["files_changed"] == []
+    t = s.update_task(t["id"], by="amico1", stato="running", files_changed="a.py\nb.html")
+    assert t["stato"] == "running" and t["files_changed"] == ["a.py", "b.html"]
     tipi = [e["event_type"] for e in s.events()]
-    assert tipi == ["task_aggiornato", "task_creato"]
+    assert tipi == ["task_started", "task_created"]
+    s.update_task(t["id"], stato="in corso")  # alias v1 accettato
+    assert s.task(t["id"])["stato"] == "running"
 
 
 def test_validazioni(s):
@@ -61,8 +63,9 @@ def test_stato_offline_se_heartbeat_vecchio():
 
 def test_handoff_and_pull(s):
     d, token = s.register_device("amico1", "PC-Niko", "Codex")
-    t = s.create_task("Bozze contatto", responsabile="amico1", priorita="urgente")
-    s.create_task("Altro", responsabile="menotti")
+    t = s.create_task("Bozze contatto", responsabile="amico1", priorita="urgente", stato="ready")
+    s.create_task("Altro", responsabile="menotti", stato="ready")
+    s.create_task("Idea", responsabile="amico1")  # backlog: non viene scaricato
     assert [x["id"] for x in s.bridge_pull_tasks(token)] == [t["id"]]
     hid = s.bridge_checkpoint(token, task_id=t["id"], summary="Bozze 3/10", next_step="Bozza 4", files_changed=["x.md"])
     h = s.handoffs(t["id"])[0]

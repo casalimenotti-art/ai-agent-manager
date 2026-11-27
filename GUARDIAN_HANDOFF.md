@@ -33,3 +33,9 @@ presente in `public.users`, creare un task, registrare un PC, poi `python bridge
 
 ## Aggiornamento M0 (27/11)
 Rinominato `guardian_hub/` → `guardian/`; store diviso in `store.py` (comuni + factory), `store_sqlite.py`, `store_supabase.py`; UI divisa in `guardian/ui/` (un modulo per pagina, `render(ctx)`). Test: 21 passati. Prossimo passo: M1 (vedi GUARDIAN_TASKS.md).
+
+## Aggiornamento M1 (27/11)
+- Fatto: `supabase/migrations/002_command_center.sql`; `store_sqlite.py` con migrazione v1→v2 automatica; `store_supabase.py` allineato (i trigger fanno notifiche e cambi di stato, Python scrive solo gli eventi); API nuove: projects/create_project, agents/upsert_agent/set_agent_state, notifications/mark_read, create_task con project/deps/agente, request_approval con action_type/reason/impact/data_involved, ping.
+- Test: 28 passati; `bash tests/pg/run.sh` → CHECK 002 OK.
+- Da sapere: le tabelle `plans`, `agent_logs` e `memory` esistono già, ma i metodi dello store arrivano in M2 (log), M4 (memoria) e M6 (piani).
+- Prossimo passo: M2. In `bridge/collectors/` va un collector che legge `~/.claude/guardian/events.jsonl` (formato dell'hook in `origin/claude/dashboard-pc:dashboard/hooks/guardian_hook.py`) e `usage.json`; poi le RPC `bridge_agent_*` in una migrazione 003 e i metodi specchio in SqliteStore.

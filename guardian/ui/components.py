@@ -18,7 +18,10 @@ div[data-testid="stMetric"]{border:1px solid rgba(128,128,128,.25);border-radius
 .g-waiting,.g-needs_approval,.g-warning{background:#e6a10033;color:#b07800}
 </style>"""
 
-ICONE_STATO = {"in attesa": "⏳", "in corso": "🔄", "bloccato": "⛔", "completato": "✅"}
+ICONE_STATO = {"backlog": "🗂️", "planned": "🗓️", "ready": "⏳", "running": "🔄", "waiting": "⏸️", "blocked": "⛔",
+               "needs_approval": "✋", "completed": "✅", "failed": "❌", "cancelled": "🚫"}
+GRUPPI_TASK = {"Da fare": ("backlog", "planned", "ready"), "In corso": ("running", "waiting"),
+               "Fermi": ("blocked", "needs_approval"), "Chiusi": ("completed", "failed", "cancelled")}
 
 
 @dataclass

@@ -1,4 +1,8 @@
-"""SqliteStore: archivio locale (sviluppo e test). Le funzioni bridge_* replicano le RPC SQL del Guardian Bridge."""
+"""SqliteStore: archivio locale (sviluppo e test), allineato alle migrazioni Supabase 001 + 002.
+
+I vincoli (task duplicati, un solo task running per agente, dipendenze) sono indici SQLite o controlli Python
+che replicano gli indici e i trigger Postgres. Le funzioni bridge_* replicano le RPC SQL del Guardian Bridge.
+"""
 from __future__ import annotations
 
 import json
@@ -7,10 +11,12 @@ import sqlite3
 import threading
 from pathlib import Path
 
-from .models import APPROVAL_STATI, DEVICE_STATI, Handoff, ValidazioneError, adesso, pulisci, pulisci_file, scegli
-from .store import LIST_FIELDS, _valida_task, hash_token, nuovo_token
+from .models import (ACTION_TYPES, AGENT_STATI, AGENT_TIPI, APPROVAL_STATI, DEVICE_STATI, TASK_APERTI, TASK_STATI_V1,
+                     TASK_TERMINALI, Handoff, ValidazioneError, adesso, pulisci, pulisci_file, scegli)
+from .store import (JSON_FIELDS, LIST_FIELDS, MSG_DIPENDENZE, _valida_task, hash_token, messaggio_db, nuovo_token,
+                    severita)
 
-SCHEMA_SQLITE = """
+SCHEMA_V1 = """
 CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, nome TEXT NOT NULL, email TEXT UNIQUE, ruolo TEXT,
   agente TEXT, stato TEXT NOT NULL DEFAULT 'attivo');
 CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL REFERENCES users(id),
@@ -19,7 +25,7 @@ CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY AUTOINCREMENT, user_i
   token_hash TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, titolo TEXT NOT NULL, descrizione TEXT,
   responsabile TEXT REFERENCES users(id), agente TEXT, priorita TEXT NOT NULL DEFAULT 'media',
-  stato TEXT NOT NULL DEFAULT 'in attesa', next_step TEXT, files_changed TEXT NOT NULL DEFAULT '[]',
+  stato TEXT NOT NULL DEFAULT 'backlog', next_step TEXT, files_changed TEXT NOT NULL DEFAULT '[]',
   created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS activity_events (id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER REFERENCES tasks(id),
   device_id INTEGER REFERENCES devices(id), user_id TEXT, agent_name TEXT, event_type TEXT NOT NULL,
@@ -31,10 +37,49 @@ CREATE TABLE IF NOT EXISTS handoffs (id INTEGER PRIMARY KEY AUTOINCREMENT, task_
 CREATE TABLE IF NOT EXISTS approvals (id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER REFERENCES tasks(id),
   action TEXT NOT NULL, description TEXT, status TEXT NOT NULL DEFAULT 'richiesta', requested_by TEXT,
   decided_by TEXT, created_at TEXT NOT NULL, decided_at TEXT);
-CREATE INDEX IF NOT EXISTS idx_events_ts ON activity_events(timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_tasks_stato ON tasks(stato);
 """
 
+# Colonne aggiunte dalla migrazione 002 alle tabelle v1 (applicate solo se mancano).
+COLONNE_V2 = {
+    "users": {"accesso": "TEXT NOT NULL DEFAULT 'member'"},
+    "tasks": {"project_id": "INTEGER REFERENCES projects(id)", "plan_id": "INTEGER REFERENCES plans(id)",
+              "assigned_agent_id": "TEXT REFERENCES agents(id)", "depends_on": "TEXT NOT NULL DEFAULT '[]'",
+              "result": "TEXT", "error": "TEXT", "expected_result": "TEXT", "completion_criteria": "TEXT"},
+    "activity_events": {"severity": "TEXT NOT NULL DEFAULT 'info'", "agent_id": "TEXT", "project_id": "INTEGER"},
+    "handoffs": {"from_agent_id": "TEXT", "to_agent_id": "TEXT", "tests_pending": "TEXT", "dependencies": "TEXT",
+                 "important_notes": "TEXT", "stato": "TEXT NOT NULL DEFAULT 'aperto'"},
+    "approvals": {"agent_id": "TEXT", "action_type": "TEXT NOT NULL DEFAULT 'altro'", "reason": "TEXT",
+                  "impact": "TEXT", "data_involved": "TEXT"},
+}
+
+SCHEMA_V2 = """
+CREATE TABLE IF NOT EXISTS projects (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  descrizione TEXT, stato TEXT NOT NULL DEFAULT 'attivo', created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
+  device_id INTEGER REFERENCES devices(id), nome TEXT NOT NULL, tipo TEXT NOT NULL, capabilities TEXT NOT NULL DEFAULT '[]',
+  stato TEXT NOT NULL DEFAULT 'unknown', current_task_id INTEGER, last_heartbeat TEXT, last_activity TEXT, error TEXT,
+  disponibile INTEGER NOT NULL DEFAULT 1, usage TEXT, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS plans (id INTEGER PRIMARY KEY AUTOINCREMENT, goal TEXT NOT NULL, project_id INTEGER,
+  provider TEXT, model TEXT, piano TEXT NOT NULL, stato TEXT NOT NULL DEFAULT 'bozza', created_by TEXT, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS agent_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, agent_id TEXT, device_id INTEGER,
+  project_id INTEGER, task_id INTEGER, level TEXT NOT NULL DEFAULT 'info', source TEXT NOT NULL, message TEXT NOT NULL,
+  ts TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL REFERENCES users(id),
+  kind TEXT NOT NULL, message TEXT NOT NULL, ref_table TEXT, ref_id TEXT, read_at TEXT, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS memory (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER REFERENCES projects(id),
+  task_id INTEGER REFERENCES tasks(id), kind TEXT NOT NULL, content TEXT NOT NULL, source TEXT NOT NULL,
+  created_by TEXT, created_at TEXT NOT NULL, superseded_by INTEGER REFERENCES memory(id));
+CREATE INDEX IF NOT EXISTS idx_events_ts ON activity_events(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_stato ON tasks(stato);
+CREATE INDEX IF NOT EXISTS idx_logs_ts ON agent_logs(ts DESC);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read_at);
+CREATE UNIQUE INDEX IF NOT EXISTS tasks_titolo_aperto ON tasks(COALESCE(project_id, 0), lower(titolo))
+  WHERE stato NOT IN ('completed', 'failed', 'cancelled');
+CREATE UNIQUE INDEX IF NOT EXISTS tasks_un_running ON tasks(assigned_agent_id)
+  WHERE stato = 'running' AND assigned_agent_id IS NOT NULL;
+"""
+
+ORDINE_PRIORITA = "CASE priorita WHEN 'urgente' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END"
 
 
 class SqliteStore:
@@ -50,7 +95,25 @@ class SqliteStore:
         self._db.execute("PRAGMA foreign_keys = ON")
         self._lock = threading.RLock()
         with self._lock:
-            self._db.executescript(SCHEMA_SQLITE)
+            self._migra()
+
+    def _migra(self) -> None:
+        """v1 -> v2, idempotente: nuove tabelle, colonne mancanti, conversione degli stati dei task."""
+        self._db.executescript(SCHEMA_V1)
+        self._db.executescript(SCHEMA_V2.split("CREATE INDEX")[0])  # prima le tabelle (servono alle FK delle colonne)
+        for tabella, colonne in COLONNE_V2.items():
+            esistenti = {r["name"] for r in self._db.execute(f"PRAGMA table_info({tabella})")}
+            for col, decl in colonne.items():
+                if col not in esistenti:
+                    self._db.execute(f"ALTER TABLE {tabella} ADD COLUMN {col} {decl}")
+        for vecchio, nuovo in TASK_STATI_V1.items():
+            self._db.execute("UPDATE tasks SET stato=? WHERE stato=?", (nuovo, vecchio))
+        terminali = ",".join(f"'{s}'" for s in TASK_TERMINALI)
+        self._db.execute(  # titoli aperti duplicati (ammessi in v1): resi unici prima dell'indice
+            f"UPDATE tasks SET titolo = titolo || ' (#' || id || ')' WHERE stato NOT IN ({terminali}) AND id NOT IN "
+            f"(SELECT MIN(id) FROM tasks WHERE stato NOT IN ({terminali}) GROUP BY COALESCE(project_id, 0), lower(titolo))")
+        self._db.executescript(SCHEMA_V2)
+        self._db.commit()
 
     # --- utilità -------------------------------------------------------------
     def _q(self, sql: str, args=()) -> list[dict]:
@@ -62,35 +125,90 @@ class SqliteStore:
             for k in LIST_FIELDS:
                 if k in d and isinstance(d[k], str):
                     d[k] = json.loads(d[k] or "[]")
-            if "limit_reached" in d:
-                d["limit_reached"] = bool(d["limit_reached"])
+            for k in JSON_FIELDS:
+                if k in d and isinstance(d[k], str):
+                    d[k] = json.loads(d[k])
+            for k in ("limit_reached", "disponibile"):
+                if k in d:
+                    d[k] = bool(d[k])
             d.pop("token_hash", None)
             out.append(d)
         return out
 
     def _x(self, sql: str, args=()) -> int:
         with self._lock:
-            cur = self._db.execute(sql, args)
+            try:
+                cur = self._db.execute(sql, args)
+            except sqlite3.IntegrityError as e:
+                self._db.rollback()
+                msg = messaggio_db(e)
+                if msg:
+                    raise ValidazioneError(msg) from None
+                raise
             self._db.commit()
             return cur.lastrowid
 
     def _insert(self, tabella: str, campi: dict) -> int:
-        campi = {k: (json.dumps(v, ensure_ascii=False) if isinstance(v, list) else v) for k, v in campi.items()}
+        campi = {k: (json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else v) for k, v in campi.items()}
         cols = ", ".join(campi)
         return self._x(f"INSERT INTO {tabella} ({cols}) VALUES ({', '.join('?' * len(campi))})",
                        tuple(campi.values()))
 
-    # --- utenti e dispositivi -------------------------------------------------
+    def ping(self) -> bool:
+        return bool(self._q("SELECT 1 AS ok"))
+
+    # --- utenti, notifiche ----------------------------------------------------
     def users(self) -> list[dict]:
         return self._q("SELECT * FROM users ORDER BY id")
 
     def upsert_user(self, id: str, nome: str, email: str | None = None, ruolo: str = "", agente: str = "",
-                    stato: str = "attivo") -> None:
-        self._x("INSERT INTO users (id, nome, email, ruolo, agente, stato) VALUES (?,?,?,?,?,?) "
+                    stato: str = "attivo", accesso: str = "member") -> None:
+        self._x("INSERT INTO users (id, nome, email, ruolo, agente, stato, accesso) VALUES (?,?,?,?,?,?,?) "
                 "ON CONFLICT(id) DO UPDATE SET nome=excluded.nome, email=COALESCE(excluded.email, users.email), "
-                "ruolo=excluded.ruolo, agente=excluded.agente, stato=excluded.stato",
-                (id, nome, (email or None) and email.lower(), ruolo, agente, stato))
+                "ruolo=excluded.ruolo, agente=excluded.agente, stato=excluded.stato, accesso=excluded.accesso",
+                (id, nome, (email or None) and email.lower(), ruolo, agente, stato,
+                 scegli(accesso, ("admin", "member"), "Accesso")))
 
+    def _notifica(self, kind: str, message: str, user_ids=None, ref_table=None, ref_id=None) -> None:
+        """user_ids=None: a tutti i collaboratori attivi."""
+        if user_ids is None:
+            user_ids = [u["id"] for u in self._q("SELECT id FROM users WHERE stato='attivo'")]
+        for uid in {u for u in user_ids if u}:
+            self._insert("notifications", {"user_id": uid, "kind": kind, "message": message[:500],
+                                           "ref_table": ref_table, "ref_id": str(ref_id) if ref_id else None,
+                                           "created_at": adesso()})
+
+    def notifications(self, user_id: str, solo_non_lette: bool = False, limit: int = 50) -> list[dict]:
+        extra = " AND read_at IS NULL" if solo_non_lette else ""
+        return self._q(f"SELECT * FROM notifications WHERE user_id=?{extra} ORDER BY created_at DESC, id DESC LIMIT ?",
+                       (user_id, limit))
+
+    def mark_read(self, user_id: str, notification_id: int | None = None) -> None:
+        if notification_id:
+            self._x("UPDATE notifications SET read_at=? WHERE id=? AND user_id=?", (adesso(), notification_id, user_id))
+        else:
+            self._x("UPDATE notifications SET read_at=? WHERE user_id=? AND read_at IS NULL", (adesso(), user_id))
+
+    # --- progetti ------------------------------------------------------------
+    def projects(self, solo_attivi: bool = False) -> list[dict]:
+        return self._q("SELECT * FROM projects" + (" WHERE stato='attivo'" if solo_attivi else "") + " ORDER BY nome")
+
+    def create_project(self, nome: str, descrizione: str = "", created_by: str | None = None) -> dict:
+        ora = adesso()
+        try:
+            pid = self._insert("projects", {"nome": pulisci(nome, 120, True, "nome progetto"),
+                                            "descrizione": pulisci(descrizione, 2000) or None,
+                                            "created_by": created_by, "created_at": ora, "updated_at": ora})
+        except sqlite3.IntegrityError:
+            raise ValidazioneError("Esiste già un progetto con questo nome.") from None
+        self.add_event("project_created", f"Creato progetto: {nome}", user_id=created_by, project_id=pid)
+        return self._q("SELECT * FROM projects WHERE id=?", (pid,))[0]
+
+    def update_project(self, project_id: int, stato: str) -> None:
+        self._x("UPDATE projects SET stato=?, updated_at=? WHERE id=?",
+                (scegli(stato, ("attivo", "archiviato"), "Stato progetto"), adesso(), project_id))
+
+    # --- dispositivi e agenti -------------------------------------------------
     def devices(self) -> list[dict]:
         return self._q("SELECT * FROM devices ORDER BY user_id, nome")
 
@@ -105,42 +223,130 @@ class SqliteStore:
         self._x("UPDATE devices SET token_hash=?, stato='offline' WHERE id=?",
                 (hash_token(nuovo_token()), device_id))
 
+    def agents(self) -> list[dict]:
+        return self._q("SELECT * FROM agents ORDER BY user_id, id")
+
+    def agent(self, agent_id: str) -> dict | None:
+        r = self._q("SELECT * FROM agents WHERE id=?", (agent_id,))
+        return r[0] if r else None
+
+    def upsert_agent(self, id: str, user_id: str, nome: str, tipo: str, device_id: int | None = None,
+                     capabilities=(), disponibile: bool = True) -> dict:
+        """Registra o aggiorna un agente (anagrafica). Lo stato NON si imposta qui: arriva da eventi reali."""
+        agent_id = pulisci(id, 60, True, "id agente").lower()
+        caps = sorted({pulisci(c, 40) for c in (capabilities or []) if c and c.strip()})
+        self._x("INSERT INTO agents (id, user_id, device_id, nome, tipo, capabilities, disponibile, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id, "
+                "device_id=excluded.device_id, nome=excluded.nome, tipo=excluded.tipo, capabilities=excluded.capabilities, "
+                "disponibile=excluded.disponibile",
+                (agent_id, user_id, device_id, pulisci(nome, 80, True, "nome agente"), scegli(tipo, AGENT_TIPI, "Tipo agente"),
+                 json.dumps(caps), int(bool(disponibile)), adesso()))
+        return self.agent(agent_id)
+
+    def set_agent_state(self, agent_id: str, stato: str, current_task_id=None, error=None, by: str | None = None,
+                        manuale: bool = True) -> dict:
+        """Cambio di stato di un agente. Dall'UI è 'manuale' e l'evento lo dichiara."""
+        a = self.agent(agent_id)
+        if not a:
+            raise ValidazioneError("Agente inesistente.")
+        stato = scegli(stato, AGENT_STATI, "Stato agente")
+        err = pulisci(error, 500, nome="errore") or None
+        self._x("UPDATE agents SET stato=?, current_task_id=?, error=?, last_activity=? WHERE id=?",
+                (stato, current_task_id, err, adesso(), agent_id))
+        if a["stato"] != stato or err:
+            self.add_event("agent_state", f"{a['nome']}: {stato}{' (manuale)' if manuale else ''}"
+                           + (f" — {err}" if err else ""), user_id=by or a["user_id"], agent_id=agent_id,
+                           agent_name=a["nome"], task_id=current_task_id,
+                           severity="error" if stato == "error" else "info")
+            if stato == "error":
+                self._notifica("agent_error", f"Agente {a['nome']} in errore: {err or 'senza dettagli'}",
+                               [a["user_id"]], "agents", agent_id)
+        return self.agent(agent_id)
+
     # --- task ----------------------------------------------------------------
-    def tasks(self, stato: str | None = None) -> list[dict]:
+    def tasks(self, stato: str | None = None, project_id: int | None = None) -> list[dict]:
+        where, args = [], []
         if stato:
-            return self._q("SELECT * FROM tasks WHERE stato=? ORDER BY updated_at DESC", (stato,))
-        return self._q("SELECT * FROM tasks ORDER BY updated_at DESC")
+            where.append("stato=?")
+            args.append(stato)
+        if project_id:
+            where.append("project_id=?")
+            args.append(project_id)
+        w = (" WHERE " + " AND ".join(where)) if where else ""
+        return self._q(f"SELECT * FROM tasks{w} ORDER BY {ORDINE_PRIORITA}, updated_at DESC", args)
 
     def task(self, task_id: int) -> dict | None:
         r = self._q("SELECT * FROM tasks WHERE id=?", (task_id,))
         return r[0] if r else None
 
-    def create_task(self, titolo, descrizione="", responsabile=None, agente="", priorita="media",
-                    next_step="", created_by=None) -> dict:
+    def _controlla_dipendenze(self, task_id: int | None, stato: str, depends_on: list[int]) -> None:
+        """Specchio del trigger Postgres tasks_controlla_dipendenze."""
+        if task_id and task_id in depends_on:
+            raise ValidazioneError("Un task non può dipendere da sé stesso.")
+        if not depends_on:
+            return
+        trovati = {t["id"]: t["stato"] for t in self._q(
+            f"SELECT id, stato FROM tasks WHERE id IN ({','.join('?' * len(depends_on))})", depends_on)}
+        mancanti = set(depends_on) - set(trovati)
+        if mancanti:
+            raise ValidazioneError(f"Dipendenze inesistenti: {sorted(mancanti)}")
+        if stato in ("ready", "running") and any(s != "completed" for s in trovati.values()):
+            raise ValidazioneError(MSG_DIPENDENZE)
+
+    def create_task(self, titolo, descrizione="", responsabile=None, agente="", priorita="media", next_step="",
+                    created_by=None, stato="backlog", project_id=None, depends_on=(), assigned_agent_id=None,
+                    expected_result=None, completion_criteria=None, plan_id=None) -> dict:
         campi = _valida_task({"titolo": titolo, "descrizione": descrizione, "responsabile": responsabile,
-                              "agente": agente, "priorita": priorita, "next_step": next_step})
+                              "agente": agente, "priorita": priorita, "next_step": next_step, "stato": stato,
+                              "project_id": project_id, "depends_on": list(depends_on or []),
+                              "assigned_agent_id": assigned_agent_id, "expected_result": expected_result,
+                              "completion_criteria": completion_criteria, "plan_id": plan_id})
+        self._controlla_dipendenze(None, campi["stato"], campi["depends_on"])
         ora = adesso()
-        tid = self._insert("tasks", {**campi, "stato": "in attesa", "files_changed": [], "created_by": created_by,
+        tid = self._insert("tasks", {**campi, "files_changed": [], "created_by": created_by,
                                      "created_at": ora, "updated_at": ora})
-        self.add_event("task_creato", f"Creato task: {campi['titolo']}", user_id=created_by, task_id=tid)
+        self.add_event("task_created", f"Creato task: {campi['titolo']}", user_id=created_by, task_id=tid,
+                       project_id=campi["project_id"])
+        if campi["assigned_agent_id"]:
+            self.add_event("task_assigned", f"Task #{tid} assegnato a {campi['assigned_agent_id']}", user_id=created_by,
+                           task_id=tid, agent_id=campi["assigned_agent_id"], project_id=campi["project_id"])
         return self.task(tid)
 
     def update_task(self, task_id: int, by: str | None = None, agent_name: str | None = None,
-                    device_id: int | None = None, **campi) -> dict:
+                    device_id: int | None = None, agent_id: str | None = None, **campi) -> dict:
         campi = _valida_task(campi)
-        if not campi or not self.task(task_id):
+        prima = self.task(task_id)
+        if not campi or not prima:
             raise ValidazioneError("Task inesistente o nessuna modifica.")
+        stato = campi.get("stato", prima["stato"])
+        self._controlla_dipendenze(task_id, stato, campi.get("depends_on", prima["depends_on"]))
         campi["updated_at"] = adesso()
         sets = ", ".join(f"{k}=?" for k in campi)
         vals = [json.dumps(v) if isinstance(v, list) else v for v in campi.values()]
         self._x(f"UPDATE tasks SET {sets} WHERE id=?", (*vals, task_id))
-        descr = ", ".join(f"{k}={v}" for k, v in campi.items() if k in ("stato", "priorita", "responsabile", "agente"))
-        self.add_event("task_aggiornato", f"Task #{task_id} aggiornato{': ' + descr if descr else ''}",
-                       user_id=by, agent_name=agent_name, task_id=task_id, device_id=device_id,
-                       files=campi.get("files_changed") or [])
+        self._eventi_task(prima, self.task(task_id), by, agent_name, device_id, agent_id)
         return self.task(task_id)
 
-    # --- eventi --------------------------------------------------------------
+    def _eventi_task(self, prima: dict, dopo: dict, by, agent_name, device_id, agent_id) -> None:
+        tid, pid = dopo["id"], dopo.get("project_id")
+        comune = dict(user_id=by, agent_name=agent_name, task_id=tid, device_id=device_id, project_id=pid,
+                      agent_id=agent_id or dopo.get("assigned_agent_id"))
+        if dopo.get("assigned_agent_id") != prima.get("assigned_agent_id") and dopo.get("assigned_agent_id"):
+            self.add_event("task_assigned", f"Task #{tid} assegnato a {dopo['assigned_agent_id']}", **comune)
+        if dopo["stato"] != prima["stato"]:
+            tipo = {"running": "task_started", "completed": "task_completed", "failed": "task_failed"}.get(
+                dopo["stato"], "task_updated")
+            self.add_event(tipo, f"Task #{tid} {prima['stato']} → {dopo['stato']}",
+                           severity="error" if dopo["stato"] == "failed" else "info",
+                           files=dopo.get("files_changed") or [], **comune)
+            if dopo["stato"] == "failed":
+                self._notifica("task_failed", f"Task #{tid} fallito: {dopo['titolo']}",
+                               [dopo.get("responsabile")] if dopo.get("responsabile") else None, "tasks", tid)
+        elif any(dopo.get(k) != prima.get(k) for k in ("priorita", "responsabile", "next_step", "files_changed",
+                                                      "result", "error", "depends_on")):
+            self.add_event("task_updated", f"Task #{tid} aggiornato", files=dopo.get("files_changed") or [], **comune)
+
+    # --- eventi e log --------------------------------------------------------
     def events(self, limit: int = 100, task_id: int | None = None) -> list[dict]:
         if task_id:
             return self._q("SELECT * FROM activity_events WHERE task_id=? ORDER BY timestamp DESC, id DESC LIMIT ?",
@@ -148,12 +354,14 @@ class SqliteStore:
         return self._q("SELECT * FROM activity_events ORDER BY timestamp DESC, id DESC LIMIT ?", (limit,))
 
     def add_event(self, event_type, message, user_id=None, agent_name=None, task_id=None, device_id=None,
-                  files=None, external_key=None, timestamp=None) -> bool:
+                  files=None, external_key=None, timestamp=None, severity="info", agent_id=None,
+                  project_id=None) -> bool:
         try:
             self._insert("activity_events", {
                 "event_type": pulisci(event_type, 40, True, "tipo evento"), "message": pulisci(message, 1000, True, "messaggio"),
                 "user_id": user_id, "agent_name": agent_name, "task_id": task_id, "device_id": device_id,
-                "files": pulisci_file(files), "external_key": external_key, "timestamp": timestamp or adesso()})
+                "files": pulisci_file(files), "external_key": external_key, "timestamp": timestamp or adesso(),
+                "severity": severita(severity), "agent_id": agent_id, "project_id": project_id})
             return True
         except sqlite3.IntegrityError as e:
             if "external_key" in str(e):
@@ -190,19 +398,42 @@ class SqliteStore:
             return self._q("SELECT * FROM approvals WHERE status=? ORDER BY created_at DESC", (status,))
         return self._q("SELECT * FROM approvals ORDER BY created_at DESC")
 
-    def request_approval(self, action, description="", task_id=None, requested_by=None) -> int:
-        aid = self._insert("approvals", {"task_id": task_id, "action": pulisci(action, 200, True, "azione"),
-                                         "description": pulisci(description, 2000), "status": "richiesta",
-                                         "requested_by": requested_by, "created_at": adesso()})
-        self.add_event("approvazione_richiesta", f"Richiesta approvazione: {action}", user_id=requested_by,
-                       task_id=task_id)
+    def request_approval(self, action, description="", task_id=None, requested_by=None, action_type="altro",
+                         reason=None, impact=None, data_involved=None, agent_id=None) -> int:
+        aid = self._insert("approvals", {
+            "task_id": task_id, "action": pulisci(action, 200, True, "azione"),
+            "description": pulisci(description, 2000), "status": "richiesta", "requested_by": requested_by,
+            "created_at": adesso(), "action_type": scegli(action_type, ACTION_TYPES, "Tipo di azione"),
+            "reason": pulisci(reason, 1000, nome="motivo") or None, "impact": pulisci(impact, 1000, nome="impatto") or None,
+            "data_involved": pulisci(data_involved, 1000, nome="dati coinvolti") or None, "agent_id": agent_id})
+        t = self.task(task_id) if task_id else None
+        if t and t["stato"] in TASK_APERTI:  # specchio del trigger approvals_task_needs_approval
+            self._x("UPDATE tasks SET stato='needs_approval', updated_at=? WHERE id=?", (adesso(), task_id))
+        self.add_event("approval_requested", f"Richiesta approvazione: {action}", user_id=requested_by,
+                       task_id=task_id, agent_id=agent_id, severity="warning")
+        self._notifica("approval_requested", f"Da approvare: {action}", None, "approvals", aid)
         return aid
 
     def decide_approval(self, approval_id: int, status: str, decided_by: str) -> None:
         status = scegli(status, APPROVAL_STATI[1:], "Decisione")
-        self._x("UPDATE approvals SET status=?, decided_by=?, decided_at=? WHERE id=? AND status='richiesta'",
+        a = self._q("SELECT * FROM approvals WHERE id=? AND status='richiesta'", (approval_id,))
+        if not a:
+            return  # già decisa o inesistente: nessun cambio
+        a = a[0]
+        self._x("UPDATE approvals SET status=?, decided_by=?, decided_at=? WHERE id=?",
                 (status, decided_by, adesso(), approval_id))
-        self.add_event("approvazione_decisa", f"Approvazione #{approval_id}: {status}", user_id=decided_by)
+        t = self.task(a["task_id"]) if a["task_id"] else None
+        if t and t["stato"] == "needs_approval" and not self._q(
+                "SELECT 1 FROM approvals WHERE task_id=? AND status='richiesta'", (t["id"],)):
+            nuovo = "blocked" if status == "rifiutata" else "ready"
+            if nuovo == "ready" and any(s["stato"] != "completed" for s in self._q(
+                    f"SELECT stato FROM tasks WHERE id IN ({','.join('?' * len(t['depends_on']))})", t["depends_on"])):
+                nuovo = "planned"
+            self._x("UPDATE tasks SET stato=?, updated_at=? WHERE id=?", (nuovo, adesso(), t["id"]))
+        self.add_event("approval_decided", f"Approvazione #{approval_id} ({a['action']}): {status}",
+                       user_id=decided_by, task_id=a["task_id"])
+        if a.get("requested_by"):
+            self._notifica("approval_decided", f"{a['action']}: {status}", [a["requested_by"]], "approvals", approval_id)
 
     # --- API del Guardian Bridge (specchio delle funzioni RPC SQL) ------------
     def _device_by_token(self, token: str) -> dict:
@@ -224,7 +455,8 @@ class SqliteStore:
         if prima != stato or limit_reached or error:
             msg = f"{d['nome']}: {stato}" + (" (limite raggiunto)" if limit_reached else "") + (f" — {error}" if error else "")
             self.add_event("stato_dispositivo", msg, user_id=d["user_id"], agent_name=agent_name or d["agent_name"],
-                           device_id=d["id"], task_id=current_task)
+                           device_id=d["id"], task_id=current_task,
+                           severity="warning" if (limit_reached or error) else "info")
         return self._q("SELECT * FROM devices WHERE id=?", (d["id"],))[0]
 
     def bridge_event(self, token, event_type, message, task_id=None, files=None, external_key=None) -> bool:
@@ -244,9 +476,9 @@ class SqliteStore:
 
     def bridge_pull_tasks(self, token) -> list[dict]:
         d = self._device_by_token(token)
-        return self._q("SELECT * FROM tasks WHERE responsabile=? AND stato IN ('in attesa','in corso','bloccato') "
-                       "ORDER BY CASE priorita WHEN 'urgente' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END, "
-                       "updated_at DESC", (d["user_id"],))
+        aperti = ",".join(f"'{s}'" for s in TASK_APERTI if s not in ("backlog",))
+        return self._q(f"SELECT * FROM tasks WHERE responsabile=? AND stato IN ({aperti}) "
+                       f"ORDER BY {ORDINE_PRIORITA}, updated_at DESC", (d["user_id"],))
 
     def bridge_import_registro(self, token, rows: list[dict]) -> int:
         self._device_by_token(token)
@@ -258,6 +490,8 @@ class SqliteStore:
             esito = r.get("esito") or ""
             if self.add_event("registro", f"{r.get('azione', '')}" + (f" [{esito}]" if esito else ""),
                               user_id=r["chi"], agent_name=r.get("agente") or None, files=r.get("file") or [],
-                              external_key=r["external_key"], timestamp=r.get("ts")):
+                              external_key=r["external_key"], timestamp=r.get("ts"),
+                              severity="warning" if esito in ("bloccato", "fallito") else "info"):
                 n += 1
         return n
+

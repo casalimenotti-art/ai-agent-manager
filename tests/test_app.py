@@ -31,5 +31,5 @@ def test_pagine_senza_eccezioni(at, pagina):
 def test_overview_dati_reali(at):
     at.run()
     metriche = {m.label: m.value for m in at.metric}
-    assert metriche["PC online"] == "1/1" and metriche["Task in corso"] == "0"
+    assert metriche["PC online"] == "1/1" and metriche["Task in esecuzione"] == "0"
     assert metriche["Approvazioni da decidere"] == "1"

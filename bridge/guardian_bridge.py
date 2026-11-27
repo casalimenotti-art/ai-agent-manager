@@ -11,7 +11,7 @@ Modalità locale (test/sviluppo, nessuna rete):  --local percorso.db
 Esempi:
   python bridge/guardian_bridge.py heartbeat --loop 60 --status-file ~/.guardian/stato.json
   python bridge/guardian_bridge.py event nota "Finiti i test del sito" --task 4 --file siti-demo/x.html
-  python bridge/guardian_bridge.py task-update 4 --stato completato --next "Revisione di amico1"
+  python bridge/guardian_bridge.py task-update 4 --stato completed --next "Revisione di amico1"
   python bridge/guardian_bridge.py checkpoint --task 4 --summary "..." --done "..." --next "..." --file a.py
   python bridge/guardian_bridge.py pull
   python bridge/guardian_bridge.py sync-registro --branches
@@ -31,7 +31,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
-from guardian.core.models import Handoff, ValidazioneError, pulisci, pulisci_file  # noqa: E402
+from guardian.core.models import TASK_STATI, Handoff, ValidazioneError, pulisci, pulisci_file  # noqa: E402
 
 CASA = Path(os.environ.get("GUARDIAN_HOME", Path.home() / ".guardian"))
 
@@ -246,7 +246,7 @@ def parser() -> argparse.ArgumentParser:
     e.add_argument("--file", action="append", default=[])
     t = sub.add_parser("task-update")
     t.add_argument("id", type=int)
-    t.add_argument("--stato", choices=("in attesa", "in corso", "bloccato", "completato"))
+    t.add_argument("--stato", choices=TASK_STATI)
     t.add_argument("--next")
     t.add_argument("--file", action="append", default=[])
     c = sub.add_parser("checkpoint")

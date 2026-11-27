@@ -1,7 +1,7 @@
 import streamlit as st
 
 from guardian.core.models import PRIORITA, TASK_STATI
-from guardian.ui.components import ICONE_STATO, Ctx, esegui, fa
+from guardian.ui.components import GRUPPI_TASK, ICONE_STATO, Ctx, esegui, fa
 
 
 def _form_modifica(ctx: Ctx, t: dict) -> None:
@@ -36,14 +36,14 @@ def render(ctx: Ctx) -> None:
                           ok="Task creato"):
                     st.rerun()
     tasks = esegui(ctx.store.tasks) or []
-    tabs = st.tabs([f"{ICONE_STATO.get(s, '•')} {s} ({sum(t['stato'] == s for t in tasks)})" for s in TASK_STATI])
-    for tab, s in zip(tabs, TASK_STATI):
+    tabs = st.tabs([f"{g} ({sum(t['stato'] in stati for t in tasks)})" for g, stati in GRUPPI_TASK.items()])
+    for tab, stati in zip(tabs, GRUPPI_TASK.values()):
         with tab:
-            lista = [t for t in tasks if t["stato"] == s]
+            lista = [t for t in tasks if t["stato"] in stati]
             if not lista:
                 st.caption("Nessun task.")
             for t in lista:
-                with st.expander(f"#{t['id']} [{t['priorita']}] {t['titolo']} — {ctx.nome(t.get('responsabile'))}"):
+                with st.expander(f"{ICONE_STATO[t['stato']]} #{t['id']} [{t['priorita']}] {t['titolo']} — {ctx.nome(t.get('responsabile'))}"):
                     if t.get("descrizione"):
                         st.write(t["descrizione"])
                     st.caption(f"Agente: {t.get('agente') or '—'} · aggiornato {fa(t['updated_at'])} · "

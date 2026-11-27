@@ -9,10 +9,21 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent.parent
 
-TASK_STATI = ("in attesa", "in corso", "bloccato", "completato")
+TASK_STATI = ("backlog", "planned", "ready", "running", "waiting", "blocked", "needs_approval", "completed", "failed",
+              "cancelled")
+TASK_TERMINALI = ("completed", "failed", "cancelled")
+TASK_APERTI = tuple(s for s in TASK_STATI if s not in TASK_TERMINALI)
+TASK_STATI_V1 = {"in attesa": "ready", "in corso": "running", "bloccato": "blocked", "completato": "completed"}
 PRIORITA = ("bassa", "media", "alta", "urgente")
 APPROVAL_STATI = ("richiesta", "approvata", "rifiutata")
+ACTION_TYPES = ("email", "pubblicazione", "contatto_cliente", "spesa", "pagamento", "irreversibile", "account_esterno",
+                "comando_pericoloso", "altro")
 DEVICE_STATI = ("online", "occupato", "limite", "errore", "offline")
+AGENT_STATI = ("online", "offline", "idle", "working", "waiting", "needs_approval", "error", "unknown")
+AGENT_TIPI = ("claude-code", "codex", "api", "manuale")
+SEVERITA = ("info", "warning", "error", "critical")
+MEMORY_KINDS = ("obiettivo", "decisione", "info_progetto", "preferenza", "risultato", "errore", "procedura", "ripresa")
+HANDOFF_STATI = ("aperto", "preso", "chiuso")
 ONLINE_SECONDI = 120  # un dispositivo è online se l'ultimo heartbeat è più recente di così
 
 

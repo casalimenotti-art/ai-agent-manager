@@ -11,7 +11,8 @@ registro/*.jsonl su GitHub ──bridge sync-registro──► timeline Attivit�
 
 ## 1. Supabase (Menotti, ~10 min, piano gratuito)
 1. https://supabase.com → *New project* (regione EU, es. Frankfurt). Salva la password del DB nel tuo gestore password.
-2. *SQL Editor* → incolla tutto `supabase/migrations/001_guardian.sql` → *Run*.
+2. *SQL Editor* → incolla ed esegui, in ordine, `supabase/migrations/001_guardian.sql` e poi `002_command_center.sql`
+   (ogni migrazione è rieseguibile; prima del commit è provata su PostgreSQL con `bash tests/pg/run.sh`).
 3. Sempre nel SQL Editor, crea i 3 collaboratori con le **loro** email (blocco commentato in fondo al file SQL):
    ```sql
    insert into public.users (id, nome, email, ruolo, agente) values
@@ -22,6 +23,8 @@ registro/*.jsonl su GitHub ──bridge sync-registro──► timeline Attivit�
 4. *Authentication* → *Sign In / Providers* → Email: attivo; disattiva **Allow new users to sign up**.
    *Authentication* → *Users* → *Add user* → una per email (password a scelta, ognuno poi la cambia).
    Solo le email presenti in `public.users` vedono i dati (regole RLS): un account estraneo vede tabelle vuote.
+   Poi rendi admin il titolare: `update public.users set accesso = 'admin' where id = 'menotti';`
+   (solo un admin modifica gli utenti e può revocare i PC degli altri).
 5. *Project Settings* → *API*: copia **Project URL** e **anon public key** (mai la `service_role`).
 
 ## 2. Streamlit Community Cloud (Menotti, ~5 min)
@@ -42,10 +45,10 @@ registro/*.jsonl su GitHub ──bridge sync-registro──► timeline Attivit�
 ## Comandi del bridge per gli agenti (Claude Code / Codex)
 | Quando | Comando |
 |---|---|
-| inizio task | `python bridge/guardian_bridge.py task-update 4 --stato "in corso"` |
+| inizio task | `python bridge/guardian_bridge.py task-update 4 --stato running` |
 | evento utile | `python bridge/guardian_bridge.py event nota "Test passati" --task 4 --file x.py` |
 | limite vicino / pausa | `python bridge/guardian_bridge.py checkpoint --task 4 --summary "obiettivo + stato" --done "…" --decisions "…" --errors "…" --tests "…" --next "passo preciso" --file a.py` |
-| fine task | `python bridge/guardian_bridge.py task-update 4 --stato completato` |
+| fine task | `python bridge/guardian_bridge.py task-update 4 --stato completed` |
 | task assegnati a me | `python bridge/guardian_bridge.py pull` (scrive `~/.guardian/inbox.json`, **non** esegue nulla) |
 | importare il registro git | `python bridge/guardian_bridge.py sync-registro --branches` |
 
@@ -60,4 +63,4 @@ Il registro (`registro/scrivi.py`, AGENTS.md) resta obbligatorio: è la traccia 
 ## Sviluppo locale (senza Supabase)
 `streamlit run guardian/app.py` → modalità locale su `~/.guardian/hub.db` (dati NON condivisi).
 Bridge locale: `python bridge/guardian_bridge.py --local ~/.guardian/hub.db init-local --user menotti --nome PC`.
-Test: `python -m pytest -q tests`.
+Test: `python -m pytest -q tests` (include `tests/pg/run.sh` se PostgreSQL è installato).

@@ -28,9 +28,9 @@ def test_end_to_end_locale(tmp_path):
     stato.write_text(json.dumps({"stato": "occupato", "model": "opus", "limit_reached": True}))
     assert run(db, "heartbeat", "--status-file", str(stato), token=token, env=env).returncode == 0
     s = SqliteStore(db)
-    t = s.create_task("Prova", responsabile="menotti")
+    t = s.create_task("Prova", responsabile="menotti", stato="ready")
     assert run(db, "event", "nota", "test fatto", "--task", str(t["id"]), "--file", "x.py", token=token, env=env).returncode == 0
-    r = run(db, "task-update", str(t["id"]), "--stato", "in corso", "--next", "finire", token=token, env=env)
+    r = run(db, "task-update", str(t["id"]), "--stato", "running", "--next", "finire", token=token, env=env)
     assert r.returncode == 0, r.stderr
     r = run(db, "checkpoint", "--task", str(t["id"]), "--summary", "metà", "--next", "finire test", token=token, env=env)
     assert r.returncode == 0, r.stderr
@@ -42,7 +42,7 @@ def test_end_to_end_locale(tmp_path):
     d = s.devices()[0]
     assert d["stato"] == "occupato" and d["limit_reached"] and d["agent_name"] == "Claude Code"
     tipi = {e["event_type"] for e in s.events()}
-    assert {"stato_dispositivo", "nota", "task_aggiornato", "checkpoint"} <= tipi
+    assert {"stato_dispositivo", "nota", "task_started", "checkpoint"} <= tipi
     # segreti rifiutati, token sbagliato rifiutato
     assert run(db, "event", "nota", "password=abc123", token=token, env=env).returncode == 2
     assert run(db, "pull", token="sbagliato", env=env).returncode == 2
