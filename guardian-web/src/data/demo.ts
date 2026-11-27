@@ -1,12 +1,13 @@
 // DemoSource: dati di esempio IN MEMORIA, solo con VITE_DEMO=1 (sviluppo locale e test E2E).
 // Non scrive mai su Supabase. L'interfaccia mostra sempre il banner "Dati di esempio — solo locale".
 // Applica gli stessi vincoli del DB (titoli unici tra gli aperti, un running per agente, dipendenze, needs_approval).
-import type { Agent, AgentLog, Approval, Memory, Snapshot, Stanza, Task, User } from '../types';
+import type { Agent, AgentLog, Approval, Costo, Memory, Scadenza, Snapshot, Stanza, Task, User, Vendita } from '../types';
 import { TASK_TERMINALI } from '../types';
 import { eventiModificaTask } from './eventi';
-import { controllaTesto, type DataSource, type Diretta, ErroreDati, type Presente, type Presenza, type ModificaTask, type NuovoTask } from './source';
+import { controllaFonte, controllaTesto, senzaDatiPersonali, type DataSource, type Diretta, ErroreDati, type Presente, type Presenza, type ModificaTask, type NuovoTask } from './source';
 
 const min = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+const giorno = (g: number) => { const d = new Date(); d.setDate(d.getDate() + g); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 // solo demo e solo con ?cervello=finto: un cervello di prova dichiarato, per vedere e testare il flusso
 const CERVELLO_FINTO = typeof location !== 'undefined' && new URLSearchParams(location.search).get('cervello') === 'finto';
@@ -58,6 +59,28 @@ function seme(): Snapshot & { logs: AgentLog[]; memory: Memory[] } {
       { id: 3, nome: 'Amministrazione SRL', descrizione: null, stato: 'attivo', created_at: min(5000), stanza_id: 'amministrazione' },
     ],
     stanze: STANZE,
+    vendite: ([
+      [1, 'Bar Centrale (esempio)', 'visita', 1200, 'Preparare la bozza del preventivo', 'leads CSV riga 4'],
+      [2, 'Ottica Ungari', 'proposta', 1800, 'Aspettare risposta sul preventivo', 'visita 26/11'],
+      [3, 'Pizzeria Il Forno (esempio)', 'contatto', null, 'Prima telefonata (la fa Niko)', 'leads CSV riga 9'],
+      [4, 'Bellini B&B', 'trattativa', 950, 'Approvare l\'invio del preventivo', 'visita 25/11'],
+      [5, 'Palestra Fit (esempio)', 'vinto', 2400, null, 'contratto firmato 20/11'],
+    ] as const).map(([id, azienda, fase, valore_eur, prossimo_passo, fonte]): Vendita => ({ id, azienda, fase, valore_eur, prossimo_passo, fonte,
+      responsabile: 'amico1', created_by: 'amico1', created_at: min(3000), updated_at: min(200 + id * 30) })),
+    scadenze: ([
+      [1, 'F24 acconto IVA', giorno(4), 'fiscale', 'aperta', 640, 'commercialista, mail 20/11'],
+      [2, 'Rinnovo dominio nexo', giorno(-1), 'pagamento', 'aperta', 15, 'avviso del registrar'],
+      [3, 'Firma statuto SRL dal notaio', giorno(12), 'documento', 'aperta', null, 'appuntamento notaio'],
+      [4, 'Diritto camerale', giorno(40), 'fiscale', 'aperta', 120, 'commercialista'],
+    ] as const).map(([id, titolo, data, tipo, stato, importo_eur, fonte]): Scadenza => ({ id, titolo, data, tipo, stato, importo_eur, fonte,
+      responsabile: 'amico2', created_by: 'amico2', created_at: min(4000), updated_at: min(4000) })),
+    costi: ([
+      [1, 'Abbonamento Claude', 100, giorno(-10), 'abbonamenti_ai', 'mensile', 'estratto conto'],
+      [2, 'Hosting siti', 12, giorno(-5), 'hosting', 'mensile', 'fattura hosting'],
+      [3, 'Dominio .it', 15, giorno(-60), 'hosting', 'annuale', 'fattura registrar'],
+      [4, 'Volantini per le visite', 45, giorno(0), 'marketing', 'una_tantum', 'scontrino tipografia'],
+    ] as const).map(([id, descrizione, importo_eur, data, categoria, ricorrenza, fonte]): Costo => ({ id, descrizione, importo_eur, data, categoria, ricorrenza, fonte,
+      created_by: 'amico2', created_at: min(3000) })),
     cervello: CERVELLO_FINTO ? { modello: 'cervello finto (demo)', ultimo_battito: new Date().toISOString() } : null,
     events: [
       ev(1, 'task_started', 'Claude Code ha preso il task #1: Sito demo Ottica Ungari', 50, { task_id: 1, agent_id: 'menotti-claude', agent_name: 'Claude Code' }),
@@ -190,6 +213,45 @@ export class DemoSource implements DataSource {
   async segnaLetta(userId: string, id?: number) {
     for (const n of this.d.notifications) if (n.user_id === userId && (!id || n.id === id) && !n.read_at) n.read_at = new Date().toISOString();
     this.cambiato();
+  }
+
+  async creaVendita(v: Parameters<DataSource['creaVendita']>[0], by: string) {
+    const azienda = senzaDatiPersonali(controllaTesto(v.azienda, 'azienda', 120), 'azienda');
+    if (azienda.length < 2) throw new ErroreDati("Scrivi il nome dell'azienda o il codice del lead.");
+    const r: Vendita = { id: this.nid(this.d.vendite), azienda, fase: v.fase, valore_eur: v.valore_eur ?? null, fonte: controllaFonte(v.fonte),
+      prossimo_passo: senzaDatiPersonali(controllaTesto(v.prossimo_passo, 'prossimo passo', 500), 'prossimo passo') || null,
+      responsabile: v.responsabile ?? by, created_by: by, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    this.d.vendite.unshift(r);
+    this.evento({ event_type: 'vendita_creata', message: `Pipeline: ${azienda} (${r.fase})`, user_id: by }); this.cambiato();
+  }
+  async aggiornaVendita(id: number, campi: Parameters<DataSource['aggiornaVendita']>[1], by: string) {
+    const r = this.d.vendite.find((x) => x.id === id); if (!r) throw new ErroreDati('Voce della pipeline inesistente.');
+    if (campi.prossimo_passo !== undefined) campi.prossimo_passo = senzaDatiPersonali(campi.prossimo_passo, 'prossimo passo') || null;
+    const prima = r.fase; Object.assign(r, campi, { updated_at: new Date().toISOString() });
+    if (campi.fase && campi.fase !== prima) this.evento({ event_type: 'vendita_fase', message: `Pipeline: ${r.azienda} ${prima} → ${r.fase}`, user_id: by });
+    this.cambiato();
+  }
+  async creaScadenza(v: Parameters<DataSource['creaScadenza']>[0], by: string) {
+    const titolo = senzaDatiPersonali(controllaTesto(v.titolo, 'titolo', 200), 'titolo');
+    if (titolo.length < 2) throw new ErroreDati('Scrivi cosa scade.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v.data)) throw new ErroreDati('Indica la data della scadenza.');
+    this.d.scadenze.push({ id: this.nid(this.d.scadenze), titolo, data: v.data, tipo: v.tipo, stato: 'aperta', importo_eur: v.importo_eur ?? null,
+      responsabile: v.responsabile ?? by, fonte: controllaFonte(v.fonte), created_by: by, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+    this.evento({ event_type: 'scadenza_creata', message: `Scadenza: ${titolo} (${v.data})`, user_id: by }); this.cambiato();
+  }
+  async aggiornaScadenza(id: number, campi: Parameters<DataSource['aggiornaScadenza']>[1], by: string) {
+    const r = this.d.scadenze.find((x) => x.id === id); if (!r) throw new ErroreDati('Scadenza inesistente.');
+    Object.assign(r, campi, { updated_at: new Date().toISOString() });
+    if (campi.stato) this.evento({ event_type: 'scadenza_aggiornata', message: `Scadenza ${r.titolo}: ${campi.stato}`, user_id: by });
+    this.cambiato();
+  }
+  async creaCosto(v: Parameters<DataSource['creaCosto']>[0], by: string) {
+    const descrizione = senzaDatiPersonali(controllaTesto(v.descrizione, 'descrizione', 200), 'descrizione');
+    if (descrizione.length < 2) throw new ErroreDati('Descrivi il costo.');
+    if (!(v.importo_eur > 0)) throw new ErroreDati("L'importo deve essere maggiore di zero.");
+    this.d.costi.unshift({ id: this.nid(this.d.costi), descrizione, importo_eur: v.importo_eur, data: v.data ?? giorno(0), categoria: v.categoria,
+      ricorrenza: v.ricorrenza, fonte: controllaFonte(v.fonte), created_by: by, created_at: new Date().toISOString() });
+    this.evento({ event_type: 'costo_creato', message: `Costo: ${descrizione}`, user_id: by }); this.cambiato();
   }
 
   async creaProgetto(nome: string, descrizione: string, by: string) {

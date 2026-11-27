@@ -6,7 +6,7 @@ export interface Cambio { tabella: string; tipo: 'INSERT' | 'UPDATE' | 'DELETE';
 
 const CHIAVI: Record<string, keyof Snapshot> = {
   tasks: 'tasks', agents: 'agents', approvals: 'approvals', notifications: 'notifications', activity_events: 'events',
-  handoffs: 'handoffs', projects: 'projects', stanze: 'stanze',
+  handoffs: 'handoffs', projects: 'projects', stanze: 'stanze', vendite_pipeline: 'vendite', scadenze: 'scadenze', costi: 'costi',
 };
 const LIMITI: Partial<Record<keyof Snapshot, number>> = { tasks: 500, events: 400, approvals: 200, notifications: 100, handoffs: 100 };
 const NASCOSTI = ['token_hash']; // mai nel browser, anche se un messaggio lo portasse

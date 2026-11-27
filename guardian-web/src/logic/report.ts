@@ -2,12 +2,13 @@
 import type { Snapshot, TaskStato } from '../types';
 import { TASK_STATI, TASK_TERMINALI } from '../types';
 import { suggerisci } from './assign';
+import { giorniA, scadenzeDaGuardare } from './amministrazione';
 import { etaSecondi, statoAgente } from './status';
 
 export const FERMO_ORE = 24;
 export const USO_ALTO = 90;
 
-export interface Azione { priorita: 1 | 2 | 3; testo: string; ref: { tipo: 'task' | 'agent' | 'approval'; id: string | number } }
+export interface Azione { priorita: 1 | 2 | 3; testo: string; ref: { tipo: 'task' | 'agent' | 'approval' | 'stanza'; id: string | number } }
 export interface Report { conteggi: Record<TaskStato, number>; aperti: number; approvazioni: number; prossime: Azione[] }
 
 export function report(s: Snapshot, ora?: number): Report {
@@ -35,6 +36,12 @@ export function report(s: Snapshot, ora?: number): Report {
     } else if (t.stato === 'planned' && t.depends_on.length && t.depends_on.every((d) => perId.get(d)?.stato === 'completed')) {
       az.push({ priorita: 3, testo: `Le dipendenze del task #${t.id} sono completate: portalo a ready`, ref });
     }
+  }
+  // Solo web (migrazione 008): scadenze scadute o entro 7 giorni.
+  for (const sc of scadenzeDaGuardare(s.scadenze ?? [], 7, ora ? new Date(ora) : undefined)) {
+    const g = giorniA(sc.data, ora ? new Date(ora) : undefined);
+    az.push({ priorita: g < 0 ? 1 : 2, testo: g < 0 ? `Scadenza passata da ${-g} g: ${sc.titolo}` : `Scadenza ${g === 0 ? 'oggi' : `tra ${g} g`}: ${sc.titolo}`,
+      ref: { tipo: 'stanza', id: 'amministrazione' } });
   }
   const conteggi = Object.fromEntries(TASK_STATI.map((st) => [st, s.tasks.filter((t) => t.stato === st).length])) as Record<TaskStato, number>;
   return {

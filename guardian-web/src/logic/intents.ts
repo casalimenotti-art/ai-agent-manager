@@ -1,10 +1,11 @@
 // Router di intenti deterministico: risponde dai dati senza alcun modello AI. Ogni risposta dichiara la fonte.
 import type { Snapshot } from '../types';
+import { costoMese, euro, giorniA, pipelinePerFase, scadenzeDaGuardare } from './amministrazione';
 import { agentiAlLavoro, completatiOggi, tassoCompletamento } from './metrics';
 import { report } from './report';
 import { statoAgente } from './status';
 
-export interface Risposta { testo: string; fonte: string; apri?: { p: string; filtro?: string } }
+export interface Risposta { testo: string; fonte: string; apri?: { p: string; filtro?: string }; /** stanza da aprire (Vendite, Amministrazione) */ stanza?: string }
 
 const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const ha = (t: string, ...parole: string[]) => parole.some((p) => t.includes(p));
@@ -35,6 +36,22 @@ export function rispondi(domanda: string, s: Snapshot, ora?: number): Risposta |
     return { testo: a.length ? `${a.length} approvazioni in attesa: ${a.slice(0, 5).map((x) => x.action).join('; ')}.` :
       'Nessuna approvazione in attesa.', fonte: 'tabella approvals', apri: { p: 'approvazioni' } };
   }
+  if (ha(q, 'scadenz', 'scade')) {
+    const v = scadenzeDaGuardare(s.scadenze ?? [], 14, ora ? new Date(ora) : undefined);
+    return { testo: v.length ? `${v.length} scadenze nei prossimi 14 giorni: ${v.slice(0, 4).map((x) => {
+      const g = giorniA(x.data, ora ? new Date(ora) : undefined); return `${x.titolo} (${g < 0 ? `scaduta da ${-g} g` : g === 0 ? 'oggi' : `tra ${g} g`})`; }).join('; ')}.`
+      : 'Nessuna scadenza nei prossimi 14 giorni.', fonte: 'tabella scadenze (inserite a mano, con fonte)', stanza: 'amministrazione' };
+  }
+  if (ha(q, 'costi', 'spend', 'spesa', 'quanto paghiamo')) {
+    const m = costoMese(s.costi ?? [], ora ? new Date(ora) : undefined);
+    return { testo: s.costi?.length ? `Questo mese: ${euro(m.totale)} (${m.ricorrenti} costi ricorrenti).` : 'Nessun costo inserito: la stanza Amministrazione è vuota.',
+      fonte: 'tabella costi: mensili + annuali/12 + una tantum del mese', stanza: 'amministrazione' };
+  }
+  if (ha(q, 'pipeline', 'preventiv', 'trattativ') || (ha(q, 'vendit') && ha(q, 'come va', 'andamento', 'quant'))) {
+    const p = pipelinePerFase(s.vendite ?? []);
+    return { testo: s.vendite?.length ? `Pipeline: ${p.aperte} aperte per ${euro(p.valoreAperto)}; ${p.fasi.proposta.numero} proposte e ${p.fasi.trattativa.numero} trattative; ${p.fasi.vinto.numero} vinte.`
+      : 'La pipeline vendite è vuota.', fonte: 'tabella vendite_pipeline (senza dati personali)', stanza: 'vendite' };
+  }
   if (ha(q, 'consigl', 'prossim', 'cosa faccio', 'cosa devo')) {
     const r = report(s, ora);
     return { testo: r.prossime.length ? `Prossime azioni:\n${r.prossime.slice(0, 5).map((a, i) => `${i + 1}. ${a.testo}`).join('\n')}` :
@@ -55,7 +72,9 @@ export const DOMANDE_ESEMPIO = ['Quanti agenti sono attivi?', 'Quanti task abbia
 /** Domande su "questo task / questo agente / questa azienda" usando solo il contesto minimo del pannello aperto. */
 export function rispondiConContesto(domanda: string, s: Snapshot, ctx: { p: string; id?: string } | null, ora?: number): Risposta | null {
   const q = norm(domanda);
-  if (!ctx?.id || !ha(q, 'questo', 'questa', 'perche', 'cosa sta', 'cosa succede', 'spiega')) return rispondi(domanda, s, ora);
+  // "questo mese", "questa settimana" non parlano del pannello aperto
+  const periodo = /quest[oa] (mese|settimana|anno)/.test(q);
+  if (!ctx?.id || periodo || !ha(q, 'questo', 'questa', 'perche', 'cosa sta', 'cosa succede', 'spiega')) return rispondi(domanda, s, ora);
   if (ctx.p === 'task') {
     const t = s.tasks.find((x) => String(x.id) === ctx.id);
     if (!t) return null;

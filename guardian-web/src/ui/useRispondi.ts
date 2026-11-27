@@ -28,7 +28,7 @@ export function useRispondi() {
     setPensa(true);
     try {
       const r = rispondiConContesto(domanda, snap, pannello ?? (stanza ? { p: 'stanza', id: stanza } : null));
-      if (r) { if (r.apri) apri({ p: r.apri.p, filtro: r.apri.filtro }); return di(r.testo, r.fonte); }
+      if (r) { if (r.apri) apri({ p: r.apri.p, filtro: r.apri.filtro }); else if (r.stanza && r.stanza !== stanza) apriStanza(r.stanza); return di(r.testo, r.fonte); }
       if (cervelloOnline(snap.cervello)) {
         // contesto MINIMO per il cervello: numeri e stati, mai dati personali o log interi
         const rp = report(snap);

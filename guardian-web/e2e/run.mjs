@@ -201,6 +201,43 @@ ok(errori.length === 0, `nessun errore in console ${errori.slice(0, 2).join(' | 
   await q.close();
 }
 
+// 8d. Ondate 5 e 7: pipeline vendite, scadenze, costi (dati di esempio, niente dati personali)
+{
+  const { p: q, errori: e4 } = await entra();
+  ok(await q.locator('.item:has-text("Scadenza passata")').count() >= 1, 'prossime azioni: scadenza passata in evidenza');
+  await q.click('.porta:has-text("Vendite")'); await q.waitForSelector('.pipeline');
+  ok(await q.locator('.pipeline-fase').count() === 6 && await q.locator('[data-vendita]').count() === 5, 'pipeline: 6 fasi, 5 aziende');
+  await q.click('.pipeline button:has-text("Aggiungi")');
+  await q.fill('.pipeline input >> nth=0', 'Gelateria Neve'); await q.fill('.pipeline input[placeholder^="es. visita"]', 'visita 27/11');
+  await q.fill('.pipeline .field:has-text("Prossimo passo") input', 'scrivere a gelateria@example.com');
+  await q.click('.pipeline button[type=submit]'); await q.waitForSelector('.toast.err');
+  ok((await q.locator('.toast.err').last().textContent()).includes('CSV dei lead'), 'pipeline: email rifiutata, i dati dei clienti restano nel CSV');
+  await q.fill('.pipeline .field:has-text("Prossimo passo") input', 'preparare la bozza'); await q.click('.pipeline button[type=submit]');
+  await q.waitForSelector('.toast:has-text("Aggiunta alla pipeline")');
+  ok(await q.locator('[data-fase="contatto"] .scheda-mini:has-text("Gelateria Neve")').count() === 1, 'pipeline: nuova azienda in Contatto');
+  await q.selectOption('[data-vendita="2"] select', 'vinto'); await q.waitForSelector('.toast:has-text("Ottica Ungari")');
+  ok(await q.locator('[data-fase="vinto"] [data-vendita="2"]').count() === 1, 'pipeline: cambio di fase');
+  await q.keyboard.press('Escape'); await q.click('.porta:has-text("Amministrazione")'); await q.waitForSelector('[aria-label="Scadenze (30 giorni)"]');
+  ok(await q.locator('[data-scadenza="2"] .pill.crit').count() === 1, 'scadenze: quella passata è rossa');
+  await q.click('[data-scadenza="2"] button:has-text("Fatta")'); await q.waitForSelector('.toast:has-text("Fatta")');
+  ok(await q.locator('[data-scadenza="2"]').count() === 0, 'scadenze: segnata come fatta, sparisce');
+  const prima = await q.locator('[aria-label="Costi"] .porta-numeri b').first().textContent();
+  await q.click('[aria-label="Costi"] button:has-text("Aggiungi")');
+  await q.fill('[aria-label="Costi"] .field:has-text("Descrizione") input', 'Canva Pro'); await q.fill('[aria-label="Costi"] .field:has-text("Importo") input', '11');
+  await q.click('[aria-label="Costi"] button[type=submit]'); await q.waitForSelector('.toast.err');
+  ok((await q.locator('.toast.err').last().textContent()).includes('fonte') || await q.locator('[aria-label="Costi"] input:invalid').count() > 0, 'costi: senza fonte non si salva');
+  await q.fill('[aria-label="Costi"] input[placeholder^="es. fattura"]', 'estratto conto'); await q.click('[aria-label="Costi"] button[type=submit]');
+  await q.waitForSelector('.toast:has-text("Costo salvato")');
+  const dopo = await q.locator('[aria-label="Costi"] .porta-numeri b').first().textContent();
+  ok(prima !== dopo, `costi: totale del mese aggiornato (${prima} → ${dopo})`);
+  await q.fill('.dock input', 'quanto spendiamo questo mese?'); await q.press('.dock input', 'Enter'); await q.waitForTimeout(250);
+  await q.click('.dock button:has-text("Conversazione (")').catch(() => {});
+  ok(await q.locator('.msg.guardian:has-text("Questo mese")').count() >= 1, 'domanda a Guardian sui costi: risposta dai dati');
+  ok(e4.length === 0, `vendite e amministrazione senza errori in console ${e4.slice(0, 2).join(' | ')}`);
+  await q.screenshot({ path: `${OUT}amministrazione.png`, fullPage: true });
+  await q.close();
+}
+
 // 10. larghezze: nessuno scroll orizzontale, screenshot
 for (const [w, h] of [[390, 844], [768, 1024], [1280, 900], [1920, 1080]]) {
   const r = await entra(w, h);

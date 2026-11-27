@@ -1,5 +1,5 @@
 import type { Cambio } from '../logic/live';
-import type { AgentLog, Approval, Memory, Priorita, Snapshot, Task, TaskStato, User } from '../types';
+import type { AgentLog, Approval, Costo, Scadenza, Vendita, Memory, Priorita, Snapshot, Task, TaskStato, User } from '../types';
 
 export type Diretta = 'live' | 'polling' | 'off';
 /** Chi è nell'HQ in questo momento (Presence di Supabase Realtime: niente salvato nel database). */
@@ -38,6 +38,11 @@ export interface DataSource {
   logAgente(agentId: string, limite?: number): Promise<AgentLog[]>;
   memoria(filtro: { project_id?: number; task_id?: number; q?: string }): Promise<Memory[]>;
   aggiungiMemoria(m: Pick<Memory, 'kind' | 'content' | 'source'> & Partial<Memory>, by: string): Promise<void>;
+  creaVendita(v: Pick<Vendita, 'azienda' | 'fase' | 'fonte'> & Partial<Vendita>, by: string): Promise<void>;
+  aggiornaVendita(id: number, campi: Partial<Pick<Vendita, 'fase' | 'valore_eur' | 'prossimo_passo' | 'responsabile'>>, by: string): Promise<void>;
+  creaScadenza(s: Pick<Scadenza, 'titolo' | 'data' | 'tipo' | 'fonte'> & Partial<Scadenza>, by: string): Promise<void>;
+  aggiornaScadenza(id: number, campi: Partial<Pick<Scadenza, 'stato' | 'data' | 'importo_eur'>>, by: string): Promise<void>;
+  creaCosto(c: Pick<Costo, 'descrizione' | 'importo_eur' | 'categoria' | 'ricorrenza' | 'fonte'> & Partial<Costo>, by: string): Promise<void>;
   /** Domanda al cervello sul PC del titolare: restituisce le frasi della risposta mentre arrivano. */
   chiediCervello(userId: string, testo: string, contesto: Record<string, unknown>): AsyncIterable<string>;
 }
@@ -52,6 +57,19 @@ export function messaggioVincolo(raw: string): string {
   if (/projects_nome_uniq/.test(raw)) return 'Esiste già un progetto con questo nome.';
   if (/row-level security|permission denied/i.test(raw)) return 'Non hai i permessi per questa operazione.';
   return 'Operazione non riuscita. Riprova o controlla la connessione.';
+}
+
+/** Stesso controllo di public.senza_dati_personali (migrazione 008): niente email né telefoni dei clienti nel DB condiviso. */
+export function senzaDatiPersonali(t: string | undefined | null, campo: string): string {
+  const v = (t ?? '').trim();
+  if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(v) || /\d{9,}/.test(v.replace(/[\s.()/-]/g, '')))
+    throw new ErroreDati(`Il campo «${campo}» contiene un'email o un numero di telefono: i dati dei clienti restano nel CSV dei lead, non qui.`);
+  return v;
+}
+export function controllaFonte(f: string | undefined | null): string {
+  const v = senzaDatiPersonali(controllaTesto(f, 'fonte', 200), 'fonte');
+  if (v.length < 3) throw new ErroreDati('Indica la fonte (es. «fattura n. 12», «visita 26/11»): senza fonte il dato non si salva.');
+  return v;
 }
 
 const SEGRETO = /(sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|(password|passwd|pwd|token|api[_-]?key)\s*[:=]\s*\S+)/i;

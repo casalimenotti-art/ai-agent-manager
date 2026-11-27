@@ -344,3 +344,18 @@ table.data th { color: var(--text-3); font-weight: 600; font-size: var(--fs-xs);
 .mappa-lista li { padding: 4px 0; font-size: 14px; border-bottom: 1px solid var(--border-1); }
 @media (max-width: 720px) { .mappa-svg { display: none; } .mappa-lista { display: block; } }
 @media (prefers-reduced-motion: reduce) { .mappa-arco.attivo, .mappa-nodo.impulso .mappa-punto { animation: none; } }
+
+/* Ondate 5 e 7: pipeline vendite, scadenze e costi */
+.pipeline-fasi { display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: var(--s-2); overflow-x: auto; margin-top: var(--s-3); }
+.pipeline-fase { position: relative; background: var(--bg-1); border: 1px solid var(--border-1); border-radius: var(--r-2); padding: var(--s-2); min-height: 90px; }
+.pipeline-fase h4 { margin: 0 0 4px; font-size: var(--fs-sm); color: var(--text-2); display: flex; gap: 6px; align-items: center; }
+.pipeline-fase[data-fase="vinto"] h4 { color: var(--ok); } .pipeline-fase[data-fase="perso"] h4 { color: var(--text-3); }
+.scheda-mini { position: relative; background: var(--surface-2); border: 1px solid var(--border-1); border-radius: var(--r-1); padding: 8px; margin-top: 6px; }
+.scheda-mini .t { font-size: var(--fs-sm); font-weight: 600; } .scheda-mini .s { font-size: var(--fs-xs); color: var(--text-2); margin-top: 2px; }
+.scheda-mini .sposta { margin-top: 6px; width: 100%; padding: 4px 6px; font-size: var(--fs-xs); }
+.barre-costi { display: grid; gap: 6px; margin-top: var(--s-3); }
+.barra-costo { display: grid; grid-template-columns: 120px 1fr auto; gap: var(--s-2); align-items: center; font-size: var(--fs-sm); }
+.barra-costo .barra { height: 8px; background: var(--surface-3); border-radius: var(--r-pill); overflow: hidden; }
+.barra-costo .barra i { display: block; height: 100%; background: var(--series-7); border-radius: inherit; }
+@media (max-width: 1024px) { .pipeline-fasi { grid-template-columns: repeat(6, minmax(170px, 75vw)); scroll-snap-type: x mandatory; } .pipeline-fase { scroll-snap-align: start; } }
+@media (max-width: 720px) { .barra-costo { grid-template-columns: 90px 1fr auto; } }

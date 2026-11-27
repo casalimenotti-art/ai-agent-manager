@@ -47,6 +47,7 @@ pannelli con URL `?p=&id=&f=`, conversazione) · `src/ui/` (Shell, CommandCenter
 | Cerca / Ctrl+K | header | palette comandi | modale | snapshot | apre voce | "nessun risultato" |
 | Mappa (rail, palette) | rail | pannello «Mappa operativa»; clic/Invio su un nodo apre agente, task o stanza | drawer largo | `costruisciMappa(snap)` | impulso sugli eventi recenti | "Ancora niente da collegare" |
 | Avatar presenza | header | chi è nell'HQ e in quale stanza (tooltip) | — | Supabase Presence | — | nascosto se nessuno |
+| Pipeline / Scadenze / Costi | stanze Vendite e Amministrazione | aggiungi (fonte obbligatoria), cambia fase, «Fatta» | — | `creaVendita` · `aggiornaVendita` · `creaScadenza` · `aggiornaScadenza` · `creaCosto` | toast | email/telefono o fonte mancante: messaggio, nulla salvato |
 | Campanella | header | Notifiche | drawer | — | — | — |
 | Esci | header | logout | login | `esci` | — | — |
 | Indietro / Chiudi / Esc | drawer | traccia / chiude | — | — | focus restituito | — |

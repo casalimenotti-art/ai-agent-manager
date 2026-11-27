@@ -66,9 +66,23 @@ export interface AgentLog {
 }
 
 /** Fotografia di tutti i dati che la vista centrale usa. */
+/** Migrazione 008: pipeline vendite senza dati personali, scadenze e costi con fonte obbligatoria. */
+export type FaseVendita = 'contatto' | 'visita' | 'proposta' | 'trattativa' | 'vinto' | 'perso';
+export const FASI_VENDITA: FaseVendita[] = ['contatto', 'visita', 'proposta', 'trattativa', 'vinto', 'perso'];
+export interface Vendita { id: number; azienda: string; fase: FaseVendita; valore_eur?: number | null; prossimo_passo?: string | null;
+  responsabile?: string | null; fonte: string; created_by: string; created_at: string; updated_at: string }
+export type TipoScadenza = 'fiscale' | 'contratto' | 'pagamento' | 'documento' | 'altro';
+export interface Scadenza { id: number; titolo: string; data: string; tipo: TipoScadenza; stato: 'aperta' | 'fatta' | 'annullata';
+  importo_eur?: number | null; responsabile?: string | null; fonte: string; created_by: string; created_at: string; updated_at: string }
+export type CategoriaCosto = 'software' | 'abbonamenti_ai' | 'hosting' | 'marketing' | 'trasporti' | 'altro';
+export type Ricorrenza = 'una_tantum' | 'mensile' | 'annuale';
+export interface Costo { id: number; descrizione: string; importo_eur: number; data: string; categoria: CategoriaCosto; ricorrenza: Ricorrenza;
+  fonte: string; created_by: string; created_at: string }
+
 export interface Snapshot {
   users: User[]; devices: Device[]; agents: Agent[]; projects: Project[]; tasks: Task[]; events: ActivityEvent[];
   approvals: Approval[]; notifications: Notification[]; handoffs: Handoff[]; stanze: Stanza[];
+  vendite: Vendita[]; scadenze: Scadenza[]; costi: Costo[];
   /** Stato del cervello sul PC del titolare (migrazione 006); null se non configurato. */
   cervello: { modello?: string | null; ultimo_battito?: string | null } | null;
 }

@@ -76,7 +76,7 @@ export function CommandCenter() {
         {!r ? <Scheletro /> : r.prossime.length === 0 ? <Vuoto icona={Sparkles}>Nessuna azione urgente.</Vuoto> : (
           <div className="list">
             {r.prossime.slice(0, 6).map((a, i) => (
-              <button key={i} className="item" onClick={() => apri(a.ref.tipo === 'task' ? { p: 'task', id: String(a.ref.id) }
+              <button key={i} className="item" onClick={() => a.ref.tipo === 'stanza' ? apriStanza(String(a.ref.id)) : apri(a.ref.tipo === 'task' ? { p: 'task', id: String(a.ref.id) }
                 : a.ref.tipo === 'agent' ? { p: 'agente', id: String(a.ref.id) } : { p: 'approvazione', id: String(a.ref.id) })}>
                 <span className={`pill ${a.priorita === 1 ? 'crit' : a.priorita === 2 ? 'warn' : 'accent'}`}>{a.priorita === 1 ? 'Ora' : a.priorita === 2 ? 'Presto' : 'Poi'}</span>
                 <span className="t" style={{ fontWeight: 500 }}>{a.testo}</span>

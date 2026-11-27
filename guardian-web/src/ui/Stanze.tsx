@@ -4,6 +4,7 @@ import { useState, type CSSProperties, type DragEvent } from 'react';
 import { COLONNE_KANBAN, COLORI_SOFT, riepilogoStanza, taskDiStanza } from '../logic/stanze';
 import { fa, statoAgente } from '../logic/status';
 import { leggiPreferenze, useG } from '../state';
+import { LavoroStanza } from './StanzeLavoro';
 import type { Stanza, TaskStato } from '../types';
 import { Sezione, StatoAgente, StatoTask, Vuoto } from './kit';
 
@@ -93,6 +94,7 @@ export function VistaStanza({ id }: { id: string }) {
         })}
       </div>
       <p className="dim" style={{ fontSize: 12, margin: 0 }}>Trascinare un task cambia davvero il suo stato. Il database rifiuta i passaggi non validi (es. dipendenze aperte) e te lo dice.</p>
+      <LavoroStanza st={st} />
       <div className="cc">
         <Sezione titolo="Agenti della stanza" icona={Bot} conta={r.agenti.length} className="col-4">
           {r.agenti.length === 0 ? <Vuoto icona={Bot}>Nessun agente collegato a {snap.users.find((u) => u.id === st.responsabile)?.nome ?? 'questa stanza'}.</Vuoto> :

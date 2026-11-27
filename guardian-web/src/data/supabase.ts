@@ -4,10 +4,10 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AgentLog, Memory, Snapshot, Task, User } from '../types';
 import { eventiModificaTask } from './eventi';
 import type { Cambio } from '../logic/live';
-import { controllaTesto, type DataSource, type Diretta, type Presente, type Presenza, ErroreDati, messaggioVincolo, type ModificaTask, type NuovoTask } from './source';
+import { controllaFonte, controllaTesto, senzaDatiPersonali, type DataSource, type Diretta, type Presente, type Presenza, ErroreDati, messaggioVincolo, type ModificaTask, type NuovoTask } from './source';
 
 const COLONNE_DEVICES = 'id,user_id,nome,agent_name,model,stato,current_task_id,error,limit_reached,last_seen,last_checkpoint,created_at';
-const TABELLE_LIVE = ['agents', 'tasks', 'approvals', 'notifications', 'activity_events', 'handoffs', 'stanze', 'projects', 'guardian_cervello'];
+const TABELLE_LIVE = ['agents', 'tasks', 'approvals', 'notifications', 'activity_events', 'handoffs', 'stanze', 'projects', 'guardian_cervello', 'vendite_pipeline', 'scadenze', 'costi'];
 
 export class SupabaseSource implements DataSource {
   readonly modo = 'supabase' as const;
@@ -45,7 +45,8 @@ export class SupabaseSource implements DataSource {
   async esci() { await this.c.auth.signOut(); }
 
   async carica(userId: string): Promise<Snapshot> {
-    const [users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze, cervello] = await Promise.all([
+    const tollera = <T,>(p: PromiseLike<{ data: T[] | null; error: unknown }>) => this.q(p.then((r) => ({ data: r.error ? [] : r.data ?? [], error: null })));
+    const [users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze, cervello, vendite, scadenze, costi] = await Promise.all([
       this.q(this.c.from('users').select('id,nome,ruolo,agente,stato,accesso').order('id')),
       this.q(this.c.from('devices').select(COLONNE_DEVICES).order('user_id')),
       this.q(this.c.from('agents').select('*').order('user_id')),
@@ -59,8 +60,12 @@ export class SupabaseSource implements DataSource {
       this.q(this.c.from('stanze').select('*').eq('attiva', true).order('ordine').then((r) => ({ data: r.error ? [] : r.data, error: null }))),
       // 006 non ancora applicata: cervello non configurato
       this.q(this.c.from('guardian_cervello').select('modello,ultimo_battito').limit(1).then((r) => ({ data: r.error ? [] : r.data, error: null }))),
+      // 008 non ancora applicata: stanze Vendite/Amministrazione senza numeri, nessun errore
+      tollera(this.c.from('vendite_pipeline').select('*').order('updated_at', { ascending: false }).limit(300)),
+      tollera(this.c.from('scadenze').select('*').order('data').limit(300)),
+      tollera(this.c.from('costi').select('*').order('data', { ascending: false }).limit(500)),
     ]);
-    return { users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze,
+    return { users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze, vendite, scadenze, costi,
       cervello: (cervello as Snapshot['cervello'][])[0] ?? null } as Snapshot;
   }
 
@@ -138,6 +143,42 @@ export class SupabaseSource implements DataSource {
     let q = this.c.from('notifications').update({ read_at: new Date().toISOString() }).eq('user_id', userId);
     q = id ? q.eq('id', id) : q.is('read_at', null);
     await this.q(q);
+  }
+
+  async creaVendita(v: Parameters<DataSource['creaVendita']>[0], by: string) {
+    const azienda = senzaDatiPersonali(controllaTesto(v.azienda, 'azienda', 120), 'azienda');
+    if (azienda.length < 2) throw new ErroreDati("Scrivi il nome dell'azienda o il codice del lead.");
+    await this.q(this.c.from('vendite_pipeline').insert({ azienda, fase: v.fase, valore_eur: v.valore_eur ?? null, fonte: controllaFonte(v.fonte),
+      prossimo_passo: senzaDatiPersonali(controllaTesto(v.prossimo_passo, 'prossimo passo', 500), 'prossimo passo') || null,
+      responsabile: v.responsabile ?? by, created_by: by }));
+    await this.evento({ event_type: 'vendita_creata', message: `Pipeline: ${azienda} (${v.fase})`, user_id: by });
+  }
+  async aggiornaVendita(id: number, campi: Parameters<DataSource['aggiornaVendita']>[1], by: string) {
+    if (campi.prossimo_passo !== undefined) campi.prossimo_passo = senzaDatiPersonali(controllaTesto(campi.prossimo_passo, 'prossimo passo', 500), 'prossimo passo') || null;
+    const [r] = await this.q<{ azienda: string; fase: string }[]>(this.c.from('vendite_pipeline').update(campi).eq('id', id).select('azienda,fase'));
+    if (!r) throw new ErroreDati('Voce della pipeline inesistente.');
+    if (campi.fase) await this.evento({ event_type: 'vendita_fase', message: `Pipeline: ${r.azienda} → ${r.fase}`, user_id: by });
+  }
+  async creaScadenza(v: Parameters<DataSource['creaScadenza']>[0], by: string) {
+    const titolo = senzaDatiPersonali(controllaTesto(v.titolo, 'titolo', 200), 'titolo');
+    if (titolo.length < 2) throw new ErroreDati('Scrivi cosa scade.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v.data)) throw new ErroreDati('Indica la data della scadenza.');
+    await this.q(this.c.from('scadenze').insert({ titolo, data: v.data, tipo: v.tipo, importo_eur: v.importo_eur ?? null, fonte: controllaFonte(v.fonte),
+      responsabile: v.responsabile ?? by, created_by: by }));
+    await this.evento({ event_type: 'scadenza_creata', message: `Scadenza: ${titolo} (${v.data})`, user_id: by });
+  }
+  async aggiornaScadenza(id: number, campi: Parameters<DataSource['aggiornaScadenza']>[1], by: string) {
+    const [r] = await this.q<{ titolo: string }[]>(this.c.from('scadenze').update(campi).eq('id', id).select('titolo'));
+    if (!r) throw new ErroreDati('Scadenza inesistente.');
+    if (campi.stato) await this.evento({ event_type: 'scadenza_aggiornata', message: `Scadenza ${r.titolo}: ${campi.stato}`, user_id: by });
+  }
+  async creaCosto(v: Parameters<DataSource['creaCosto']>[0], by: string) {
+    const descrizione = senzaDatiPersonali(controllaTesto(v.descrizione, 'descrizione', 200), 'descrizione');
+    if (descrizione.length < 2) throw new ErroreDati('Descrivi il costo.');
+    if (!(v.importo_eur > 0)) throw new ErroreDati("L'importo deve essere maggiore di zero.");
+    await this.q(this.c.from('costi').insert({ descrizione, importo_eur: v.importo_eur, data: v.data ?? undefined, categoria: v.categoria,
+      ricorrenza: v.ricorrenza, fonte: controllaFonte(v.fonte), created_by: by }));
+    await this.evento({ event_type: 'costo_creato', message: `Costo: ${descrizione}`, user_id: by });
   }
 
   async creaProgetto(nome: string, descrizione: string, by: string) {
