@@ -603,7 +603,7 @@ def sez_guardian():
         st.session_state["spazio"] = cmd["valore"]
     elif cmd and cmd["tipo"] == "voce":
         st.session_state["voce_on"] = cmd["valore"]
-    if not isinstance(fonte, fonte_mod.FonteDemo) and not chat.agente_installato(config.MANAGER_AGENT):
+    if not fonte.nome.startswith("DEMO") and not chat.agente_installato(config.MANAGER_AGENT):
         st.caption(f"⚠️ L'agente `{config.MANAGER_AGENT}` non è installato (pannello Squadra): rispondo come un normale Claude Code.")
     reattore = st.empty()
     st.session_state["_rx_ph"] = reattore
@@ -993,9 +993,9 @@ def riepilogo_modelli():
     except (OSError, ValueError, KeyError):
         modelli = []
     if modelli:
-        st.markdown(theme.barre_orizzontali([(m["modello"], m["costo"]) for m in modelli[:4]]),
-                    unsafe_allow_html=True)
-        st.caption("Dati demo · Stima a listino API" if isinstance(fonte, fonte_mod.FonteDemo) else "Stima a listino API")
+        for m in modelli[:4]:
+            st.text(f"{m['modello']} · ${m['costo']:.2f}")
+        st.caption("Dati demo · Stima a listino API" if fonte.nome.startswith("DEMO") else "Stima a listino API")
     else:
         st.caption("Nessun consumo per modello disponibile.")
     st.button("Dettaglio costi", key="rapido_costi", on_click=st.session_state.update,
