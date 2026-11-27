@@ -256,15 +256,15 @@ def sez_costi():
 
 # ---------------------------------------------------------------- 2. Monitor agenti
 TIPI_FEED = {"delega": ["delega"], "web": ["web-ricerca", "web-apri", "browser"], "file": ["file"], "comando": ["comando"],
-             "dice": ["dice"], "lettura": ["lettura"]}
+             "dice": ["dice"], "lettura": ["lettura"], "strumenti": ["strumento"]}
 
 
-@st.fragment(run_every=8)
+@st.fragment(run_every=2)
 def vista_palcoscenico():
     """Cosa fanno gli agenti adesso: chi delega a chi, cosa cercano sul web, quali pagine aprono, cosa ne ricavano."""
     righe = dati_sessioni(fonte)
     al_lavoro = sum(r["stato"] == "al lavoro" for r in righe)
-    scelte = st.pills("Mostra", list(TIPI_FEED), selection_mode="multi", default=["delega", "web", "file", "comando", "dice"],
+    scelte = st.pills("Mostra", list(TIPI_FEED), selection_mode="multi", default=["delega", "web", "file", "comando", "strumenti"],
                       key="f_att", label_visibility="collapsed") or list(TIPI_FEED)
     tipi = {x for k in scelte for x in TIPI_FEED[k]}
     ev = dati_attivita(fonte, 80, tuple(sorted(tipi)))
@@ -277,11 +277,11 @@ def vista_palcoscenico():
     k4.markdown(theme.tessera("Deleghe", str(sum(e["tipo"] == "delega" for e in recenti)), "ordini del manager"), unsafe_allow_html=True)
     sx = dx = st.container()
     with sx:
-        st.subheader("Cosa sta succedendo")
+        st.subheader("Diretta degli agenti")
         visto = st.session_state.get("_att_visto", 0.0)
         st.markdown(theme.feed_attivita(ev, fa, ora, visto), unsafe_allow_html=True)
         if ev:
-            st.session_state["_att_visto"] = max(e["ts"] for e in ev)
+            st.session_state["_att_visto"] = max(visto, max(e["ts"] for e in ev))
         st.caption("Le pagine si aprono nel browser dell'agente: qui vedi dove va e cosa ne ricava. Per vederle scorrere dal vivo, "
                    "usa Claude in Chrome (le schede appaiono nel tuo Chrome).")
     with dx:
@@ -356,11 +356,10 @@ def griglia_agenti():
 
 
 def sez_agenti():
+    vista_palcoscenico()
     griglia_agenti()
     if st.session_state.get("_det_agente"):
         dettaglio_agente(st.session_state["_det_agente"])
-    with st.expander("Feed generale e riepilogo", expanded=False):
-        vista_palcoscenico()
 
 
 def sez_squadra():

@@ -401,7 +401,9 @@ button[data-variant="segmented_control"] { letter-spacing:.08em; text-transform:
 .tag.dice, .tag.altro { color:#8FA3B5; border-color:#2A3A4D; }
 .g-ev .corpo { color:#e8f1ff; word-break:break-word; } .g-ev .sub { grid-column:2; color:#a3aecb; font-size:.76rem; }
 .g-ev .sub b { color:#00d4f2; font-weight:600; }
-.g-ev.nuovo { border-left:2px solid #22D3EE; }
+.g-ev.nuovo { border-left:2px solid #22D3EE; animation:g-event-in .3s ease-out both; }
+@keyframes g-event-in { from { opacity:.55; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { .g-ev.nuovo { animation:none; } }
 
 /* plancia: alto compatto (Guardian + utilizzo) e griglia di schede agente */
 .g-bar { margin:.35rem 0 .6rem; }
