@@ -108,7 +108,7 @@ def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, co
         ao_in.inputs["Distance"].default_value = 0.04
         spigoli = N.mat("SUBTRACT", 1.0, ao_in.outputs["AO"])
     else:  # versione veloce per superfici grandi (parete): niente raggi AO, usura dal rumore
-        spigoli = N.mat("MULTIPLY", N.rumore(12.0, 8, 0.7, coord), 0.6)
+        spigoli = N.mat("MULTIPLY", N.rumore(12.0, 8, 0.7, coord), 0.32)
     rotto = N.rumore(9.0, 12, 0.7, coord)
     usura = N.rampa(N.mat("MULTIPLY", N.mat("ADD", spigoli, N.mat("MULTIPLY", rotto, 0.55)), 1.5), 0.66, 0.70)
     # graffi: rumore stirato in una direzione
@@ -130,7 +130,7 @@ def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, co
     # vernice irregolare (due toni + sbiaditura)
     variaz = N.rumore(2.5, 6, 0.5, coord)
     tinta = N.mix(variaz, colore, colore2)
-    acciaio = N.mix(N.rumore(30.0, 6, 0.6, coord), (0.30, 0.30, 0.31), (0.50, 0.50, 0.51))
+    acciaio = N.mix(N.rumore(30.0, 6, 0.6, coord), *(((0.30, 0.30, 0.31), (0.50, 0.50, 0.51)) if ao else ((0.10, 0.10, 0.10), (0.20, 0.19, 0.18))))
     colore_f = N.mix(scoperto, tinta, acciaio)
     sporco = N.mat("MULTIPLY", cavita, 0.75)
     colore_f = N.mix(sporco, colore_f, (0.025, 0.02, 0.015))
@@ -323,27 +323,36 @@ def parete(sc, mat, mat_rivetti):
     import random
     random.seed(7472)
     W, H, Y = 1.55, 1.15, 1.75
-    rivetti = bmesh.new()
+    # un rivetto modello (semisfera schiacciata), copiato in blocco: molto più veloce di migliaia di operazioni bmesh
+    tv, tf = [], []
+    for j in range(5):
+        fi = (math.pi / 2) * j / 4
+        for i in range(10):
+            th = 2 * math.pi * i / 10
+            tv.append((0.024 * math.cos(fi) * math.cos(th), -0.013 * math.sin(fi), 0.024 * math.cos(fi) * math.sin(th)))
+    for j in range(4):
+        for i in range(10):
+            tf.append((j * 10 + i, j * 10 + (i + 1) % 10, (j + 1) * 10 + (i + 1) % 10, (j + 1) * 10 + i))
+    centri = []
     for i in range(-4, 5):
         for j in range(-3, 4):
             cx, cz = i * W, 0.1 + j * H
             dy = random.uniform(-0.012, 0.012)
             scatola(f"Lamiera_{i}_{j}", (cx, Y + dy, cz), (W - 0.012, 0.05, H - 0.012),
                     rot=(random.uniform(-0.4, 0.4), random.uniform(-0.25, 0.25), random.uniform(-0.3, 0.3)), mat=mat, bevel=0.012)
-            # file di rivetti lungo i bordi della lamiera
             for k in range(13):
                 for zz in (cz - H / 2 + 0.07, cz + H / 2 - 0.07):
-                    p = Vector((cx - W / 2 + 0.07 + k * (W - 0.14) / 12, Y - 0.03 + dy, zz))
-                    bmesh.ops.create_uvsphere(rivetti, u_segments=10, v_segments=6, radius=0.024,
-                                              matrix=__import__("mathutils").Matrix.Translation(p) @ __import__("mathutils").Matrix.Diagonal((1, 0.55, 1, 1)))
+                    centri.append((cx - W / 2 + 0.07 + k * (W - 0.14) / 12, Y - 0.025 + dy, zz))
             for k in range(1, 9):
                 for xx in (cx - W / 2 + 0.07, cx + W / 2 - 0.07):
-                    p = Vector((xx, Y - 0.03 + dy, cz - H / 2 + 0.07 + k * (H - 0.14) / 9))
-                    bmesh.ops.create_uvsphere(rivetti, u_segments=10, v_segments=6, radius=0.024,
-                                              matrix=__import__("mathutils").Matrix.Translation(p) @ __import__("mathutils").Matrix.Diagonal((1, 0.55, 1, 1)))
+                    centri.append((xx, Y - 0.025 + dy, cz - H / 2 + 0.07 + k * (H - 0.14) / 9))
+    verts, facce = [], []
+    for c in centri:
+        base = len(verts)
+        verts += [(c[0] + x, c[1] + y, c[2] + z) for x, y, z in tv]
+        facce += [tuple(base + q for q in f) for f in tf]
     me = bpy.data.meshes.new("Rivetti")
-    rivetti.to_mesh(me)
-    rivetti.free()
+    me.from_pydata(verts, [], facce)
     oggetto("Rivetti", me, mat_rivetti)
     # una lamiera rattoppata e una trave orizzontale per spezzare la griglia
     scatola("Toppa", (-2.6, Y - 0.04, 0.85), (0.7, 0.03, 0.5), rot=(0, 0, 3), mat=mat, bevel=0.01)
@@ -481,10 +490,10 @@ def costruisci(v):
     bg.inputs[0].default_value = (0.004, 0.006, 0.009, 1)
     bg.inputs[1].default_value = 1.0
     # pavimento appena visibile per un po' di profondità
-    luce("Radente_parete", "AREA", (0.0, 0.7, 3.4), 650, (0.95, 0.9, 0.85), 4.0, mira=(0, 1.6, -0.6))
+    luce("Radente_parete", "AREA", (0.0, 0.7, 3.4), 380, (0.95, 0.9, 0.85), 4.0, mira=(0, 1.6, -0.6))
     luce("Radente_lato", "AREA", (-4.0, 0.6, 0.3), 260, (0.75, 0.85, 1.0), 2.0, mira=(0, 1.6, 0.3))
 
-    parete(sc, materiale_vernice("Mat_Parete", (0.05, 0.05, 0.048), (0.075, 0.07, 0.062), forza_ruggine=2.2, colate=True, ao=False),
+    parete(sc, materiale_vernice("Mat_Parete", (0.028, 0.029, 0.03), (0.042, 0.04, 0.036), forza_ruggine=2.2, colate=True, ao=False),
            materiale_vernice("Mat_Rivetti", (0.06, 0.058, 0.055), (0.08, 0.075, 0.07), forza_ruggine=2.0, ao=False))
     if False:  # vecchio fondale scuro, sostituito dalla parete
         pass
