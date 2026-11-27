@@ -101,8 +101,16 @@ Criterio di accettazione: due immagini realistiche, chiaramente originali, con l
 Tutto deve essere **riproducibile**: chiunque può rigenerare il modello con un comando.
 
 ### 3.1 Strumenti
-- Installa Blender LTS (4.2 o successivo) in modo headless nel container: pacchetto ufficiale da blender.org o, se la rete
-  non lo permette, il pacchetto di sistema. Annota la versione usata in `tools/volto3d/README.md`.
+- **Punto di partenza già pronto**: `tools/volto3d/costruisci.py` costruisce e renderizza il volto (varianti A/B); i concept
+  sono in `tools/volto3d/concept/`. Parti da lì, non ricominciare da zero.
+- Blender si installa come modulo Python da PyPI, senza scaricarlo da blender.org (che dal container può essere bloccato):
+  `python3.13 -m venv .venv-blender && .venv-blender/bin/pip install bpy pillow` (Blender 5.3).
+  Annota la versione usata in `tools/volto3d/README.md`.
+- Strumenti open source valutati (dettagli e licenze in `tools/volto3d/README.md`):
+  - **blender-mcp**: per ritocchi dal vivo sul PC del titolare;
+  - **TRELLIS.2**: dall'immagine al modello 3D, ma solo con una GPU NVIDIA e attenzione alle licenze NVIDIA non commerciali;
+  - **Hunyuan3D**: **vietato**, la licenza esclude l'Unione Europea;
+  - **Open-Higgsfield**: non fa 3D e usa API a pagamento.
 - Script in `tools/volto3d/`:
   - `costruisci.py`: geometria;
   - `materiali.py`: materiali procedurali;

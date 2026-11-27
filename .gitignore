@@ -7,3 +7,7 @@
 __pycache__/
 .pytest_cache/
 .venv/
+
+# modelli 3D: i .blend si rigenerano con tools/volto3d/costruisci.py
+tools/volto3d/concept/*.blend
+tools/volto3d/concept/*.blend1
