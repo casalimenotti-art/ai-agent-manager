@@ -6,7 +6,7 @@ Questo repository è condiviso da tre persone, ognuna con il proprio agente:
 |---|---|---|---|---|
 | menotti | Menotti | Claude Code | siti, test, software, dashboard Guardian | `claude/*` |
 | amico1 | nikoopusce7-bit (GitHub) | Codex | vendite e dati clienti | `codex/vendite` |
-| amico2 | (da rinominare) | Codex | amministrazione | `codex/amministrazione` |
+| amico2 | salisfrancesco19-stack (GitHub) | Codex | amministrazione | `codex/amministrazione` |
 
 L'elenco ufficiale è `registro/persone.json`. Chiedi alla persona qual è il suo id se non lo sai.
 

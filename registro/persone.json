@@ -1,5 +1,5 @@
 [
   {"id": "menotti", "nome": "Menotti", "agente": "Claude Code", "ruolo": "Siti, test, software, dashboard", "branch": "claude/*"},
   {"id": "amico1", "nome": "nikoopusce7-bit", "github": "nikoopusce7-bit", "agente": "Codex", "ruolo": "Vendite e dati clienti", "branch": "codex/vendite"},
-  {"id": "amico2", "nome": "Amico 2 (da rinominare)", "agente": "Codex", "ruolo": "Amministrazione", "branch": "codex/amministrazione"}
+  {"id": "amico2", "nome": "salisfrancesco19-stack", "github": "salisfrancesco19-stack", "agente": "Codex", "ruolo": "Amministrazione", "branch": "codex/amministrazione"}
 ]
