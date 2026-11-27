@@ -5,7 +5,11 @@ Manca solo ciò che richiede gli account del titolare: messa online e prova dal 
 
 **Nuovo (27/11): Command Center web** `guardian-web/` (React + Supabase): vista centrale permanente con nucleo di Guardian, pannelli laterali, Realtime, Ctrl+K, risposte dai dati senza AI, voce dal browser, statistiche con fonti. Verificato con vitest, E2E Playwright a 4 larghezze e axe. Guida: `docs/guardian-web.md`.
 
-**HQ (prompt v3, ciclo continuo, `guardian-web/ROADMAP.md`)**: Ondata 1 fatta, con le **tre stanze** (Sviluppo & Siti, Vendite, Amministrazione) attorno a Guardian, kanban vero, comandi "apri vendite". Prossima: Ondata 2, conversazione vocale in tempo reale.
+**HQ (prompt v3, `guardian-web/ROADMAP.md`)**: ondate 1, 2, 3, 4 e 8 fatte; 5, 7, 9 e 10 fatte in parte (manca ciò che chiede account o scelte del titolare).
+Tre stanze con kanban ottimistico; conversazione a voce (browser o **voce locale privata** sul PC); cervello sul PC (Claude Code in sola risposta);
+aggiornamenti istantanei, presenza e mappa operativa; pipeline vendite senza dati personali, scadenze e costi con fonte; suoni opzionali,
+modalità parete `?parete=1`; app installabile sul telefono. Migrazioni fino a **008**. Test: pytest 70, vitest 21, E2E ~120 controlli, CHECK 002–008.
+**Da decidere (titolare)**: PR #2 di Niko (busto 3D), accesso di Francesco al repo, look 3D, notifiche push, connettore Calendar.
 
 ## Funziona (verificato)
 - **Hub** `guardian/app.py` (Streamlit), 12 sezioni: Overview (stato reale del sistema), Guardian (planner + prossime azioni),

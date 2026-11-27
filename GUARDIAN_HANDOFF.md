@@ -81,3 +81,9 @@ Rinominato `guardian_hub/` → `guardian/`; store diviso in `store.py` (comuni +
 - Test: vitest 7; E2E tutti verdi (stanze comprese, 4 larghezze, axe); `tests/pg/run.sh` CHECK 002–005 OK.
 - In sospeso (titolare): PR #2 di Niko e accesso di Francesco al repo (Ondata 0).
 - Prossimo passo: Ondata 2 di `guardian-web/ROADMAP.md`, cioè la modalità conversazione nel browser (VAD dai parametri di `mic_continuo` sul branch claude/dashboard-pc, frase per frase, barge-in, sottotitoli, diagnostica delle latenze).
+
+## Aggiornamento HQ ondate 3–10 (27/11 notte)
+- Fatte: 3 voce locale (`bridge/voce_locale.py`), 8 Realtime incrementale + kanban ottimistico + presenza + mappa (migrazione 007),
+  5/7 pipeline, scadenze, costi (migrazione 008), 9 suoni + parete, 10 PWA. Commit da 55f8b0d a 04d34ee.
+- Prossimo passo preciso: messa online (Supabase: migrazioni 001→008; Cloudflare Pages: `guardian-web`), poi smoke test dal vivo
+  (`scripts/smoke_supabase.py`) e prova dal telefono. Restano al titolare le decisioni elencate in GUARDIAN_STATUS.md.
