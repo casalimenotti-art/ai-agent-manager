@@ -14,7 +14,7 @@ from pathlib import Path
 from .models import (ACTION_TYPES, AGENT_STATI, AGENT_TIPI, APPROVAL_STATI, DEVICE_STATI, TASK_APERTI, TASK_STATI_V1,
                      TASK_TERMINALI, Handoff, ValidazioneError, adesso, pulisci, pulisci_file, scegli)
 from .store import (JSON_FIELDS, LIST_FIELDS, MSG_DIPENDENZE, _valida_task, hash_token, messaggio_db, nuovo_token,
-                    testo_ripresa, valida_memoria,
+                    STATI_PIANO, testo_ripresa, valida_memoria,
                     severita)
 
 SCHEMA_V1 = """
@@ -453,6 +453,30 @@ class SqliteStore:
         if old_id == new_id or not self._q("SELECT 1 FROM memory WHERE id=?", (new_id,)):
             raise ValidazioneError("La voce che sostituisce deve esistere ed essere diversa.")
         self._x("UPDATE memory SET superseded_by=? WHERE id=?", (new_id, old_id))
+
+    # --- piani (Guardian Intelligence) --------------------------------------------
+    def create_plan(self, goal, piano: dict, project_id=None, provider=None, model=None, created_by=None) -> int:
+        pid = self._insert("plans", {"goal": pulisci(goal, 1000, True, "obiettivo"), "piano": piano,
+                                     "project_id": project_id, "provider": provider, "model": model,
+                                     "stato": "bozza", "created_by": created_by, "created_at": adesso()})
+        self.add_event("plan_created", f"Piano proposto ({len(piano.get('tasks', []))} task): {goal[:200]}",
+                       user_id=created_by, project_id=project_id)
+        return pid
+
+    def plans(self, stato: str | None = None, limit: int = 30) -> list[dict]:
+        if stato:
+            return self._q("SELECT * FROM plans WHERE stato=? ORDER BY created_at DESC, id DESC LIMIT ?", (stato, limit))
+        return self._q("SELECT * FROM plans ORDER BY created_at DESC, id DESC LIMIT ?", (limit,))
+
+    def plan(self, plan_id: int) -> dict | None:
+        r = self._q("SELECT * FROM plans WHERE id=?", (plan_id,))
+        return r[0] if r else None
+
+    def set_plan_state(self, plan_id: int, stato: str, by: str | None = None) -> None:
+        stato = scegli(stato, STATI_PIANO, "Stato piano")
+        self._x("UPDATE plans SET stato=? WHERE id=?", (stato, plan_id))
+        self.add_event(f"plan_{'confirmed' if stato == 'confermato' else 'discarded'}", f"Piano #{plan_id}: {stato}",
+                       user_id=by)
 
     # --- approvazioni --------------------------------------------------------
     def approvals(self, status: str | None = None) -> list[dict]:

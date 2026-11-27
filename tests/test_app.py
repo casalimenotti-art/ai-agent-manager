@@ -1,7 +1,7 @@
 import pytest
 from streamlit.testing.v1 import AppTest
 
-PAGINE = ["Overview", "Agenti", "Task", "Progetti", "Attività", "Log", "Handoff", "Memoria", "Approvazioni", "Notifiche",
+PAGINE = ["Overview", "Guardian", "Agenti", "Task", "Progetti", "Attività", "Log", "Handoff", "Memoria", "Approvazioni", "Notifiche",
           "Dispositivi"]
 
 
@@ -51,3 +51,12 @@ def test_pagina_log_e_approvazioni(at):
     at.run()
     testo = " ".join(m.value for m in at.markdown)
     assert "Impatto previsto" in testo and "Dati coinvolti" in testo
+
+
+def test_guardian_senza_provider_non_inventa_piani(at, monkeypatch):
+    monkeypatch.delenv("GUARDIAN_PROVIDERS", raising=False)
+    at.session_state["pagina"] = "Guardian"
+    at.run()
+    assert not at.exception
+    assert any("non disponibile" in i.value for i in at.info)
+    assert any("Decidi l'approvazione" in m.value for m in at.markdown)

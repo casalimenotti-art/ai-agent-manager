@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from .models import (ACTION_TYPES, AGENT_STATI, AGENT_TIPI, APPROVAL_STATI, Handoff, ValidazioneError, adesso, pulisci,
                      pulisci_file, scegli)
-from .store import _valida_task, hash_token, messaggio_db, nuovo_token, severita, testo_ripresa, valida_memoria
+from .store import (STATI_PIANO, _valida_task, hash_token, messaggio_db, nuovo_token, severita, testo_ripresa,
+                    valida_memoria)
 
 COLONNE_DEVICES = ("id,user_id,nome,agent_name,model,stato,current_task_id,error,limit_reached,last_seen,"
                    "last_checkpoint,created_at")
@@ -293,6 +294,31 @@ class SupabaseStore:
         if old_id == new_id:
             raise ValidazioneError("La voce che sostituisce deve essere diversa.")
         self._ex(self._t("memory").update({"superseded_by": new_id}, returning=self._minimal()).eq("id", old_id))
+
+    # --- piani (Guardian Intelligence) --------------------------------------------
+    def create_plan(self, goal, piano, project_id=None, provider=None, model=None, created_by=None):
+        r = self._ex(self._t("plans").insert({"goal": pulisci(goal, 1000, True, "obiettivo"), "piano": piano,
+                                              "project_id": project_id, "provider": provider, "model": model,
+                                              "created_by": created_by}))[0]
+        self.add_event("plan_created", f"Piano proposto ({len(piano.get('tasks', []))} task): {goal[:200]}",
+                       user_id=created_by, project_id=project_id)
+        return r["id"]
+
+    def plans(self, stato=None, limit=30):
+        q = self._t("plans").select("*")
+        if stato:
+            q = q.eq("stato", stato)
+        return self._ex(q.order("created_at", desc=True).limit(limit))
+
+    def plan(self, plan_id):
+        r = self._ex(self._t("plans").select("*").eq("id", plan_id))
+        return r[0] if r else None
+
+    def set_plan_state(self, plan_id, stato, by=None):
+        stato = scegli(stato, STATI_PIANO, "Stato piano")
+        self._ex(self._t("plans").update({"stato": stato}, returning=self._minimal()).eq("id", plan_id))
+        self.add_event(f"plan_{'confirmed' if stato == 'confermato' else 'discarded'}", f"Piano #{plan_id}: {stato}",
+                       user_id=by)
 
     # --- approvazioni ---------------------------------------------------------------
     def approvals(self, status=None):

@@ -59,3 +59,8 @@ Rinominato `guardian_hub/` → `guardian/`; store diviso in `store.py` (comuni +
 ## Aggiornamento M5 (27/11)
 - Fatto: `guardian/providers/` (base, openai_compat con `estrai_json`, config da env/secrets, router con ALLOW_PAID e fallback). Test con un server HTTP finto: 6 nuovi, 52 in totale.
 - Prossimo passo: M6 (planner, assign, report, plans nello store, sezione "Guardian" nella UI).
+
+## Aggiornamento M6 (27/11)
+- Fatto: `guardian/planner/` (schema con validazione e controllo dei cicli, planner con prompt dallo starter, assign deterministico, report e prossime azioni); `plans` negli store + `store.conferma_piano`; sezione UI «Guardian» (`guardian/ui/intelligence.py`).
+- Test: 59 passati; Playwright sulla sezione Guardian a 1280/390 px: 0 eccezioni.
+- Prossimo passo: M7 (`scripts/smoke_supabase.py`, guida di deploy finale, checkpoint).

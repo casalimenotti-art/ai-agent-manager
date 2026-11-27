@@ -1,5 +1,9 @@
 # GUARDIAN — decisioni (la più recente in alto; non cancellare le vecchie, segnarle come superate)
 
+- **2026-11-27 · M6: il piano è solo una proposta** (tabella `plans`, stato bozza): diventa task solo con «Conferma». La conferma controlla prima i titoli già aperti (niente piani creati a metà); i task senza dipendenze nascono `ready`, gli altri `planned`; i task con azioni esterne generano subito una richiesta di approvazione.
+- **2026-11-27 · M6: report e prossime azioni senza AI**: calcolati dal database con regole fisse (approvazioni, agenti in errore o in attesa di permesso, utilizzo ≥ 90%, task falliti/bloccati/fermi > 24 h, ready senza agente, planned con dipendenze completate).
+- **2026-11-27 · M6: assegnazione deterministica**: capacità in comune, poi carico minore; esclusi agenti non disponibili, in errore o offline. Il modello può suggerire solo agenti esistenti.
+
 - **2026-11-27 · M5: un solo adattatore, OpenAI-compatibile, con la libreria standard** (FreeLLMAPI, OpenRouter, Ollama, OpenAI). Nessun provider Anthropic dedicato finché non c'è una chiave; nessuna nuova dipendenza. Fallback solo su errori ritentabili (429, 5xx, rete, JSON non valido); 401/403 fermano la catena. Le tracce delle chiamate non contengono mai prompt né risposte.
 
 - **2026-11-27 · M4: ogni handoff con task crea una voce di memoria `ripresa`** (fonte `handoff #id`): la memoria del task contiene sempre l'ultimo punto da cui ripartire.

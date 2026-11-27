@@ -109,3 +109,40 @@ def testo_ripresa(h) -> str:
     if h.important_notes:
         parti.append(f"Da non perdere: {h.important_notes[:800]}")
     return "\n".join(parti)
+
+
+STATI_PIANO = ("bozza", "confermato", "scartato")
+
+
+def conferma_piano(store, plan_id: int, by: str | None = None) -> list[int]:
+    """Trasforma una bozza di piano in task reali (uguale per SQLite e Supabase).
+
+    Ordine: i task senza dipendenze diventano ready, gli altri planned; le dipendenze indice -> id;
+    i task che richiedono approvazione ricevono una richiesta di approvazione (e passano a needs_approval).
+    Prima di creare qualcosa controlla i titoli già aperti nel progetto, per non lasciare piani a metà.
+    """
+    from guardian.planner.schema import da_dict
+    from .models import TASK_TERMINALI
+    p = store.plan(plan_id)
+    if not p or p["stato"] != "bozza":
+        raise ValidazioneError("Piano inesistente o già deciso.")
+    piano = da_dict(p["piano"], p["goal"], [a["id"] for a in store.agents()])
+    aperti = {t["titolo"].lower() for t in store.tasks(project_id=p.get("project_id"))
+              if t["stato"] not in TASK_TERMINALI and t.get("project_id") == p.get("project_id")}
+    doppi = [t.title for t in piano.tasks if t.title.lower() in aperti]
+    if doppi:
+        raise ValidazioneError(f"Esistono già task aperti con questi titoli: {', '.join(doppi)}")
+    ids: list[int] = []
+    for t in piano.tasks:
+        creato = store.create_task(
+            t.title, t.description, None, "", t.priority, "", created_by=by,
+            stato="planned" if t.depends_on else "ready", project_id=p.get("project_id"),
+            depends_on=[ids[j] for j in t.depends_on], assigned_agent_id=t.agent,
+            expected_result=t.expected_result or None, completion_criteria=t.completion_criteria or None,
+            plan_id=plan_id)
+        ids.append(creato["id"])
+        if t.requires_approval:
+            store.request_approval(f"{t.title}", t.description, creato["id"], by, action_type=t.action_type,
+                                   reason=t.approval_reason or "Richiesto dal piano", agent_id=t.agent)
+    store.set_plan_state(plan_id, "confermato", by)
+    return ids
