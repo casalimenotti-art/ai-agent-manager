@@ -1,5 +1,11 @@
 # GUARDIAN — decisioni (la più recente in alto; non cancellare le vecchie, segnarle come superate)
 
+- **2026-11-27 · Command Center web: opzione B** (titolare): nuova SPA `guardian-web/` (Vite + React + TypeScript + supabase-js) con lo stesso Supabase e le stesse RLS, nessun backend nuovo, hosting statico gratuito. Streamlit resta come riserva e per planner AI e registrazione dei PC finché non c'è parità. Supera la decisione "Streamlit resta" per l'interfaccia principale.
+- **2026-11-27 · Web: logica pura duplicata in TypeScript** (stati, report e prossime azioni, assegnazione, metriche) con test vitest specchio di quelli Python; da spostare in RPC SQL se le due versioni divergono.
+- **2026-11-27 · Web: pannelli non modali da 1280 px in su** (il centro resta cliccabile e si sposta), modali su schermi piccoli; la barra di Guardian sta sopra ai pannelli.
+- **2026-11-27 · Web: dati di esempio solo con `VITE_DEMO=1`** (DemoSource in memoria, banner visibile), mai di default; senza configurazione l'app mostra un errore esplicito.
+- **2026-11-27 · Web: palette dei grafici** = palette di riferimento della skill dataviz (dark), validata con lo script sul fondo `#0f1622` (5/5 PASS); i colori di stato restano riservati.
+
 - **2026-11-27 · M7: smoke test con gli stessi passi testati su SQLite** (`scripts/smoke_supabase.py`): password chiesta a terminale e mai salvata; crea un solo task di prova e lo cancella (stato `cancelled`).
 
 - **2026-11-27 · M6: il piano è solo una proposta** (tabella `plans`, stato bozza): diventa task solo con «Conferma». La conferma controlla prima i titoli già aperti (niente piani creati a metà); i task senza dipendenze nascono `ready`, gli altri `planned`; i task con azioni esterne generano subito una richiesta di approvazione.

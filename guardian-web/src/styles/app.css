@@ -242,3 +242,8 @@ table.data th { color: var(--text-3); font-weight: 600; font-size: var(--fs-xs);
   .drawer { top: var(--header-h); }
 }
 @media (max-width: 1279px) { .drawer .body { padding-bottom: 96px; } }
+.demo-banner { white-space: nowrap; }
+@media (max-width: 720px) {
+  .demo-banner { top: var(--header-h); font-size: 10px; padding: 1px 10px; }
+  .drawer, .drawer.lg { background: rgba(12, 18, 28, 0.97); }
+}

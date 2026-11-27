@@ -69,3 +69,9 @@ Rinominato `guardian_hub/` → `guardian/`; store diviso in `store.py` (comuni +
 - Fatto: `scripts/smoke_supabase.py` (+ test su SQLite), guida `docs/guardian-setup.md` punti 4 (smoke test) e 5 (planner AI), README, GUARDIAN_STATUS.md riscritto.
 - Test: 61 passati; `tests/pg/run.sh` → CHECK 002/003/004 OK.
 - Per riprendere: leggere GUARDIAN_STATUS.md («Prossimi passi»). Lo sviluppo che resta dipende dalle azioni del titolare (Supabase, Streamlit Cloud, PC) o da nuove richieste. Prima di nuove funzioni: eseguire lo smoke test e correggere eventuali FAIL di `SupabaseStore`.
+
+## Aggiornamento Command Center web (27/11)
+- Fatto: `guardian-web/` (opzione B del prompt master), `docs/guardian-web.md`, `guardian-web/PIANO.md` (catalogo delle metriche, contratto dei controlli, controlli disabilitati con motivo).
+- Test: `npm test` (vitest, 6); `npm run e2e` su build demo (tutti i controlli verdi: 5 pannelli senza perdere il centro, ogni voce di navigazione, approvazione → task pronto, titolo duplicato rifiutato, Ctrl+K, chat con contesto, vista tabella, axe, 390/768/1280/1920 px); suite Python 61 passati.
+- Non verificato: contro un Supabase reale (Auth, RLS, Realtime "Live").
+- Prossimo passo: deploy statico (docs/guardian-web.md) dopo lo smoke test; poi portare nel web il planner AI tramite una Supabase Edge Function (chiavi lato server) e la registrazione dei PC.

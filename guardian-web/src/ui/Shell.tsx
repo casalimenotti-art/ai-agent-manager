@@ -148,7 +148,7 @@ function Palette() {
     const f = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(true); } };
     window.addEventListener('keydown', f); return () => window.removeEventListener('keydown', f);
   }, [setPalette]);
-  useEffect(() => { if (paletteAperta) { setQ(''); setSel(0); setTimeout(() => input.current?.focus(), 0); } }, [paletteAperta]);
+  useEffect(() => { if (paletteAperta) { setQ(''); setSel(0); } }, [paletteAperta]);
   const voci = useMemo<Voce[]>(() => {
     const v: Voce[] = [
       { gruppo: 'Azioni', nome: 'Torna al Command Center', azione: chiudi, icona: LayoutDashboard },
@@ -182,7 +182,7 @@ function Palette() {
   return (<>
     <div className="scrim" style={{ zIndex: 69 }} onClick={() => setPalette(false)} aria-hidden />
     <div className="palette" role="dialog" aria-modal="true" aria-label="Cerca e comandi">
-      <input ref={input} value={q} onChange={(e) => { setQ(e.target.value); setSel(0); }} onKeyDown={tasti} placeholder="Cerca agenti, task, aziende… o scrivi una domanda"
+      <input ref={input} autoFocus value={q} onChange={(e) => { setQ(e.target.value); setSel(0); }} onKeyDown={tasti} placeholder="Cerca agenti, task, aziende… o scrivi una domanda"
         role="combobox" aria-expanded="true" aria-controls="palette-lista" aria-activedescendant={`pv-${sel}`} />
       <ul id="palette-lista" role="listbox">
         {tutte.length === 0 && <li className="dim">Nessun risultato</li>}

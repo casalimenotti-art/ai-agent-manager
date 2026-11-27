@@ -6,6 +6,8 @@
 > Sezioni: Overview, Guardian (planner + prossime azioni), Agenti, Task, Progetti, Attività, Log, Handoff, Memoria,
 > Approvazioni, Notifiche, Dispositivi. Test: `python -m pytest -q tests`.
 >
+> **Nuovo Command Center web (React):** `guardian-web/` · guida [docs/guardian-web.md](docs/guardian-web.md).
+>
 > Il resto di questo README descrive lo starter originale (`app.py` nella radice), lasciato com'era.
 
 Starter project for a central chat + multi-agent planning dashboard. It can generate a structured plan using the OpenAI API, or run in demo mode without an API key.

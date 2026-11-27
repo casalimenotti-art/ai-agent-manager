@@ -3,6 +3,8 @@
 Piano v2 completato nel codice: **M0–M7 fatte** (dettagli in GUARDIAN_TASKS.md, scelte in GUARDIAN_DECISIONS.md).
 Manca solo ciò che richiede gli account del titolare: messa online e prova dal vivo.
 
+**Nuovo (27/11): Command Center web** `guardian-web/` (React + Supabase): vista centrale permanente con nucleo di Guardian, pannelli laterali, Realtime, Ctrl+K, risposte dai dati senza AI, voce dal browser, statistiche con fonti. Verificato con vitest, E2E Playwright a 4 larghezze e axe. Guida: `docs/guardian-web.md`.
+
 ## Funziona (verificato)
 - **Hub** `guardian/app.py` (Streamlit), 12 sezioni: Overview (stato reale del sistema), Guardian (planner + prossime azioni),
   Agenti, Task (10 stati, progetti, dipendenze, agente), Progetti, Attività (gravità, filtri), Log (filtri), Handoff (v2),
@@ -24,5 +26,6 @@ Manca solo ciò che richiede gli account del titolare: messa online e prova dal 
 ## Prossimi passi
 1. Titolare: punti 1–4 di `docs/guardian-setup.md` (Supabase + migrazioni 001–004, utenti, admin; Streamlit Cloud; PC e bridge; smoke test).
 2. Amici: punto 3 (token del PC, `GUARDIAN_CODEX_AGENT_ID`, notify) e conferma che compaia `~/.guardian/codex-events.jsonl`.
-3. Unire il branch a `main` con una pull request (dopo l'ok del titolare), poi puntare Streamlit Cloud su `main`.
-4. Facoltativo: provider AI per il planner; collegare la plancia locale `dashboard/` (altri branch) allo stesso database.
+3. Mettere online `guardian-web/` su Cloudflare Pages (o Vercel/Netlify) seguendo `docs/guardian-web.md`.
+4. Unire il branch a `main` con una pull request (dopo l'ok del titolare), poi puntare Streamlit Cloud su `main`.
+5. Facoltativo: provider AI per il planner; collegare la plancia locale `dashboard/` (altri branch) allo stesso database.

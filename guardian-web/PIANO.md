@@ -75,4 +75,4 @@ pannelli con URL `?p=&id=&f=`, conversazione) · `src/ui/` (Shell, CommandCenter
 
 ## Fasi
 1–2 audit e decisione ✅ · 3 design system ✅ · 4 Command Center ✅ · 5 pannelli ✅ · 6 dati reali + realtime/polling ✅ ·
-7 chat + intenti + Ctrl+K + voce ✅ · 8 statistiche ✅ · 9 test E2E e rifinitura · 10 deploy e consegna.
+7 chat + intenti + Ctrl+K + voce ✅ · 8 statistiche ✅ · 9 test E2E e rifinitura ✅ (e2e/run.mjs: tutti i controlli, 390/768/1280/1920 px, axe senza violazioni serie, console pulita) · 10 guida di deploy ✅ (docs/guardian-web.md); messa online: azione del titolare.
