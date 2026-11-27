@@ -45,3 +45,4 @@
 - **2026-11-27 · Realtime senza `devices`** (migrazione 007): i messaggi Realtime portano la riga intera, quindi `devices.token_hash` arriverebbe ai browser. I PC si aggiornano con il ricaricamento completo. La presenza nell'HQ usa Supabase Presence (in memoria, nulla nel DB).
 - **2026-11-27 · Aggiornamenti ottimistici**: il kanban sposta subito la scheda; se il database rifiuta (vincoli), torna com'era e lo dice. I vincoli restano nel DB, non nel browser.
 - **2026-11-27 · Vendite e amministrazione nel DB condiviso** (migrazione 008): solo azienda o codice del lead, mai persone, telefoni o email (il DB li rifiuta); ogni scadenza e ogni costo vuole una fonte. La fonte unica dei clienti resta il CSV dei lead. Guardian non contatta nessuno.
+- **2026-11-27 · Suoni e parete**: suoni spenti di default, solo note sintetizzate (nessun file); la parete è solo lettura. Il 3D resta una scelta di gusto del titolare (peso del bundle).

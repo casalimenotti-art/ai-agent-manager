@@ -24,6 +24,7 @@ interface Ctx {
   /** Applica subito la modifica a schermo; se il database la rifiuta torna com'era e lo dice. */
   ottimistico: <T>(cambia: (s: Snapshot) => Snapshot, fn: () => Promise<T>, ok?: string) => Promise<T | undefined>;
   presenti: Presente[];
+  parete: boolean; setParete: (v: boolean) => void;
 }
 const C = createContext<Ctx | null>(null);
 export const useG = () => { const c = useContext(C); if (!c) throw new Error('useG fuori dal provider'); return c; };
@@ -32,8 +33,11 @@ function leggiUrl(): Pannello | null {
   const q = new URLSearchParams(location.search); const p = q.get('p');
   return p ? { p, id: q.get('id') ?? undefined, filtro: q.get('f') ?? undefined } : null;
 }
-function scriviUrl(p: Pannello | null, stanza: string | null) {
+/** Modalità parete (?parete=1): letta all'avvio, mantenuta nell'URL finché non si esce. */
+export const PARETE_INIZIALE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('parete') === '1';
+function scriviUrl(p: Pannello | null, stanza: string | null, parete = false) {
   const q = new URLSearchParams();
+  if (parete) q.set('parete', '1');
   if (stanza) q.set('s', stanza);
   if (p) { q.set('p', p.p); if (p.id) q.set('id', p.id); if (p.filtro) q.set('f', p.filtro); }
   history.replaceState(null, '', `${location.pathname}${q.toString() ? `?${q}` : ''}`);
@@ -54,6 +58,7 @@ export function GuardianProvider({ source, user, onEsci, children }: { source: D
   const inCorso = useRef(false);
   const snapRef = useRef<Snapshot | null>(null); snapRef.current = snap;
   const [presenti, setPresenti] = useState<Presente[]>([]);
+  const [parete, setParete] = useState(PARETE_INIZIALE);
   const presenza = useRef<Presenza | null>(null);
 
   const toast = useCallback((testo: string, err = false) => {
@@ -116,7 +121,7 @@ export function GuardianProvider({ source, user, onEsci, children }: { source: D
   useEffect(() => { presenza.current?.segnala(stanza); }, [stanza]);
 
   const pannello = traccia.length ? traccia[traccia.length - 1] : null;
-  useEffect(() => { scriviUrl(pannello, stanza); }, [pannello, stanza]);
+  useEffect(() => { scriviUrl(pannello, stanza, parete); }, [pannello, stanza, parete]);
   const apri = useCallback((p: Pannello) => setTraccia((t) => {
     const ultimo = t[t.length - 1];
     if (ultimo && ultimo.p === p.p && ultimo.id === p.id && ultimo.filtro === p.filtro) return t;
@@ -128,15 +133,15 @@ export function GuardianProvider({ source, user, onEsci, children }: { source: D
 
   const v = useMemo<Ctx>(() => ({
     source, user, snap, errore, caricato, diretta, pingMs: ping.ms, pingOk: ping.ok, pingAl: ping.al, ricarica, esegui, toasts, toast,
-    pannello, traccia, apri, indietro, chiudi, messaggi, aggiungiMessaggio, pensa, setPensa, paletteAperta, setPalette, esci: onEsci, stanza, apriStanza, ottimistico, presenti,
+    pannello, traccia, apri, indietro, chiudi, messaggi, aggiungiMessaggio, pensa, setPensa, paletteAperta, setPalette, esci: onEsci, stanza, apriStanza, ottimistico, presenti, parete, setParete,
   }), [source, user, snap, errore, caricato, diretta, ping, ricarica, esegui, toasts, toast, pannello, traccia, apri, indietro, chiudi,
-    messaggi, aggiungiMessaggio, pensa, paletteAperta, onEsci, stanza, ottimistico, presenti]);
+    messaggi, aggiungiMessaggio, pensa, paletteAperta, onEsci, stanza, ottimistico, presenti, parete]);
   return <C.Provider value={v}>{children}</C.Provider>;
 }
 
 /** Preferenze personali (solo interfaccia): localStorage, con fallback se non disponibile. */
-export interface Preferenze { voce: boolean; livello: 'silenzio' | 'critici' | 'importanti' | 'tutti'; silenzioDa: string; silenzioA: string; animazioni: boolean; coloriStanze: 'accesa' | 'soft' }
-const PREF_DEFAULT: Preferenze = { voce: false, livello: 'critici', silenzioDa: '22:00', silenzioA: '08:00', animazioni: true, coloriStanze: 'accesa' };
+export interface Preferenze { voce: boolean; livello: 'silenzio' | 'critici' | 'importanti' | 'tutti'; silenzioDa: string; silenzioA: string; animazioni: boolean; coloriStanze: 'accesa' | 'soft'; suoni: boolean }
+const PREF_DEFAULT: Preferenze = { voce: false, livello: 'critici', silenzioDa: '22:00', silenzioA: '08:00', animazioni: true, coloriStanze: 'accesa', suoni: false };
 export function leggiPreferenze(): Preferenze {
   try { return { ...PREF_DEFAULT, ...JSON.parse(localStorage.getItem('guardian.pref') || '{}') }; } catch { return PREF_DEFAULT; }
 }

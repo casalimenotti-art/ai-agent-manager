@@ -359,3 +359,33 @@ table.data th { color: var(--text-3); font-weight: 600; font-size: var(--fs-xs);
 .barra-costo .barra i { display: block; height: 100%; background: var(--series-7); border-radius: inherit; }
 @media (max-width: 1024px) { .pipeline-fasi { grid-template-columns: repeat(6, minmax(170px, 75vw)); scroll-snap-type: x mandatory; } .pipeline-fase { scroll-snap-align: start; } }
 @media (max-width: 720px) { .barra-costo { grid-template-columns: 90px 1fr auto; } }
+
+/* Ondata 9: modalità parete */
+.parete { min-height: 100vh; padding: 32px 40px; display: grid; gap: 24px; grid-template-columns: 1.2fr 1fr 1fr;
+  grid-template-areas: "nucleo nucleo stanze" "azioni attivita stanze" "piede piede piede"; grid-template-rows: auto 1fr auto;
+  background: radial-gradient(1200px 700px at 20% 10%, rgba(34, 211, 238, 0.08), transparent 60%), var(--bg-0); }
+.parete-comandi { position: fixed; top: 12px; right: 16px; display: flex; gap: 8px; opacity: .55; transition: opacity var(--t-micro); z-index: 5; }
+.parete-comandi:hover, .parete-comandi:focus-within { opacity: 1; }
+.parete-nucleo { grid-area: nucleo; display: flex; gap: 40px; align-items: center; }
+.parete-nucleo svg { width: min(30vw, 340px); height: auto; }
+.parete-nucleo h1 { font-size: 3rem; margin: 0; }
+.parete-ora { font-size: 1.25rem; color: var(--text-2); }
+.parete-stato { font-size: 1.6rem; color: var(--accent-2); margin: 8px 0 20px; max-width: 32ch; }
+.parete-numeri { display: flex; gap: 32px; flex-wrap: wrap; }
+.parete-numeri span { display: grid; color: var(--text-2); font-size: 1rem; }
+.parete-numeri b { font-size: 2.6rem; color: var(--text-1); line-height: 1.1; }
+.parete-numeri.piccoli { gap: 20px; } .parete-numeri.piccoli b { font-size: 1.8rem; }
+.parete-stanze { grid-area: stanze; display: grid; gap: 16px; align-content: start; }
+.parete-stanza { background: var(--surface-1); border: 1px solid var(--border-1); border-left: 4px solid var(--stanza); border-radius: var(--r-3); padding: 20px; }
+.parete-stanza h2 { margin: 0 0 12px; font-size: 1.5rem; }
+.parete-stanza p { margin: 10px 0 0; font-size: 1.05rem; }
+.parete-colonna { background: var(--surface-1); border: 1px solid var(--border-1); border-radius: var(--r-3); padding: 20px 24px; font-size: 1.15rem; }
+.parete-colonna:first-of-type { grid-area: azioni; }
+.parete-colonna h3 { margin: 0 0 12px; font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.parete-colonna ol, .parete-colonna ul { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; }
+.parete-colonna ul { list-style: none; padding: 0; }
+.parete-colonna li.urgente { color: var(--warn); }
+.parete-piede { grid-area: piede; font-size: .95rem; }
+section.parete-colonna[aria-label="Ultime attività"] { grid-area: attivita; }
+@media (max-width: 1100px) { .parete { grid-template-columns: 1fr; grid-template-areas: "nucleo" "stanze" "azioni" "attivita" "piede"; padding: 56px 16px 24px; }
+  .parete-nucleo { flex-direction: column; text-align: center; } .parete-numeri { justify-content: center; } .parete-stato { margin-inline: auto; } }

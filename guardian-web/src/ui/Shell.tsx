@@ -6,6 +6,8 @@ import { leggiPreferenze, useG, type Pannello } from '../state';
 import { CommandCenter } from './CommandCenter';
 import { BarraConversazione, PulsanteConversazione, useConversazione } from './Conversazione';
 import { useRispondi } from './useRispondi';
+import { suona } from './suoni';
+import { Parete } from './Parete';
 import { PANNELLI, titoloPannello } from './panels';
 import { ascolta, inSilenzio, parla, smettiDiAscoltare, supportoAscolto, supportoParlato, useVoce, zitto } from './voce';
 
@@ -155,7 +157,7 @@ function Dock() {
 
 interface Voce { gruppo: string; nome: string; azione: () => void; icona: LucideIcon }
 function Palette() {
-  const { snap, paletteAperta, setPalette, apri, chiudi, apriStanza } = useG();
+  const { snap, paletteAperta, setPalette, apri, chiudi, apriStanza, setParete } = useG();
   const [q, setQ] = useState(''); const [sel, setSel] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -169,6 +171,7 @@ function Palette() {
       { gruppo: 'Azioni', nome: 'Nuovo task', azione: () => apri({ p: 'tasks', filtro: 'nuovo' }), icona: ListTodo },
       { gruppo: 'Azioni', nome: 'Task bloccati o falliti', azione: () => apri({ p: 'tasks', filtro: 'fermi' }), icona: ListTodo },
       { gruppo: 'Azioni', nome: 'Riepilogo di oggi', azione: () => window.dispatchEvent(new CustomEvent('guardian:chiedi', { detail: 'Fammi un riepilogo della giornata' })), icona: HeartPulse },
+      { gruppo: 'Azioni', nome: 'Modalità parete (schermo grande)', azione: () => setParete(true), icona: LayoutDashboard },
       ...NAV.map((n) => ({ gruppo: 'Sezioni', nome: n.nome === 'Approva' ? 'Approvazioni' : n.nome === 'PC' ? 'Dispositivi (PC)' : n.nome, azione: () => apri({ p: n.p }), icona: n.icona })),
     ];
     if (snap) {
@@ -230,11 +233,17 @@ function Annunci() {
       const importante = critica || ['approval_requested', 'handoff_to_you'].includes(n.kind);
       const ok = pref.livello === 'tutti' || (pref.livello === 'importanti' && importante) || (pref.livello === 'critici' && critica);
       if (!ok) continue;
-      toast(n.message, critica);
+      toast(n.message, critica); suona(critica ? 'critico' : 'notifica');
       perOra.current = perOra.current.filter((t) => Date.now() - t < 3_600_000);
       if (pref.voce && supportoParlato && !inSilenzio(pref.silenzioDa, pref.silenzioA) && perOra.current.length < 6) { perOra.current.push(Date.now()); parla(n.message); }
     }
   }, [snap, toast, apri]);
+  const conv = useConversazione(); const fasePrima = useRef(conv.fase);
+  useEffect(() => {
+    if (fasePrima.current === 'spento' && conv.fase !== 'spento') suona('ascolto');
+    else if (fasePrima.current !== 'spento' && conv.fase === 'spento') suona('fine');
+    fasePrima.current = conv.fase;
+  }, [conv.fase]);
   return null;
 }
 
@@ -244,7 +253,8 @@ function Toasts() {
 }
 
 export function Shell() {
-  const { source, pannello } = useG();
+  const { source, pannello, parete } = useG();
+  if (parete) return <><Parete /><Annunci /><Toasts /></>;
   const classi = ['shell', pannello && PANNELLI[pannello.p] ? 'con-pannello' : '', pannello && PANNELLI[pannello.p]?.largo ? 'pannello-lg' : ''].join(' ');
   return (
     <div className={classi}>

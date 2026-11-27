@@ -10,11 +10,11 @@ const axe = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 let falliti = 0; const ok = (cond, nome) => { console.log(`${cond ? 'OK  ' : 'FAIL'} ${nome}`); if (!cond) falliti++; };
 
 const b = await chromium.launch();
-async function entra(w = 1440, h = 1000) {
+async function entra(w = 1440, h = 1000, query = '') {
   const p = await b.newPage({ viewport: { width: w, height: h } });
   const errori = []; p.on('pageerror', (e) => errori.push(e.message)); p.on('console', (m) => m.type() === 'error' && errori.push(m.text()));
-  await p.goto(URL); await p.fill('input', 'menotti'); await p.click('button[type=submit]');
-  await p.waitForSelector('text=Prossime azioni'); return { p, errori };
+  await p.goto(URL + query); await p.fill('input', 'menotti'); await p.click('button[type=submit]');
+  await p.waitForSelector(query.includes('parete') ? '.parete' : 'text=Prossime azioni'); return { p, errori };
 }
 const titoloDrawer = (p) => p.locator('.drawer h2').textContent();
 const centroVisibile = (p) => p.locator('.hero').isVisible();
@@ -236,6 +236,36 @@ ok(errori.length === 0, `nessun errore in console ${errori.slice(0, 2).join(' | 
   ok(e4.length === 0, `vendite e amministrazione senza errori in console ${e4.slice(0, 2).join(' | ')}`);
   await q.screenshot({ path: `${OUT}amministrazione.png`, fullPage: true });
   await q.close();
+}
+
+// 8e. Ondata 9: suoni (spenti di default) e modalità parete
+{
+  const { p: q, errori: e5 } = await entra(1440, 1000, '?voce=finta');
+  const suoni = () => q.evaluate(() => window.__guardianSuoni ?? []);
+  await q.click('.conv-btn'); await q.waitForSelector('.conv-barra[data-fase="ascolto"]'); await q.keyboard.press('Escape'); await q.waitForTimeout(150);
+  ok((await suoni()).length === 0, 'suoni spenti di default: nessun suono');
+  await q.click('.rail button:has-text("Impostazioni")'); await q.check('label:has-text("Suoni discreti") input');
+  ok((await suoni()).join() === 'notifica', 'attivando i suoni se ne sente uno di prova');
+  await q.click('.drawer button[aria-label="Chiudi pannello"]');
+  await q.click('.conv-btn'); await q.waitForSelector('.conv-barra[data-fase="ascolto"]'); await q.keyboard.press('Escape'); await q.waitForTimeout(150);
+  ok((await suoni()).join() === 'notifica,ascolto,fine', 'conversazione: suono di inizio e di fine');
+  ok(e5.length === 0, `suoni senza errori in console ${e5.slice(0, 2).join(' | ')}`);
+  await q.close();
+  const { p: w, errori: e6 } = await entra(1920, 1080, '?parete=1');
+  ok(await w.locator('.parete-stanza').count() === 3 && await w.locator('.rail').count() === 0 && await w.locator('.dock').count() === 0, 'parete: tre stanze, niente menu né chat');
+  ok(new globalThis.URL(w.url()).searchParams.get('parete') === '1', 'parete: resta nell\'indirizzo (condivisibile)');
+  await w.addScriptTag({ content: axe });
+  const vp = await w.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations.filter((v) => ['serious', 'critical'].includes(v.impact)).map((v) => v.id));
+  ok(vp.length === 0, `parete: axe senza violazioni serie ${vp.join(', ')}`);
+  await w.screenshot({ path: `${OUT}parete-1920.png` });
+  await w.keyboard.press('Escape'); await w.waitForSelector('.hero');
+  ok(new globalThis.URL(w.url()).searchParams.get('parete') === null, 'Esc: esce dalla parete e torna al centro');
+  ok(e6.length === 0, `parete senza errori in console ${e6.slice(0, 2).join(' | ')}`);
+  await w.close();
+  const { p: m } = await entra(390, 844, '?parete=1');
+  const swp = await m.evaluate(() => document.documentElement.scrollWidth);
+  ok(swp <= 390, `parete a 390 px senza scroll orizzontale (${swp})`);
+  await m.close();
 }
 
 // 10. larghezze: nessuno scroll orizzontale, screenshot

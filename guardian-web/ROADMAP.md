@@ -13,7 +13,7 @@ Memoria del ciclo continuo descritto in `prompts/GUARDIAN_HQ_MASTER_V3.md`. Ogni
 | 6 | Smistamento del lavoro alle IA dalla conversazione | da fare | Modello di minaccia |
 | 7 | Stanza Amministrazione (scadenze, documenti, costi manuali, calendario) | 🟡 in parte | Scadenze e costi con fonte fatti (migrazione 008). Mancano documenti e calendario (serve l'ok al connettore) |
 | 8 | Mappa operativa, Realtime incrementale, aggiornamenti ottimistici, presence | ✅ fatto | Migrazione 007: i PC escono dal canale in diretta (non deve arrivare `token_hash` ai browser) |
-| 9 | 3D e suoni (nucleo 3D o busto di Niko), modalità parete | da fare | Scelta del look 3D |
+| 9 | 3D e suoni (nucleo 3D o busto di Niko), modalità parete | 🟡 in parte | Suoni (spenti di default) e parete `?parete=1` fatti. **Da decidere (titolare):** il look 3D (nucleo Three.js o il busto WebGL della PR #2 di Niko) |
 | 10 | PWA, notifiche push, briefing vocale del mattino | da fare | Ok alle notifiche |
 
 ## Idee (massimo 3 per sessione, concrete)
@@ -21,6 +21,10 @@ Memoria del ciclo continuo descritto in `prompts/GUARDIAN_HQ_MASTER_V3.md`. Ogni
 - Nucleo compatto: piccolo indicatore di quanti agenti sono al lavoro **in quella stanza**, oltre al totale.
 
 ## Registro delle ondate
+- **27/11 · Ondata 9**: `ui/suoni.ts` (note brevi generate con WebAudio, nessun file; spente di default, tacciono nell'orario di silenzio:
+  notifiche, inizio e fine della conversazione), modalità parete `ui/Parete.tsx` (`?parete=1` o Impostazioni/palette: nucleo grande,
+  numeri, tre stanze, prossime azioni, ultime attività, schermo intero, Esc per uscire). Il nucleo reagisce già al microfono reale;
+  durante la voce di Guardian il browser non dà il segnale audio della sintesi, quindi niente animazione "finta". Test: E2E verdi (12 nuovi).
 - **27/11 · Ondate 5 e 7**: migrazione 008 (`vendite_pipeline`, `scadenze`, `costi`; fonte obbligatoria; il DB rifiuta email e
   telefoni con `senza_dati_personali()`; firma automatica; cancella solo l'admin), pannelli nelle stanze (`ui/StanzeLavoro.tsx`:
   pipeline a 6 fasi con cambio di fase, scadenze a 30 giorni con «Fatta», costi del mese per categoria), prossime azioni con le

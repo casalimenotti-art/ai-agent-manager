@@ -9,6 +9,7 @@ import { TASK_TERMINALI, type AgentLog, type Severita } from '../../types';
 import { GraficoBarre, GraficoLinee } from '../charts';
 import { Gravita, Scheletro, StatoAgente, StatoTask, Vuoto } from '../kit';
 import { supportoAscolto, supportoParlato } from '../voce';
+import { suona } from '../suoni';
 import { useConversazione } from '../Conversazione';
 import { conversazioneSupportata } from '../../voce/motore';
 
@@ -238,7 +239,7 @@ function DiagnosticaVoce() {
 }
 
 export function ImpostazioniPanel() {
-  const { toast } = useG();
+  const { toast, setParete } = useG();
   const [p, setP] = useState<Preferenze>(leggiPreferenze());
   const salva = (n: Preferenze) => { setP(n); salvaPreferenze(n); toast('Preferenze salvate su questo dispositivo'); };
   return (<>
@@ -260,6 +261,14 @@ export function ImpostazioniPanel() {
         <label className="field">alle<input className="input" type="time" value={p.silenzioA} onChange={(e) => salva({ ...p, silenzioA: e.target.value })} /></label>
       </div>
       <p className="dim" style={{ fontSize: 12, margin: 0 }}>Al massimo 6 annunci vocali all'ora. Le preferenze restano su questo dispositivo.</p>
+    </div>
+    <div className="card stack">
+      <h3 className="section-title" style={{ margin: 0 }}>Suoni e parete</h3>
+      <label className="row"><input type="checkbox" checked={p.suoni} onChange={(e) => { salva({ ...p, suoni: e.target.checked }); if (e.target.checked) suona('notifica', true); }} />
+        Suoni discreti (notifiche, inizio e fine della conversazione)</label>
+      <p className="dim" style={{ fontSize: 12, margin: 0 }}>Tacciono nell'orario di silenzio. Nessun file audio: sono note brevi generate dal browser.</p>
+      <div><button className="btn sm" onClick={() => setParete(true)}>Apri la modalità parete</button></div>
+      <p className="dim" style={{ fontSize: 12, margin: 0 }}>Per uno schermo grande in ufficio: solo lettura, scritte grandi. Indirizzo: <code>?parete=1</code>. Esc per uscire.</p>
     </div>
     <div className="card stack">
       <h3 className="section-title" style={{ margin: 0 }}>Colori delle stanze</h3>
