@@ -128,6 +128,9 @@ export class DemoSource implements DataSource {
   async accedi(email: string) { this.loggato = this.d.users.find((u) => email.startsWith(u.id)) ?? this.d.users[0]; return this.loggato; }
   async esci() { this.loggato = null; }
   async carica(userId: string): Promise<Snapshot> {
+    // demo: simula un bridge acceso sui PC che lo hanno (agenti con PC), così gli stati non "invecchiano" durante una prova lunga
+    const ora = new Date().toISOString();
+    for (const a of this.d.agents) if (a.device_id) a.last_heartbeat = ora;
     const { logs: _l, memory: _m, ...s } = this.d;
     return structuredClone({ ...s, notifications: s.notifications.filter((n) => n.user_id === userId) });
   }
