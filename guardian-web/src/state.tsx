@@ -1,6 +1,7 @@
 // Stato condiviso dell'app: dati, diretta/polling, salute, toast, pannelli (con URL) e conversazione con Guardian.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { DataSource, Diretta } from './data/source';
+import type { DataSource, Diretta, Presente, Presenza } from './data/source';
+import { applicaCambio } from './logic/live';
 import type { Snapshot, User } from './types';
 
 export const POLLING_MS = 20_000;
@@ -20,6 +21,9 @@ interface Ctx {
   messaggi: Messaggio[]; aggiungiMessaggio: (m: Messaggio) => void; pensa: boolean; setPensa: (v: boolean) => void;
   paletteAperta: boolean; setPalette: (v: boolean) => void; esci: () => void;
   stanza: string | null; apriStanza: (id: string | null) => void;
+  /** Applica subito la modifica a schermo; se il database la rifiuta torna com'era e lo dice. */
+  ottimistico: <T>(cambia: (s: Snapshot) => Snapshot, fn: () => Promise<T>, ok?: string) => Promise<T | undefined>;
+  presenti: Presente[];
 }
 const C = createContext<Ctx | null>(null);
 export const useG = () => { const c = useContext(C); if (!c) throw new Error('useG fuori dal provider'); return c; };
@@ -48,6 +52,9 @@ export function GuardianProvider({ source, user, onEsci, children }: { source: D
   const [paletteAperta, setPalette] = useState(false);
   const [stanza, apriStanza] = useState<string | null>(() => new URLSearchParams(location.search).get('s'));
   const inCorso = useRef(false);
+  const snapRef = useRef<Snapshot | null>(null); snapRef.current = snap;
+  const [presenti, setPresenti] = useState<Presente[]>([]);
+  const presenza = useRef<Presenza | null>(null);
 
   const toast = useCallback((testo: string, err = false) => {
     const id = Date.now() + Math.random();
@@ -71,9 +78,14 @@ export function GuardianProvider({ source, user, onEsci, children }: { source: D
   useEffect(() => { void ricarica(); }, [ricarica]);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const stop = source.ascolta(() => { clearTimeout(timer); timer = setTimeout(() => void ricarica(), 400); }, setDiretta);
+    // Il cambio arrivato in diretta si applica subito; il ricaricamento completo poco dopo riallinea il resto (PC, conteggi).
+    const stop = source.ascolta((c) => {
+      const n = c && snapRef.current ? applicaCambio(snapRef.current, c, user.id) : null;
+      if (n) { snapRef.current = n; setSnap(n); }
+      clearTimeout(timer); timer = setTimeout(() => void ricarica(), n ? 2500 : 400);
+    }, setDiretta);
     return () => { clearTimeout(timer); stop(); };
-  }, [source, ricarica]);
+  }, [source, ricarica, user.id]);
   useEffect(() => { // polling solo se la diretta non è attiva (e non in demo)
     if (diretta === 'live' || source.modo === 'demo') return;
     const t = setInterval(() => void ricarica(), POLLING_MS);
@@ -86,6 +98,22 @@ export function GuardianProvider({ source, user, onEsci, children }: { source: D
     };
     void misura(); const t = setInterval(misura, PING_MS); return () => clearInterval(t);
   }, [source]);
+
+  const ottimistico = useCallback(async <T,>(cambia: (s: Snapshot) => Snapshot, fn: () => Promise<T>, ok?: string) => {
+    const prima = snapRef.current;
+    if (prima) { snapRef.current = cambia(prima); setSnap(snapRef.current); }
+    try { const r = await fn(); if (ok) toast(ok); void ricarica(); return r; }
+    catch (e) {
+      if (prima) setSnap(prima);
+      toast(`${e instanceof Error ? e.message : 'Operazione non riuscita'} (modifica annullata)`, true); void ricarica(); return undefined;
+    }
+  }, [ricarica, toast]);
+
+  useEffect(() => {
+    const p = source.presenza(user, setPresenti); presenza.current = p;
+    return () => { p.stop(); presenza.current = null; };
+  }, [source, user]);
+  useEffect(() => { presenza.current?.segnala(stanza); }, [stanza]);
 
   const pannello = traccia.length ? traccia[traccia.length - 1] : null;
   useEffect(() => { scriviUrl(pannello, stanza); }, [pannello, stanza]);
@@ -100,9 +128,9 @@ export function GuardianProvider({ source, user, onEsci, children }: { source: D
 
   const v = useMemo<Ctx>(() => ({
     source, user, snap, errore, caricato, diretta, pingMs: ping.ms, pingOk: ping.ok, pingAl: ping.al, ricarica, esegui, toasts, toast,
-    pannello, traccia, apri, indietro, chiudi, messaggi, aggiungiMessaggio, pensa, setPensa, paletteAperta, setPalette, esci: onEsci, stanza, apriStanza,
+    pannello, traccia, apri, indietro, chiudi, messaggi, aggiungiMessaggio, pensa, setPensa, paletteAperta, setPalette, esci: onEsci, stanza, apriStanza, ottimistico, presenti,
   }), [source, user, snap, errore, caricato, diretta, ping, ricarica, esegui, toasts, toast, pannello, traccia, apri, indietro, chiudi,
-    messaggi, aggiungiMessaggio, pensa, paletteAperta, onEsci, stanza]);
+    messaggi, aggiungiMessaggio, pensa, paletteAperta, onEsci, stanza, ottimistico, presenti]);
   return <C.Provider value={v}>{children}</C.Provider>;
 }
 

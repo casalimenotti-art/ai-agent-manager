@@ -4,7 +4,7 @@
 import type { Agent, AgentLog, Approval, Memory, Snapshot, Stanza, Task, User } from '../types';
 import { TASK_TERMINALI } from '../types';
 import { eventiModificaTask } from './eventi';
-import { controllaTesto, type DataSource, type Diretta, ErroreDati, type ModificaTask, type NuovoTask } from './source';
+import { controllaTesto, type DataSource, type Diretta, ErroreDati, type Presente, type Presenza, type ModificaTask, type NuovoTask } from './source';
 
 const min = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 
@@ -109,6 +109,13 @@ export class DemoSource implements DataSource {
     return structuredClone({ ...s, notifications: s.notifications.filter((n) => n.user_id === userId) });
   }
   async ping() { return 1; }
+  /** In demo c'è solo chi ha aperto la pagina: nessuna presenza inventata. */
+  presenza(u: User, onPresenti: (p: Presente[]) => void): Presenza {
+    const dal = new Date().toISOString();
+    onPresenti([{ id: u.id, nome: u.nome, stanza: null, dal }]);
+    return { segnala: (stanza) => onPresenti([{ id: u.id, nome: u.nome, stanza, dal }]), stop: () => {} };
+  }
+
   ascolta(onCambio: () => void, onDiretta: (d: Diretta) => void) {
     this.ascoltatori.add(onCambio); onDiretta('off');
     return () => { this.ascoltatori.delete(onCambio); };

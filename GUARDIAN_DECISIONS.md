@@ -42,3 +42,5 @@
 - **2026-11-27 · Hub nuovo partendo da main** (titolare): `dashboard/` e la PR #2 non si toccano; gli hook Claude esistenti si riusano dal bridge.
 - **2026-11-27 · Bridge**: solo HTTPS in uscita, token per PC salvato come hash, RPC `SECURITY DEFINER`; nessuna esecuzione di comandi remoti.
 - **2026-11-27 · Voce locale senza token**: il servizio `voce` ascolta solo su 127.0.0.1 e accetta solo le origini dell'HQ (`GUARDIAN_HQ_ORIGINI`); nessun token da copiare nel browser. Solo trascrizione: non esegue comandi né salva l'audio. Se manca, l'HQ usa il riconoscimento del browser.
+- **2026-11-27 · Realtime senza `devices`** (migrazione 007): i messaggi Realtime portano la riga intera, quindi `devices.token_hash` arriverebbe ai browser. I PC si aggiornano con il ricaricamento completo. La presenza nell'HQ usa Supabase Presence (in memoria, nulla nel DB).
+- **2026-11-27 · Aggiornamenti ottimistici**: il kanban sposta subito la scheda; se il database rifiuta (vincoli), torna com'era e lo dice. I vincoli restano nel DB, non nel browser.

@@ -42,7 +42,7 @@ export function OrbitaStanze() {
 }
 
 export function VistaStanza({ id }: { id: string }) {
-  const { snap, source, esegui, user, apri, apriStanza } = useG();
+  const { snap, source, ottimistico, user, apri, apriStanza } = useG();
   const [trascinato, setTrascinato] = useState<number | null>(null);
   const [sopra, setSopra] = useState<string | null>(null);
   if (!snap) return null;
@@ -51,7 +51,9 @@ export function VistaStanza({ id }: { id: string }) {
   const r = riepilogoStanza(st, snap); const ts = taskDiStanza(st, snap); const ids = new Set(ts.map((t) => t.id));
   const sposta = (taskId: number, stato: TaskStato) => {
     const t = ts.find((x) => x.id === taskId);
-    if (t && t.stato !== stato) void esegui(() => source.modificaTask(taskId, { stato }, user.id), `Task #${taskId} → ${stato}`);
+    if (t && t.stato !== stato) void ottimistico(
+      (s) => ({ ...s, tasks: s.tasks.map((x) => (x.id === taskId ? { ...x, stato, updated_at: new Date().toISOString() } : x)) }),
+      () => source.modificaTask(taskId, { stato }, user.id), `Task #${taskId} → ${stato}`);
   };
   const drop = (e: DragEvent, dest: TaskStato) => { e.preventDefault(); setSopra(null); if (trascinato) sposta(trascinato, dest); setTrascinato(null); };
   const approvazioni = snap.approvals.filter((a) => a.status === 'richiesta' && a.task_id && ids.has(a.task_id));

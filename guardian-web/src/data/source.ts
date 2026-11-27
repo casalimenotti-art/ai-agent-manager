@@ -1,6 +1,10 @@
+import type { Cambio } from '../logic/live';
 import type { AgentLog, Approval, Memory, Priorita, Snapshot, Task, TaskStato, User } from '../types';
 
 export type Diretta = 'live' | 'polling' | 'off';
+/** Chi è nell'HQ in questo momento (Presence di Supabase Realtime: niente salvato nel database). */
+export interface Presente { id: string; nome: string; stanza: string | null; dal: string }
+export interface Presenza { segnala(stanza: string | null): void; stop(): void }
 
 export interface NuovoTask {
   titolo: string; descrizione?: string; priorita: Priorita; stato: TaskStato; project_id?: number | null;
@@ -18,8 +22,10 @@ export interface DataSource {
   esci(): Promise<void>;
   carica(userId: string): Promise<Snapshot>;
   ping(): Promise<number>;
-  /** Avvisa quando cambiano i dati. Restituisce la funzione per annullare. */
-  ascolta(onCambio: () => void, onDiretta: (d: Diretta) => void): () => void;
+  /** Avvisa quando cambiano i dati (con il cambio, se noto, per applicarlo subito). Restituisce la funzione per annullare. */
+  ascolta(onCambio: (c?: Cambio) => void, onDiretta: (d: Diretta) => void): () => void;
+  /** Annuncia la propria presenza nell'HQ e riceve l'elenco di chi c'è. */
+  presenza(u: User, onPresenti: (p: Presente[]) => void): Presenza;
   creaTask(t: NuovoTask, by: string): Promise<Task>;
   modificaTask(id: number, campi: ModificaTask, by: string): Promise<Task>;
   decidiApprovazione(id: number, stato: 'approvata' | 'rifiutata', by: string): Promise<void>;

@@ -1,5 +1,5 @@
 import { Activity, ArrowLeft, Bell, Bot, BookOpen, Building2, Cpu, GitBranchPlus, HeartPulse, LayoutDashboard, ListTodo, LogOut, Mic,
-  MicOff, Search, Send, Settings, ShieldCheck, Shuffle, Square, X, type LucideIcon } from 'lucide-react';
+  MicOff, Network, Search, Send, Settings, ShieldCheck, Shuffle, Square, X, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as KE } from 'react';
 import { fa } from '../logic/status';
 import { leggiPreferenze, useG, type Pannello } from '../state';
@@ -10,7 +10,7 @@ import { PANNELLI, titoloPannello } from './panels';
 import { ascolta, inSilenzio, parla, smettiDiAscoltare, supportoAscolto, supportoParlato, useVoce, zitto } from './voce';
 
 export const NAV: { p: string; nome: string; icona: LucideIcon }[] = [
-  { p: 'agenti', nome: 'Agenti', icona: Bot }, { p: 'aziende', nome: 'Aziende', icona: Building2 }, { p: 'tasks', nome: 'Task', icona: ListTodo },
+  { p: 'mappa', nome: 'Mappa', icona: Network }, { p: 'agenti', nome: 'Agenti', icona: Bot }, { p: 'aziende', nome: 'Aziende', icona: Building2 }, { p: 'tasks', nome: 'Task', icona: ListTodo },
   { p: 'approvazioni', nome: 'Approva', icona: ShieldCheck }, { p: 'memoria', nome: 'Memoria', icona: BookOpen },
   { p: 'handoff', nome: 'Handoff', icona: Shuffle }, { p: 'attivita', nome: 'Attività', icona: Activity },
   { p: 'statistiche', nome: 'Statistiche', icona: HeartPulse }, { p: 'workflow', nome: 'Workflow', icona: GitBranchPlus },
@@ -34,9 +34,23 @@ function Header() {
         <span className="hide-sm">Cerca</span> <kbd className="hide-sm">Ctrl K</kbd></button>
       <button className="btn ghost icon rel" onClick={() => apri({ p: 'notifiche' })} aria-label={`Notifiche, ${nonLette} non lette`}>
         <Bell size={18} aria-hidden />{nonLette > 0 && <span className="badge">{nonLette}</span>}</button>
+      <Presenti />
       <span className="hide-sm dim" style={{ fontSize: 13 }}>{user.nome}</span>
       <button className="btn ghost icon" onClick={esci} aria-label="Esci"><LogOut size={17} aria-hidden /></button>
     </header>
+  );
+}
+
+function Presenti() {
+  const { presenti, snap, user } = useG();
+  if (!presenti.length) return null;
+  const nomeStanza = (id: string | null) => (id ? snap?.stanze.find((s) => s.id === id)?.nome ?? id : 'Centro');
+  const testo = presenti.map((p) => `${p.id === user.id ? 'Tu' : p.nome} (${nomeStanza(p.stanza)})`).join(', ');
+  return (
+    <span className="presenti hide-sm" role="status" aria-label={`Nell'HQ ora: ${testo}`} title={`Nell'HQ ora: ${testo}`}>
+      {presenti.slice(0, 4).map((p) => <span key={p.id} className={`avatar${p.id === user.id ? ' io' : ''}`} aria-hidden>{p.nome.slice(0, 1).toUpperCase()}</span>)}
+      {presenti.length > 4 && <span className="avatar" aria-hidden>+{presenti.length - 4}</span>}
+    </span>
   );
 }
 

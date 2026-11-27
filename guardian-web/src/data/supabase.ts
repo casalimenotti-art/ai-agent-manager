@@ -3,10 +3,11 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AgentLog, Memory, Snapshot, Task, User } from '../types';
 import { eventiModificaTask } from './eventi';
-import { controllaTesto, type DataSource, type Diretta, ErroreDati, messaggioVincolo, type ModificaTask, type NuovoTask } from './source';
+import type { Cambio } from '../logic/live';
+import { controllaTesto, type DataSource, type Diretta, type Presente, type Presenza, ErroreDati, messaggioVincolo, type ModificaTask, type NuovoTask } from './source';
 
 const COLONNE_DEVICES = 'id,user_id,nome,agent_name,model,stato,current_task_id,error,limit_reached,last_seen,last_checkpoint,created_at';
-const TABELLE_LIVE = ['agents', 'tasks', 'approvals', 'notifications', 'activity_events', 'devices', 'handoffs', 'stanze', 'projects', 'guardian_cervello'];
+const TABELLE_LIVE = ['agents', 'tasks', 'approvals', 'notifications', 'activity_events', 'handoffs', 'stanze', 'projects', 'guardian_cervello'];
 
 export class SupabaseSource implements DataSource {
   readonly modo = 'supabase' as const;
@@ -69,11 +70,27 @@ export class SupabaseSource implements DataSource {
     return performance.now() - t0;
   }
 
-  ascolta(onCambio: () => void, onDiretta: (d: Diretta) => void): () => void {
+  ascolta(onCambio: (c?: Cambio) => void, onDiretta: (d: Diretta) => void): () => void {
     let ch = this.c.channel('guardian-live');
-    for (const t of TABELLE_LIVE) ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, () => onCambio());
+    for (const t of TABELLE_LIVE) ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, (p) => onCambio({
+      tabella: p.table, tipo: p.eventType, nuovo: p.new && Object.keys(p.new).length ? p.new : undefined,
+      vecchio: p.old && Object.keys(p.old).length ? p.old : undefined }));
     ch.subscribe((status) => onDiretta(status === 'SUBSCRIBED' ? 'live' : 'polling'));
     return () => { void this.c.removeChannel(ch); };
+  }
+
+  presenza(u: User, onPresenti: (p: Presente[]) => void): Presenza {
+    const ch = this.c.channel('guardian-presenza', { config: { presence: { key: u.id } } });
+    let stato: Presente = { id: u.id, nome: u.nome, stanza: null, dal: new Date().toISOString() };
+    let pronto = false;
+    ch.on('presence', { event: 'sync' }, () => {
+      const st = ch.presenceState<Presente>();
+      onPresenti(Object.values(st).map((v) => v[v.length - 1]).filter((x): x is Presente & { presence_ref: string } => !!x?.id));
+    }).subscribe((s) => { if (s === 'SUBSCRIBED') { pronto = true; void ch.track(stato); } });
+    return {
+      segnala: (stanza) => { stato = { ...stato, stanza }; if (pronto) void ch.track(stato); },
+      stop: () => { void this.c.removeChannel(ch); },
+    };
   }
 
   private async evento(e: Record<string, unknown>) {

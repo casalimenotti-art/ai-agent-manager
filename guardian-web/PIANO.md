@@ -45,6 +45,8 @@ pannelli con URL `?p=&id=&f=`, conversazione) · `src/ui/` (Shell, CommandCenter
 | Riga task / approvazione / azienda | ovunque | apre dettaglio | drawer | — | — | "non trovato" |
 | Salute (pillola) | header | apre Salute | drawer | `ping` | — | rosso + motivo |
 | Cerca / Ctrl+K | header | palette comandi | modale | snapshot | apre voce | "nessun risultato" |
+| Mappa (rail, palette) | rail | pannello «Mappa operativa»; clic/Invio su un nodo apre agente, task o stanza | drawer largo | `costruisciMappa(snap)` | impulso sugli eventi recenti | "Ancora niente da collegare" |
+| Avatar presenza | header | chi è nell'HQ e in quale stanza (tooltip) | — | Supabase Presence | — | nascosto se nessuno |
 | Campanella | header | Notifiche | drawer | — | — | — |
 | Esci | header | logout | login | `esci` | — | — |
 | Indietro / Chiudi / Esc | drawer | traccia / chiude | — | — | focus restituito | — |

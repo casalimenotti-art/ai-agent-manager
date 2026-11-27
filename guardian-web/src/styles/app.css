@@ -116,7 +116,7 @@ textarea.input { min-height: 72px; resize: vertical; }
 .hero::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(500px 260px at 15% 50%, rgba(34, 211, 238, 0.10), transparent 70%); }
 .hero h1 { margin: 0; font-size: var(--fs-2xl); letter-spacing: 0.02em; font-weight: 700; }
 .hero .stato { font-size: var(--fs-lg); color: var(--accent-2); margin: var(--s-1) 0 var(--s-4); min-height: 1.5em; }
-.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: var(--s-3); }
 .kpi { background: rgba(15, 22, 34, 0.85); border: 1px solid var(--border-1); border-radius: var(--r-2); padding: var(--s-3); text-align: left; color: inherit;
   cursor: pointer; transition: border-color var(--t-micro); }
 .kpi:hover { border-color: var(--accent); }
@@ -320,3 +320,27 @@ table.data th { color: var(--text-3); font-weight: 600; font-size: var(--fs-xs);
   .core[data-stato='speaking'] .nucleo, .conv-barra .conv-onde i { animation: none !important; }
   .core[data-stato='listening'] .nucleo { transform: none; opacity: calc(0.7 + var(--livello) * 0.3); }
 }
+
+/* Ondata 8: presenza e mappa operativa */
+.presenti { display: inline-flex; align-items: center; }
+.presenti .avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600;
+  background: var(--surface-3); color: var(--text-1); border: 2px solid var(--bg-1); margin-left: -6px; }
+.presenti .avatar.io { background: var(--accent-soft); color: var(--accent); }
+.mappa-svg { width: 100%; height: auto; display: block; }
+.mappa-col { fill: var(--text-3); font-size: 15px; letter-spacing: .04em; text-transform: uppercase; }
+.mappa-arco { fill: none; stroke: var(--border-2); stroke-width: 1.5; }
+.mappa-arco.attivo { stroke: var(--ok); stroke-dasharray: 6 6; animation: flusso 1.2s linear infinite; }
+.mappa-nodo { cursor: pointer; outline: none; }
+.mappa-nodo rect { fill: var(--surface-2); stroke: var(--border-2); transition: stroke var(--t-micro); }
+.mappa-nodo:hover rect, .mappa-nodo:focus-visible rect { stroke: var(--accent); stroke-width: 2; }
+.mappa-punto { fill: var(--c); }
+.mappa-hq { fill: var(--accent); }
+.mappa-etichetta { fill: var(--text-1); font-size: 15px; }
+.mappa-sotto { fill: var(--text-2); font-size: 12px; }
+.mappa-nodo.impulso .mappa-punto { animation: impulso 1.6s var(--ease) infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes flusso { to { stroke-dashoffset: -12; } }
+@keyframes impulso { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.8); opacity: .55; } }
+.mappa-lista { display: none; list-style: none; padding: 0; margin: 0; }
+.mappa-lista li { padding: 4px 0; font-size: 14px; border-bottom: 1px solid var(--border-1); }
+@media (max-width: 720px) { .mappa-svg { display: none; } .mappa-lista { display: block; } }
+@media (prefers-reduced-motion: reduce) { .mappa-arco.attivo, .mappa-nodo.impulso .mappa-punto { animation: none; } }

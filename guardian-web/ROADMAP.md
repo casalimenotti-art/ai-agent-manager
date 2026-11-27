@@ -12,16 +12,21 @@ Memoria del ciclo continuo descritto in `prompts/GUARDIAN_HQ_MASTER_V3.md`. Ogni
 | 5 | Stanza Vendite completa (pipeline senza dati personali, bozze con approvazione) | da fare | Migrazione `vendite_pipeline` |
 | 6 | Smistamento del lavoro alle IA dalla conversazione | da fare | Modello di minaccia |
 | 7 | Stanza Amministrazione (scadenze, documenti, costi manuali, calendario) | da fare | Migrazione `costi`, connettore Calendar |
-| 8 | Mappa operativa, Realtime incrementale, aggiornamenti ottimistici, presence | da fare | — |
+| 8 | Mappa operativa, Realtime incrementale, aggiornamenti ottimistici, presence | ✅ fatto | Migrazione 007: i PC escono dal canale in diretta (non deve arrivare `token_hash` ai browser) |
 | 9 | 3D e suoni (nucleo 3D o busto di Niko), modalità parete | da fare | Scelta del look 3D |
 | 10 | PWA, notifiche push, briefing vocale del mattino | da fare | Ok alle notifiche |
 
 ## Idee (massimo 3 per sessione, concrete)
-- Kanban: aggiornamento **ottimistico**. La scheda si sposta subito e torna indietro se il DB rifiuta; oggi aspetta la risposta.
 - Stanza: filtro "solo miei" e ordinamento per priorità dentro le colonne.
 - Nucleo compatto: piccolo indicatore di quanti agenti sono al lavoro **in quella stanza**, oltre al totale.
 
 ## Registro delle ondate
+- **27/11 · Ondata 8**: `logic/live.ts` (i messaggi Realtime si applicano subito ai dati, poi riallineamento dopo 2,5 s),
+  `ottimistico()` nello stato (kanban: la scheda si sposta subito e torna indietro se il DB rifiuta, con «modifica annullata»),
+  Presence Supabase (chi è nell'HQ e in quale stanza, avatar nell'header; nulla salvato nel DB), pannello «Mappa operativa»
+  (`logic/mappa.ts`: persone → agenti → task aperti → stanze, solo collegamenti reali, impulso sull'attività degli ultimi 2 min,
+  elenco al posto del disegno sotto i 720 px). Migrazione 007: `devices` fuori dalla pubblicazione Realtime.
+  Test: vitest 17, E2E verdi (7 controlli nuovi), CHECK 007 OK.
 - **27/11 · Ondata 3**: `bridge/voce_locale.py` + comando `voce` (solo 127.0.0.1, solo le origini dell'HQ in `GUARDIAN_HQ_ORIGINI`,
   preflight Private-Network, `GET /stato`, `POST /trascrivi` WAV 16 kHz → sherpa-onnx Parakeet), web: `voce/wav.ts`,
   `LocaleTrascrittore` (VAD + pre-roll + WAV) scelto in automatico se il servizio è pronto, pill «Ascolto locale · privato».

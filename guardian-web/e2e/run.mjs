@@ -97,7 +97,7 @@ ok(await p.locator('.drawer table.data').count() >= 1, 'grafico → vista tabell
   await q.click('.porta:has-text("Sviluppo")');
   await q.dragAndDrop('[data-task="4"]', '[data-colonna="corso"]');
   await q.waitForSelector('.toast.err');
-  ok((await q.locator('.toast.err').last().textContent()).includes('dipendenze'), 'kanban: trascinamento rifiutato dal vincolo, messaggio chiaro');
+  ok((await q.locator('.toast.err').last().textContent()).includes('dipendenze') && (await q.locator('.toast.err').last().textContent()).includes('annullata'), 'kanban ottimistico: rifiuto del vincolo, modifica annullata e messaggio chiaro');
   ok(await q.locator('[data-colonna="coda"] [data-task="4"]').count() === 1, 'kanban: il task resta dov\'era');
   await q.click('.nucleo-compatto'); ok(await q.locator('.porta').count() === 3, 'clic sul nucleo: ritorno all\'orbita');
   await q.fill('.dock input', 'Guardian, apri amministrazione'); await q.press('.dock input', 'Enter');
@@ -182,6 +182,24 @@ ok(ris.length === 0, `axe: nessuna violazione seria/critica ${ris.join(', ')}`);
 const senzaNome = await p.evaluate(() => [...document.querySelectorAll('button')].filter((x) => !(x.getAttribute('aria-label') || x.textContent.trim())).length);
 ok(senzaNome === 0, 'ogni pulsante ha un nome accessibile');
 ok(errori.length === 0, `nessun errore in console ${errori.slice(0, 2).join(' | ')}`);
+
+// 8c. Ondata 8: presenza e mappa operativa
+{
+  const { p: q, errori: e3 } = await entra();
+  ok((await q.locator('.presenti').getAttribute('aria-label')).includes('Tu (Centro)'), 'presenza: tu nell\'HQ, al centro');
+  await q.click('.porta:has-text("Vendite")'); await q.waitForTimeout(100);
+  ok((await q.locator('.presenti').getAttribute('aria-label')).includes('Tu (Vendite)'), 'presenza: segue la stanza in cui sei');
+  await q.keyboard.press('Escape');
+  await q.click('.rail button:has-text("Mappa")'); await q.waitForSelector('.mappa-svg');
+  const nodi = await q.locator('.mappa-nodo').count(); const archi = await q.locator('.mappa-arco').count();
+  ok(nodi >= 6 && archi >= 3, `mappa: ${nodi} nodi e ${archi} collegamenti dai dati`);
+  ok(await q.locator('.mappa-nodo[aria-label^="#"]').count() >= 1 && await q.locator('.mappa-nodo[aria-label*="Completato"]').count() === 0, 'mappa: solo task aperti');
+  await q.locator('.mappa-nodo[aria-label^="#"]').first().focus(); await q.keyboard.press('Enter');
+  ok((await q.locator('.drawer h2').textContent()).startsWith('Task #'), 'mappa: Invio su un task apre il suo pannello');
+  ok(e3.length === 0, `mappa e presenza senza errori in console ${e3.slice(0, 2).join(' | ')}`);
+  await q.screenshot({ path: `${OUT}mappa.png` });
+  await q.close();
+}
 
 // 10. larghezze: nessuno scroll orizzontale, screenshot
 for (const [w, h] of [[390, 844], [768, 1024], [1280, 900], [1920, 1080]]) {
