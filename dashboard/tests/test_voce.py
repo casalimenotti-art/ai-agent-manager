@@ -39,7 +39,7 @@ def test_installa_pinnato_solo_wheel():
         chiamate.append(cmd); return types.SimpleNamespace(returncode=0, stderr="")
     assert voce.installa(finto)["ok"]
     c = chiamate[0]
-    assert "--only-binary=:all:" in c and "faster-whisper==1.2.1" in c and "--break-system-packages" not in c
+    assert "--only-binary=:all:" in c and "faster-whisper==1.2.1" in c and "av<19" in c and "--break-system-packages" not in c
     assert not voce.installa(lambda cmd: types.SimpleNamespace(returncode=1, stderr="boom"))["ok"]
 
 
@@ -50,3 +50,11 @@ def test_agente_manager_nel_comando(tmp_path, monkeypatch):
     c = chat.costruisci_comando("sid", "guardian-manager")
     assert c[c.index("--agent") + 1] == "guardian-manager" and c[c.index("--resume") + 1] == "sid"
     assert "--agent" not in chat.costruisci_comando(None, "../../x; rm")                 # nome non sicuro: scartato
+
+
+def test_vad_solo_se_c_e_onnxruntime(monkeypatch):
+    import importlib.util as iu
+    monkeypatch.setattr(iu, "find_spec", lambda n: None if n == "onnxruntime" else object())
+    assert voce._vad_disponibile() is False
+    monkeypatch.setattr(iu, "find_spec", lambda n: object())
+    assert voce._vad_disponibile() is True

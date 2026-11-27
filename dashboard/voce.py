@@ -39,6 +39,11 @@ def valida_wav(dati: bytes) -> tuple[bool, str]:
     return True, ""
 
 
+def _vad_disponibile() -> bool:
+    """Il filtro delle pause di faster-whisper richiede onnxruntime (su alcune versioni di Python non ha ancora i pacchetti)."""
+    return importlib.util.find_spec("onnxruntime") is not None
+
+
 def _carica(modello: str):
     if modello not in _modelli:
         from faster_whisper import WhisperModel   # import tardivo: pesante
@@ -57,7 +62,7 @@ def trascrivi(dati: bytes, lingua: str = "it", modello: str | None = None, _moto
         else:
             if not disponibile():
                 return {"ok": False, "testo": "", "messaggio": "Riconoscimento vocale non installato."}
-            segmenti, _ = _carica(modello or config.WHISPER_MODEL).transcribe(io.BytesIO(bytes(dati)), language=lingua, vad_filter=True)
+            segmenti, _ = _carica(modello or config.WHISPER_MODEL).transcribe(io.BytesIO(bytes(dati)), language=lingua, vad_filter=_vad_disponibile())
             testo = " ".join(s.text.strip() for s in segmenti)
     except Exception as e:   # modello non scaricabile, audio illeggibile, memoria…
         return {"ok": False, "testo": "", "messaggio": f"Riconoscimento non riuscito: {type(e).__name__}: {str(e)[:160]}"}
@@ -72,7 +77,7 @@ def installa(runner=None) -> dict:
     run = runner or (lambda cmd: subprocess.run(cmd, capture_output=True, text=True, timeout=900))
     try:
         r = run([sys.executable, "-m", "pip", "install", "-q", "--disable-pip-version-check", "--only-binary=:all:",
-                 f"{PACCHETTO}=={VERSIONE}"])
+                 f"{PACCHETTO}=={VERSIONE}", "av<19"])   # av 19 rompe faster-whisper 1.2.1 (verificato sul PC del titolare)
     except (subprocess.TimeoutExpired, OSError) as e:
         return {"ok": False, "messaggio": f"Installazione non riuscita: {e}"}
     if r.returncode != 0:
