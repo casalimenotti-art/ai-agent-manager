@@ -1,58 +1,150 @@
 <!doctype html>
 <html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-html,body{height:100%;margin:0;overflow:hidden}
-.stage{position:relative;isolation:isolate;display:grid;place-items:center;height:100%;overflow:hidden;background:#080d15}
-.portrait{display:block;width:100%;height:100%;object-fit:contain;transform:translate3d(var(--x,0px),var(--y,0px),0) scale(1.02);
-  transition:transform 180ms cubic-bezier(.2,.7,.3,1);mask-image:linear-gradient(0deg,transparent,#000 6%,#000 98%,transparent)}
-.light{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at var(--lx,50%) var(--ly,45%),#7db8fc26,transparent 55%);
-  mix-blend-mode:screen;opacity:.65;transition:opacity .3s}
-.voice{position:absolute;inset:auto 24% 2%;height:2px;opacity:0;transform:scaleX(.25);
-  background:linear-gradient(90deg,transparent,#9ce8ff,transparent);box-shadow:0 0 16px #6bd5ff;transition:opacity .25s}
-.stage[data-state="ascolto"] .voice{opacity:.5;transform:scaleX(.65)}
-.stage[data-state="parla"] .voice{opacity:1;animation:speech .68s ease-in-out infinite alternate}
-.stage[data-state="parla"] .light{opacity:1}
-@keyframes speech{from{transform:scaleX(.35)}to{transform:scaleX(1)}}
-@media(prefers-reduced-motion:reduce){.portrait{transform:none;transition:none}.voice,.light{transition:none}.stage[data-state="parla"] .voice{animation:none;transform:scaleX(.65)}}
+html,body{height:100%;margin:0;overflow:hidden;background:#080d15}
+.stage{position:relative;display:grid;place-items:center;height:100%;overflow:hidden}
+.portrait,.motion{display:block;width:100%;height:100%;object-fit:contain}
+.motion{position:absolute;inset:0;opacity:0}
+.stage[data-render="mesh"] .motion{opacity:1}
+.stage[data-render="mesh"] .portrait{opacity:0}
 </style>
-<main class="stage" aria-label="Guardian, ritratto di un’androide">
+<main class="stage" aria-label="Guardian, androide interattiva">
   <img class="portrait" src="data:image/jpeg;base64,__PORTRAIT__" alt="Androide femminile con volto umano e corazza scura in titanio">
-  <div class="light" aria-hidden="true"></div><div class="voice" aria-hidden="true"></div>
+  <canvas class="motion" aria-hidden="true"></canvas>
 </main>
 <script>
+"use strict";
 const stage = document.querySelector(".stage");
-const reduced = matchMedia("(prefers-reduced-motion: reduce)");
-function move(x,y) {
-  if (reduced.matches) return;
-  const a=Math.max(-1,Math.min(1,x)), b=Math.max(-1,Math.min(1,y));
-  stage.style.setProperty("--x", (a*6)+"px");
-  stage.style.setProperty("--y", (b*4)+"px");
-  stage.style.setProperty("--lx", (50+a*15)+"%");
-  stage.style.setProperty("--ly", (45+b*11)+"%");
+const portrait = document.querySelector(".portrait");
+const canvas = document.querySelector(".motion");
+const gl = canvas.getContext("webgl", {alpha: false, antialias: false});
+
+function installMotion() {
+  if (!gl) return;
+  const vertexSource = `
+    attribute vec2 vertex;
+    varying vec2 uv;
+    void main() { uv = vec2((vertex.x+1.0)*0.5,(1.0-vertex.y)*0.5); gl_Position = vec4(vertex,0.0,1.0); }`;
+  const fragmentSource = `
+    precision mediump float;
+    varying vec2 uv;
+    uniform sampler2D picture;
+    uniform vec2 pose, crop;
+    uniform float breath, jaw;
+    float region(vec2 p, vec2 center, vec2 radius) {
+      return 1.0 - smoothstep(0.3,1.0,length((p-center)/radius));
+    }
+    void main() {
+      vec2 p = (uv - 0.5) / crop + 0.5;
+      if (p.x<0.0 || p.x>1.0 || p.y<0.0 || p.y>1.0) {
+        gl_FragColor=vec4(0.031,0.051,0.082,1.0); return;
+      }
+      // Keep the backdrop fixed. Move the shoulders, head and features by different amounts.
+      float torso = region(p,vec2(.50,.62),vec2(.26,.42));
+      float head = region(p,vec2(.502,.147),vec2(.122,.153));
+      float face = region(p,vec2(.504,.166),vec2(.069,.098));
+      float eyes = region(p,vec2(.505,.148),vec2(.06,.020));
+      float mouth = region(p,vec2(.504,.225),vec2(.041,.031));
+      vec2 turn = pose * (0.005*torso + 0.013*head + 0.014*face + 0.003*eyes);
+      turn.x += pose.x * abs(p.x-.504) * .28 * face;
+      turn.y += breath * (torso*.003 + head*.0015) + jaw*mouth*.005;
+      vec3 color = texture2D(picture,clamp(p-turn,0.0,1.0)).rgb;
+      float edge = smoothstep(0.0,.07,p.x)*smoothstep(0.0,.07,1.0-p.x);
+      gl_FragColor = vec4(mix(vec3(0.031,0.051,0.082),color,edge),1.0);
+    }`;
+
+  const program = gl.createProgram();
+  for (const [type, source] of [[gl.VERTEX_SHADER, vertexSource], [gl.FRAGMENT_SHADER, fragmentSource]]) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return;
+    gl.attachShader(program, shader);
+  }
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return;
+  gl.useProgram(program);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  const attribute=gl.getAttribLocation(program,"vertex");
+  gl.enableVertexAttribArray(attribute);
+  gl.vertexAttribPointer(attribute,2,gl.FLOAT,false,0,0);
+  const uniforms=Object.fromEntries(["pose","crop","breath","jaw"].map(key=>[key,gl.getUniformLocation(program,key)]));
+  gl.bindTexture(gl.TEXTURE_2D,gl.createTexture());
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,portrait);
+
+  const ancestor=window.parent.document;
+  const host=window.frameElement?.closest(".st-key-plancia_guardian");
+  const reduced=matchMedia("(prefers-reduced-motion: reduce)");
+  const limit=(value)=>Math.max(-1,Math.min(1,value));
+  let targetX=0,targetY=0,x=0,y=0,gesture="",speaking=false,last=0,raf=0,visible=true;
+  function aim(clientX,clientY,width,height) {
+    targetX=limit((clientX-width/2)/Math.max(1,width*.34));
+    targetY=limit((clientY-height*.36)/Math.max(1,height*.47));
+  }
+  function followPage(event) {
+    const rect=window.frameElement?.getBoundingClientRect();
+    if (rect) aim(event.clientX-rect.x,event.clientY-rect.y,rect.width,rect.height);
+  }
+  function followStage(event) { aim(event.clientX,event.clientY,stage.clientWidth,stage.clientHeight); }
+  function center() { targetX=0; targetY=0; }
+  ancestor.addEventListener("pointermove",followPage,{passive:true});
+  ancestor.documentElement.addEventListener("pointerleave",center);
+  stage.addEventListener("pointermove",followStage,{passive:true});
+  window.parent.addEventListener("blur",center);
+
+  function updateState() {
+    speaking=ancestor.body.classList.contains("g-parla");
+    const next=host?.querySelector(".guardian-avatar")?.dataset.movimento || "centro";
+    if (next===gesture) return;
+    gesture=next;
+    const direction={destra:[1,0],sinistra:[-1,0],su:[0,-1],giu:[0,1],centro:[0,0]}[gesture];
+    if (direction) [targetX,targetY]=direction;
+  }
+  const voice=new MutationObserver(updateState);
+  voice.observe(ancestor.body,{attributes:true,attributeFilter:["class"]});
+  const status=new MutationObserver(updateState);
+  if (host) status.observe(host,{subtree:true,childList:true,attributes:true,attributeFilter:["data-movimento"]});
+  const visibility=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;});
+  visibility.observe(stage);
+  window.addEventListener("pagehide",()=>{
+    cancelAnimationFrame(raf);
+    ancestor.removeEventListener("pointermove",followPage);
+    ancestor.documentElement.removeEventListener("pointerleave",center);
+    window.parent.removeEventListener("blur",center);
+    voice.disconnect(); status.disconnect(); visibility.disconnect();
+  },{once:true});
+  canvas.addEventListener("webglcontextlost",()=>{cancelAnimationFrame(raf);delete stage.dataset.render;},{once:true});
+
+  function frame(now) {
+    raf=requestAnimationFrame(frame);
+    if (!visible || document.hidden || now-last<30) return;
+    const ratio=Math.min(1.6,devicePixelRatio);
+    const width=Math.round(stage.clientWidth*ratio), height=Math.round(stage.clientHeight*ratio);
+    if (!width || !height) return;
+    const elapsed=last?Math.min(.12,(now-last)/1000):.03;
+    last=now;
+    if (canvas.width!==width || canvas.height!==height) { canvas.width=width; canvas.height=height; }
+    gl.viewport(0,0,width,height);
+    const smoothing=1-Math.exp(-elapsed*11);
+    x=reduced.matches?0:x+(targetX-x)*smoothing;
+    y=reduced.matches?0:y+(targetY-y)*smoothing;
+    const aspect=(portrait.naturalWidth/portrait.naturalHeight)/(width/height);
+    gl.uniform2f(uniforms.crop,Math.min(1,aspect),Math.min(1,1/aspect));
+    gl.uniform2f(uniforms.pose,x,y);
+    gl.uniform1f(uniforms.breath,reduced.matches?0:Math.sin(now/630));
+    gl.uniform1f(uniforms.jaw,speaking&&!reduced.matches?Math.abs(Math.sin(now/69)):0);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+    stage.dataset.render="mesh";
+    stage.dataset.pose=x.toFixed(2)+","+y.toFixed(2);
+  }
+  updateState();
+  raf=requestAnimationFrame(frame);
 }
-const parentPage=window.parent.document;
-function follow(event) { move(event.clientX/window.parent.innerWidth*2-1,event.clientY/window.parent.innerHeight*2-1); }
-parentPage.addEventListener("pointermove",follow,{passive:true});
-stage.addEventListener("pointermove",event=>move(event.clientX/stage.clientWidth*2-1,event.clientY/stage.clientHeight*2-1),{passive:true});
-const statusHost=window.frameElement?.closest(".st-key-plancia_guardian");
-let lastGesture="";
-function updateState() {
-  const avatar=statusHost?.querySelector(".guardian-avatar");
-  stage.dataset.state=parentPage.body.classList.contains("g-parla")?"parla":avatar?.classList.contains("ascolto")?"ascolto":"pronto";
-  const gesto=avatar?.dataset.movimento || "centro";
-  if (gesto===lastGesture) return;
-  lastGesture=gesto;
-  const vector={destra:[1,0],sinistra:[-1,0],su:[0,-1],giu:[0,1],centro:[0,0]}[gesto];
-  if(vector) move(...vector);
-}
-const voiceObserver=new MutationObserver(updateState);
-voiceObserver.observe(parentPage.body,{attributes:true,attributeFilter:["class"]});
-const statusObserver=new MutationObserver(updateState);
-if(statusHost) statusObserver.observe(statusHost,{subtree:true,childList:true,attributes:true,attributeFilter:["class","data-movimento"]});
-window.addEventListener("pagehide",()=>{
-  parentPage.removeEventListener("pointermove",follow);
-  voiceObserver.disconnect();
-  statusObserver.disconnect();
-},{once:true});
-updateState();
+if (portrait.complete && portrait.naturalWidth) installMotion();
+else portrait.addEventListener("load",installMotion,{once:true});
 </script></html>

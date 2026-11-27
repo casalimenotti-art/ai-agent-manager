@@ -116,7 +116,7 @@ function renderGuardian(gl) {
   }
   const parentPage = window.parent.document;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-  let px=0, py=0, move="", gesture=0, last=0;
+  let px=0, py=0, yaw=0, pitch=0, move="", gesture=0, last=0;
   function follow(event) {
     px=Math.max(-1,Math.min(1,(event.clientX/window.parent.innerWidth-.5)*2));
     py=Math.max(-1,Math.min(1,(event.clientY/window.parent.innerHeight-.45)*2));
@@ -148,8 +148,10 @@ function renderGuardian(gl) {
     const gaze={destra:[1,0],sinistra:[-1,0],su:[0,-1],giu:[0,1]};
     const [gx,gy]=gaze[move] || (reduced.matches?[0,0]:[px,py]);
     const nod=move==="annuisci" && age<.75 && !reduced.matches?Math.sin(age*10)*.16:0;
-    const cy=Math.cos(nod),sy=Math.sin(nod);
-    const basis=[1,0,0,0,cy,sy,0,-sy,cy];
+    yaw+=(gx*.43-yaw)*.22;
+    pitch+=(gy*.24-pitch)*.22;
+    const cx=Math.cos(yaw),sx=Math.sin(yaw),cy=Math.cos(pitch+nod),sy=Math.sin(pitch+nod);
+    const basis=[cx,0,-sx,sx*sy,cy,cx*sy,sx*cy,-sy,cx*cy];
     const rise=Math.sin(t*1.5)*.023;
     function head(x,y,z,a,b,c,m,finish) {
       const offset=[basis[0]*x+basis[3]*y+basis[6]*z,basis[1]*x+basis[4]*y+basis[7]*z,basis[2]*x+basis[5]*y+basis[8]*z];

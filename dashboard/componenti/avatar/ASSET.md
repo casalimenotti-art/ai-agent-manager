@@ -17,5 +17,5 @@ per l'animazione facciale da audio, [asset anatomici Blender](https://www.blende
 per una futura mesh con rig completo. La mandibola attuale segue l'attivazione della voce.
 
 Il ritratto cinematografico è un asset originale creato con ImageGen per Guardian.
-La vista predefinita lo anima con un lieve spostamento e luce al puntatore e
-lo stato della voce. In Opzioni si può aprire il modello WebGL con articolazioni.
+La vista predefinita deforma localmente il ritratto WebGL: volto, occhi,
+mandibola e spalle si muovono con ampiezze diverse, su sfondo fermo. In Opzioni si può aprire il modello WebGL con articolazioni.

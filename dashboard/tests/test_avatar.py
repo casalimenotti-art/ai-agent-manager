@@ -26,3 +26,4 @@ def test_ritratto_locale_con_pointer_e_motion_ridotto():
     assert "data:image/jpeg;base64,/9j/" in html
     assert "__PORTRAIT__" not in html
     assert "pointermove" in html and "prefers-reduced-motion" in html
+    assert "texture2D(picture,clamp(p-turn" in html
