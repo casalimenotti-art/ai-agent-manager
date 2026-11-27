@@ -45,3 +45,8 @@ Rinominato `guardian_hub/` → `guardian/`; store diviso in `store.py` (comuni +
 - Test: 37 passati; `tests/pg/run.sh` → CHECK 002 OK + CHECK 003 OK.
 - Non verificato dal vivo: hook installati su un PC reale e il formato di Codex notify.
 - Prossimo passo: M3. Stato del sistema (`store.ping`, modalità, polling, numero di bridge vivi), Task Manager v2 (progetto, dipendenze, agente assegnato, risultato/errore, 10 stati), pagina Log (`store.agent_logs` con filtri), Notifiche (`store.notifications` / `mark_read`), Approvazioni v2 (action_type, reason, impact, data_involved, agente), Progetti.
+
+## Aggiornamento M3 (27/11)
+- Fatto: `guardian/ui/status.py` (DB ping con latenza, backend, polling dichiarato, bridge/agenti con segnale), Overview v2, Task v2 (progetto, dipendenze, agente, risultato/errore, criteri; filtro per progetto; 4 gruppi di stati), `projects.py`, `logs.py` (filtri agente/PC/progetto/task/livello/periodo), `notifications.py` (contatore nella barra), Approvazioni v2 (tipo, agente, motivo, impatto, dati, storico), icone di gravità nella timeline.
+- Test: 41 passati (AppTest su tutte le 10 sezioni); Playwright a 1280/390 px: 0 eccezioni, nessuno scroll orizzontale.
+- Prossimo passo: M4. Metodi memory (add/search/supersede) in entrambi gli store, ricerca `ricerca @@ plainto_tsquery('italian', ...)` in Supabase e LIKE in SQLite; Handoff v2 (campi extra già nel DB: from/to_agent_id, tests_pending, dependencies, important_notes, stato aperto/preso/chiuso) con take/close e notifica al destinatario; `python -m guardian.export_md` per rigenerare GUARDIAN_TASKS.md dal DB (facoltativo).

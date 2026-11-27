@@ -80,5 +80,6 @@ def riga_evento(ctx: Ctx, e: dict) -> None:
     chi = " · ".join(x for x in (ctx.nome(e.get("user_id")) if e.get("user_id") else "", e.get("agent_name") or "") if x)
     task = f" · task #{e['task_id']}" if e.get("task_id") else ""
     files = " · " + ", ".join(e["files"][:5]) if e.get("files") else ""
-    st.markdown(f"**{e['event_type']}** — {e['message']}  \n"
+    icona = {"warning": "⚠️ ", "error": "❌ ", "critical": "🚨 "}.get(e.get("severity", "info"), "")
+    st.markdown(f"{icona}**{e['event_type']}** — {e['message']}  \n"
                 f"<small>{fa(e['timestamp'])} · {chi or 'sistema'}{task}{files}</small>", unsafe_allow_html=True)

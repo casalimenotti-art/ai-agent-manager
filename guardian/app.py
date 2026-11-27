@@ -15,11 +15,12 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from guardian.core.store import crea_store_locale  # noqa: E402
-from guardian.ui import activity, agents, approvals, devices, handoff, overview, tasks  # noqa: E402
+from guardian.ui import (activity, agents, approvals, devices, handoff, logs, notifications, overview,  # noqa: E402
+                         projects, tasks)
 from guardian.ui.components import CSS, Ctx, esegui, segreto  # noqa: E402
 
-PAGINE = {"Overview": overview, "Agenti": agents, "Task": tasks, "Attività": activity, "Handoff": handoff,
-          "Approvazioni": approvals, "Dispositivi": devices}
+PAGINE = {"Overview": overview, "Agenti": agents, "Task": tasks, "Progetti": projects, "Attività": activity,
+          "Log": logs, "Handoff": handoff, "Approvazioni": approvals, "Notifiche": notifications, "Dispositivi": devices}
 
 st.set_page_config(page_title="Guardian", page_icon="🛡️", layout="wide", initial_sidebar_state="auto")
 st.markdown(CSS, unsafe_allow_html=True)
@@ -76,7 +77,9 @@ with st.sidebar:
 
 ctx = Ctx(store=store, io=io, nomi={u["id"]: u["nome"] for u in (esegui(store.users) or [])})
 st.markdown("## 🛡️ Guardian")
-pagina = st.segmented_control("Sezione", list(PAGINE), default="Overview", label_visibility="collapsed",
-                              key="pagina") or "Overview"
+n_notifiche = notifications.non_lette(ctx)
+pagina = st.segmented_control(
+    "Sezione", list(PAGINE), default="Overview", label_visibility="collapsed", key="pagina",
+    format_func=lambda p: f"Notifiche ({n_notifiche})" if p == "Notifiche" and n_notifiche else p) or "Overview"
 PAGINE[pagina].render(ctx)
 st.caption(f"Guardian · {store.modalita} · {datetime.now(timezone.utc):%H:%M} UTC")
