@@ -603,10 +603,11 @@ def sez_guardian():
         st.session_state["spazio"] = cmd["valore"]
     elif cmd and cmd["tipo"] == "voce":
         st.session_state["voce_on"] = cmd["valore"]
-    if not chat.agente_installato(config.MANAGER_AGENT):
+    if not isinstance(fonte, fonte_mod.FonteDemo) and not chat.agente_installato(config.MANAGER_AGENT):
         st.caption(f"⚠️ L'agente `{config.MANAGER_AGENT}` non è installato (pannello Squadra): rispondo come un normale Claude Code.")
     reattore = st.empty()
     st.session_state["_rx_ph"] = reattore
+    html_frame(avatar.insegui_puntatore(), height=0)
     with st.container(key="g_barra"):
         c_mic, c_riass, c_voce, c_imp = st.columns(4, vertical_alignment="center")
         with c_mic.popover("Mic", icon=":material/mic:", use_container_width=True, help="Microfono", key="mic_pop"):
@@ -641,7 +642,7 @@ def sez_guardian():
     vuota = None
     if not conv["msgs"] and "_invio_guardian" not in st.session_state:
         vuota = st.empty()
-        with vuota.container(key="g_sugg"):
+        with vuota.expander("Comandi suggeriti", expanded=False):
             st.caption(f"Parli con **Guardian**, il manager (`{config.MANAGER_AGENT}`). Cartella: `{cwd}`")
             cols = st.columns(len(plancia.SUGGERIMENTI))
             for col, (chiave, etichetta) in zip(cols, plancia.SUGGERIMENTI):
@@ -959,7 +960,7 @@ def sez_team():
 # ---------------------------------------------------------------- Plancia unica
 SPAZI = [("agenti", "Agenti", sez_agenti), ("team", "Team", sez_team), ("skill", "Skill", sez_skill), ("squadra", "Squadra", sez_squadra),
          ("store", "Store", sez_store), ("clienti", "Clienti", sez_clienti), ("siti", "Siti demo", sez_siti),
-         ("scoperte", "Scoperte", pannello_scoperte)]
+         ("scoperte", "Scoperte", pannello_scoperte), ("consumi", "Consumi", sez_consumi), ("costi", "Costi", sez_costi)]
 
 
 @st.fragment(run_every=15)
@@ -982,6 +983,23 @@ def utilizzo_reale():
         except Exception:
             pass
         st.caption(("DEMO · valori finti · " if d["demo"] else "") + d["eta"], help=aiuto)
+
+
+@st.fragment(run_every=15)
+def riepilogo_modelli():
+    st.subheader("Modelli · 30 giorni")
+    try:
+        modelli = dati_costi(fonte, 30).get("modelli", [])
+    except (OSError, ValueError, KeyError):
+        modelli = []
+    if modelli:
+        st.markdown(theme.barre_orizzontali([(m["modello"], m["costo"]) for m in modelli[:4]]),
+                    unsafe_allow_html=True)
+        st.caption("Dati demo · Stima a listino API" if isinstance(fonte, fonte_mod.FonteDemo) else "Stima a listino API")
+    else:
+        st.caption("Nessun consumo per modello disponibile.")
+    st.button("Dettaglio costi", key="rapido_costi", on_click=st.session_state.update,
+              args=({"spazio": "costi"},), use_container_width=True)
 
 
 # ---------------------------------------------------------------- Barra laterale: catalogo agenti e skill
@@ -1076,15 +1094,26 @@ else:
 if not OSPITE and (_ag := st.session_state.pop("_lancia_da_catalogo", None)):
     dialog_lancia_agente(_ag, chiave="cat")
 
-# ALTO: Guardian (chat con il manager) + utilizzo reale
+# Panoramica operativa e passaggi rapidi per il titolare
 if not OSPITE:
-    alto_sx, alto_dx = st.columns([3, 1], gap="medium")
-    with alto_sx:
+    scorciatoie = st.columns(4)
+    for col, titolo, spazio in zip(scorciatoie, ("Diretta", "Consumi", "Clienti", "Team"),
+                                  ("agenti", "consumi", "clienti", "team")):
+        col.button(titolo, key=f"rapido_{spazio}", use_container_width=True,
+                   on_click=st.session_state.update, args=({"spazio": spazio},))
+    posta, centro, consumi = st.columns([1, 2.7, 1.35], gap="medium")
+    with posta:
+        with st.container(border=True, key="plancia_posta"):
+            st.subheader("Posta")
+            st.caption("Conteggio non letti non collegato")
+            st.link_button("Apri Gmail", "https://mail.google.com/mail/#inbox", use_container_width=True)
+    with centro:
         with st.container(key="plancia_guardian"):
             sez_guardian()
-    with alto_dx:
+    with consumi:
         with st.container(key="plancia_utilizzo"):
             utilizzo_reale()
+            riepilogo_modelli()
 
 # BASSO: barra di spazi; lo spazio scelto riempie l'area come una pagina a sé
 etichette = {chiave: titolo for chiave, titolo, _ in SPAZI}

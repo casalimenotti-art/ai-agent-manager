@@ -29,3 +29,13 @@ body.g-parla .guardian-avatar .guardian-speaking { display:inline; }
 @keyframes guardian-nod { 35%,75% { transform:translateY(8px) scaleY(.94); } }
 @keyframes guardian-voice { to { transform:scaleY(4); } }
 @media (prefers-reduced-motion: reduce) { .guardian-avatar *, body.g-parla .guardian-avatar * { animation:none !important; transition:none !important; } }
+
+.st-key-plancia_guardian {
+  background:radial-gradient(ellipse at 50% 20%, #0a3249 0%, #101a2b 53%, #0b111e 100%);
+}
+.st-key-plancia_guardian .guardian-holo { width:min(48vw, 178px); }
+.st-key-plancia_posta, .st-key-plancia_utilizzo { overflow-wrap:anywhere; }
+@media (prefers-reduced-motion: no-preference) {
+  [class*="st-key-sez_"] { animation:guardian-space-in .22s ease-out both; }
+  @keyframes guardian-space-in { from { opacity:.7; } to { opacity:1; } }
+}
