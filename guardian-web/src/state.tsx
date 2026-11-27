@@ -140,9 +140,13 @@ export function GuardianProvider({ source, user, onEsci, children }: { source: D
 }
 
 /** Preferenze personali (solo interfaccia): localStorage, con fallback se non disponibile. */
-export interface Preferenze { voce: boolean; livello: 'silenzio' | 'critici' | 'importanti' | 'tutti'; silenzioDa: string; silenzioA: string; animazioni: boolean; coloriStanze: 'accesa' | 'soft'; suoni: boolean }
-const PREF_DEFAULT: Preferenze = { voce: false, livello: 'critici', silenzioDa: '22:00', silenzioA: '08:00', animazioni: true, coloriStanze: 'accesa', suoni: false };
+export interface Preferenze { voce: boolean; livello: 'silenzio' | 'critici' | 'importanti' | 'tutti'; silenzioDa: string; silenzioA: string; animazioni: boolean; coloriStanze: 'accesa' | 'soft'; suoni: boolean;
+  /** volto di NEXO Sentinel come sfondo: animato (WebGL), immagine ferma o spento */ volto: 'acceso' | 'immagine' | 'spento'; vetro: 'forte' | 'leggero' | 'spento' }
+const PREF_DEFAULT: Preferenze = { voce: false, livello: 'critici', silenzioDa: '22:00', silenzioA: '08:00', animazioni: true, coloriStanze: 'accesa', suoni: false, volto: 'acceso', vetro: 'leggero' };
 export function leggiPreferenze(): Preferenze {
   try { return { ...PREF_DEFAULT, ...JSON.parse(localStorage.getItem('guardian.pref') || '{}') }; } catch { return PREF_DEFAULT; }
 }
-export function salvaPreferenze(p: Preferenze) { try { localStorage.setItem('guardian.pref', JSON.stringify(p)); } catch { /* storage non disponibile */ } }
+export function salvaPreferenze(p: Preferenze) {
+  try { localStorage.setItem('guardian.pref', JSON.stringify(p)); } catch { /* storage non disponibile */ }
+  window.dispatchEvent(new CustomEvent('guardian:preferenze'));
+}

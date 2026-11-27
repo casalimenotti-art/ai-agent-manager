@@ -1,6 +1,6 @@
 import { Activity, ArrowLeft, Bell, Bot, BookOpen, Building2, Cpu, GitBranchPlus, HeartPulse, LayoutDashboard, ListTodo, LogOut, Mic,
   MicOff, Network, Search, Send, Settings, ShieldCheck, Shuffle, Square, X, type LucideIcon } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as KE } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent as KE } from 'react';
 import { fa } from '../logic/status';
 import { leggiPreferenze, useG, type Pannello } from '../state';
 import { CommandCenter } from './CommandCenter';
@@ -8,6 +8,17 @@ import { BarraConversazione, PulsanteConversazione, useConversazione } from './C
 import { useRispondi } from './useRispondi';
 import { suona } from './suoni';
 import { Parete } from './Parete';
+import { segnalaRichiesta } from '../volto/segnali';
+
+const VoltoSfondo = lazy(() => import('../volto/VoltoSfondo'));
+
+/** Preferenze d'aspetto (volto e vetro), aggiornate subito quando si cambiano in Impostazioni. */
+function useAspetto() {
+  const [p, setP] = useState(leggiPreferenze);
+  useEffect(() => { const f = () => setP(leggiPreferenze()); window.addEventListener('guardian:preferenze', f); return () => window.removeEventListener('guardian:preferenze', f); }, []);
+  useEffect(() => { const h = document.documentElement; h.classList.toggle('con-volto', p.volto !== 'spento'); h.dataset.vetro = p.vetro; }, [p.volto, p.vetro]);
+  return p;
+}
 import { PANNELLI, titoloPannello } from './panels';
 import { ascolta, inSilenzio, parla, smettiDiAscoltare, supportoAscolto, supportoParlato, useVoce, zitto } from './voce';
 
@@ -189,7 +200,7 @@ function Palette() {
   const trovate = voci.filter((v) => parole.every((p) => `${v.gruppo} ${v.nome}`.toLowerCase().includes(p))).slice(0, 30);
   const tutte: Voce[] = q.trim() ? [...trovate, { gruppo: 'Guardian', nome: `Chiedi a Guardian: «${q.trim()}»`, icona: Search,
     azione: () => window.dispatchEvent(new CustomEvent('guardian:chiedi', { detail: q.trim() })) }] : trovate;
-  const esegui = (v?: Voce) => { if (!v) return; setPalette(false); v.azione(); };
+  const esegui = (v?: Voce) => { if (!v) return; setPalette(false); segnalaRichiesta(); v.azione(); };
   const tasti = (e: KE) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, tutte.length - 1)); }
     if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
@@ -254,10 +265,12 @@ function Toasts() {
 
 export function Shell() {
   const { source, pannello, parete } = useG();
-  if (parete) return <><Parete /><Annunci /><Toasts /></>;
+  const aspetto = useAspetto();
+  const volto = aspetto.volto !== 'spento' && <Suspense fallback={null}><VoltoSfondo key={aspetto.volto} punto={parete ? [0.24, 0.3] : undefined} /></Suspense>;
+  if (parete) return <>{volto}<Parete /><Annunci /><Toasts /></>;
   const classi = ['shell', pannello && PANNELLI[pannello.p] ? 'con-pannello' : '', pannello && PANNELLI[pannello.p]?.largo ? 'pannello-lg' : ''].join(' ');
   return (
-    <div className={classi}>
+    <>{volto}<div className={classi}>
       <Header />
       <Rail />
       <main className="main" id="centro"><CommandCenter /></main>
@@ -267,7 +280,7 @@ export function Shell() {
       <Palette />
       <Annunci />
       <Toasts />
-    </div>
+    </div></>
   );
 }
 

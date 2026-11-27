@@ -95,7 +95,7 @@ class Nodi:
         return presa(m, "Result_Color")
 
 
-def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, colate=False, ao=True):
+def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, colate=False, ao=True, crateri=(), segni=False):
     """Vernice su acciaio: usura sugli spigoli (AO interno), graffi, sporco e ruggine nelle cavità, ammaccature nella normale."""
     m = bpy.data.materials.new(nome)
     N = Nodi(m)
@@ -116,9 +116,23 @@ def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, co
     stira.inputs["Scale"].default_value = (2.0, 2.0, 70.0)
     stira.inputs["Rotation"].default_value = (0.4, 0.9, 0.2)
     N.l(coord, stira.inputs["Vector"])
-    graffi = N.rampa(N.rumore(14.0, 4, 0.5, stira.outputs[0]), 0.70, 0.72)
-    chiazze = N.rampa(N.mat("MULTIPLY", N.rumore(4.0, 14, 0.8, coord), N.mat("ADD", spigoli, 0.6)), 0.50, 0.53)
+    graffi = N.rampa(N.rumore(14.0, 4, 0.5, stira.outputs[0]), 0.685, 0.715)
+    chiazze = N.rampa(N.mat("MULTIPLY", N.rumore(4.0, 14, 0.8, coord), N.mat("ADD", spigoli, 0.6)), 0.47, 0.51)
     scoperto = N.mat("MAXIMUM", N.mat("MAXIMUM", usura, chiazze), N.mat("MULTIPLY", graffi, 0.6))
+    fuliggini = []
+    # crateri d'impatto: attorno a ogni vuoto "Impatto" la vernice è saltata, con graffi radiali
+    for vuoto in crateri:
+        tc = N.n("ShaderNodeTexCoord", object=vuoto)
+        dist = N.n("ShaderNodeVectorMath", operation="LENGTH")
+        N.l(tc.outputs["Object"], dist.inputs[0])
+        anello = N.rampa(dist.outputs["Value"], 0.55, 1.45, (1, 1, 1, 1), (0, 0, 0, 1))
+        sfr = N.n("ShaderNodeVectorMath", operation="NORMALIZE")
+        N.l(tc.outputs["Object"], sfr.inputs[0])
+        raggi = N.rampa(N.rumore(9.0, 3, 0.5, sfr.outputs[0]), 0.52, 0.58)
+        nucleo_c = N.rampa(N.mat("ADD", dist.outputs["Value"], N.mat("MULTIPLY", rotto, 0.35)), 0.45, 0.62, (1, 1, 1, 1), (0, 0, 0, 1))
+        cratere = N.mat("MAXIMUM", nucleo_c, N.mat("MULTIPLY", anello, N.mat("MULTIPLY", raggi, 1.3)))
+        scoperto = N.mat("MAXIMUM", scoperto, cratere)
+        fuliggini.append(N.rampa(N.mat("ADD", dist.outputs["Value"], N.mat("MULTIPLY", rotto, 0.6)), 0.5, 2.0, (1, 1, 1, 1), (0, 0, 0, 1)))
     # cavità: AO normale → sporco e ruggine
     if ao:
         ao_n = N.n("ShaderNodeAmbientOcclusion")
@@ -144,13 +158,24 @@ def materiale_vernice(nome, colore, colore2, ruggine=True, forza_ruggine=1.4, co
             sparse = N.rampa(N.rumore(1.6, 12, 0.75, coord), 0.50, 0.68)
             rug = N.mat("MAXIMUM", rug, N.mat("MAXIMUM", N.mat("MULTIPLY", col, 0.8), N.mat("MULTIPLY", sparse, 0.9)))
         colore_f = N.mix(rug, colore_f, N.mix(N.rumore(40.0), (0.18, 0.06, 0.02), (0.32, 0.12, 0.04)))
+    for f in fuliggini:  # annerimento attorno al colpo
+        colore_f = N.mix(N.mat("MULTIPLY", f, 0.85), colore_f, (0.008, 0.006, 0.005))
+    if segni:  # bruciature e colature d'olio: anni di servizio
+        pos = N.n("ShaderNodeNewGeometry").outputs["Position"]
+        giu = N.n("ShaderNodeMapping")
+        giu.inputs["Scale"].default_value = (22.0, 22.0, 0.9)
+        N.l(pos, giu.inputs["Vector"])
+        olio = N.mat("MULTIPLY", N.rampa(N.rumore(2.2, 5, 0.55, giu.outputs[0]), 0.58, 0.72), N.rampa(N.rumore(1.1, 3, 0.4, pos), 0.42, 0.62))
+        colore_f = N.mix(N.mat("MULTIPLY", olio, 0.85), colore_f, (0.006, 0.005, 0.004))
+        brucia = N.rampa(N.rumore(1.4, 10, 0.72, pos), 0.60, 0.74)
+        colore_f = N.mix(N.mat("MULTIPLY", brucia, 0.8), colore_f, N.mix(N.rumore(25.0, 6, 0.7, pos), (0.012, 0.009, 0.007), (0.06, 0.035, 0.02)))
     N.l(colore_f, bsdf.inputs["Base Color"])
     N.l(scoperto, bsdf.inputs["Metallic"])
     rough = N.mat("ADD", N.mat("MULTIPLY", N.rumore(18.0), 0.25), N.mat("MULTIPLY", scoperto, -0.25))
     N.l(N.mat("ADD", rough, 0.42), bsdf.inputs["Roughness"])
     # ammaccature e bordo della vernice scheggiata nella normale
     altezza = N.mat("ADD", N.mat("MULTIPLY", N.rumore(3.0, 4, 0.4, coord), 0.6), N.mat("MULTIPLY", usura, -0.25))
-    altezza = N.mat("ADD", altezza, N.mat("MULTIPLY", graffi, -0.15))
+    altezza = N.mat("ADD", altezza, N.mat("MULTIPLY", graffi, -0.35))
     bump = N.n("ShaderNodeBump")
     bump.inputs["Strength"].default_value = 0.35
     bump.inputs["Distance"].default_value = 0.01
@@ -177,7 +202,15 @@ def materiale_semplice(nome, colore, metallo=0.0, rugo=0.5, emissione=None, forz
         b.inputs["Transmission Weight"].default_value = 1.0
         b.inputs["IOR"].default_value = 1.5
         # vetro graffiato: rugosità variabile
-        N.l(N.mat("ADD", N.mat("MULTIPLY", N.rampa(N.rumore(80.0, 2), 0.6, 0.66), 0.25), 0.02), b.inputs["Roughness"])
+        crepe_v = N.n("ShaderNodeTexVoronoi", feature="DISTANCE_TO_EDGE")
+        crepe_v.inputs["Scale"].default_value = 4.0
+        crepe = N.rampa(crepe_v.outputs["Distance"], 0.0, 0.01, (1, 1, 1, 1), (0, 0, 0, 1))
+        crepe = N.mat("MULTIPLY", crepe, N.rampa(N.rumore(2.0, 4, 0.5), 0.55, 0.7))
+        N.l(N.mat("ADD", N.mat("ADD", N.mat("MULTIPLY", N.rampa(N.rumore(80.0, 2), 0.6, 0.66), 0.25), 0.14), N.mat("MULTIPLY", crepe, 0.35)), b.inputs["Roughness"])
+        bump = N.n("ShaderNodeBump")
+        bump.inputs["Strength"].default_value = 0.25
+        N.l(crepe, bump.inputs["Height"])
+        N.l(bump.outputs[0], b.inputs["Normal"])
     return m
 
 
@@ -192,8 +225,8 @@ def materiale_stencil(nome, colore):
     tr = N.n("ShaderNodeBsdfTransparent")
     mixs = N.n("ShaderNodeMixShader")
     coord = N.n("ShaderNodeTexCoord").outputs["Object"]
-    buchi = N.rampa(N.rumore(22.0, 12, 0.75, coord), 0.47, 0.55)
-    scaglie = N.rampa(N.rumore(70.0, 4, 0.6, coord), 0.58, 0.62)
+    buchi = N.rampa(N.rumore(22.0, 12, 0.75, coord), 0.44, 0.52)
+    scaglie = N.rampa(N.rumore(70.0, 4, 0.6, coord), 0.55, 0.60)
     stira = N.n("ShaderNodeMapping")
     stira.inputs["Scale"].default_value = (90.0, 3.0, 3.0)
     N.l(coord, stira.inputs["Vector"])
@@ -359,13 +392,43 @@ def parete(sc, mat, mat_rivetti):
     scatola("Trave", (0, Y - 0.08, -0.95), (14, 0.14, 0.22), mat=mat, bevel=0.02)
 
 
+def ammacca(o, livelli=2, forza=0.006, crateri=()):
+    """Ammaccature vere: suddivisione semplice + Displace a bassa frequenza + crateri sferici (vuoti 'Impatto')."""
+    sd = o.modifiers.new("Densita", "SUBSURF")
+    sd.subdivision_type, sd.levels, sd.render_levels = "SIMPLE", livelli, livelli
+    tx = bpy.data.textures.new(f"Bozze_{o.name}", "CLOUDS")
+    tx.noise_scale, tx.noise_depth = 0.35, 2
+    d = o.modifiers.new("Bozze", "DISPLACE")
+    d.texture, d.strength, d.mid_level, d.texture_coords = tx, forza, 0.5, "GLOBAL"
+    for vuoto in crateri:
+        t = bpy.data.textures.get("Cratere") or bpy.data.textures.new("Cratere", "BLEND")
+        t.progression = "SPHERICAL"
+        c = o.modifiers.new(f"Cratere_{vuoto.name}", "DISPLACE")
+        c.texture, c.strength, c.mid_level = t, -0.07, 0.0
+        c.texture_coords, c.texture_coords_object = "OBJECT", vuoto
+    o.modifiers.move(o.modifiers.find("Normali"), len(o.modifiers) - 1)
+
+
+def impatto(nome, pos, raggio, gen):
+    e = bpy.data.objects.new(nome, None)
+    bpy.context.scene.collection.objects.link(e)
+    e.parent, e.location, e.scale = gen, pos, (raggio, raggio, raggio)
+    return e
+
+
 # ------------------------------------------------------------------ scena
 def costruisci(v):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
     V = VARIANTI[v]
-    vern = materiale_vernice("Mat_Corazza", V["vernice"], V["vernice2"])
-    vern_chiara = materiale_vernice("Mat_Corazza_2", tuple(c * 1.35 for c in V["vernice"]), tuple(c * 1.35 for c in V["vernice2"]))
+    testa = bpy.data.objects.new("Testa", None)
+    sc.collection.objects.link(testa)
+    testa.rotation_euler = Euler((math.radians(4), 0, math.radians(-7)))
+    imp = [impatto("Impatto_fronte", (-0.52, -0.80, 0.66), 0.09, testa),
+           impatto("Impatto_guancia", (0.80, -0.80, 0.14), 0.075, testa),
+           impatto("Impatto_mascella", (0.28, -0.79, -0.47), 0.07, testa)]
+    vern = materiale_vernice("Mat_Corazza", V["vernice"], V["vernice2"], crateri=imp, segni=True)
+    vern_chiara = materiale_vernice("Mat_Corazza_2", tuple(c * 1.35 for c in V["vernice"]), tuple(c * 1.35 for c in V["vernice2"]), crateri=imp, segni=True)
     acciaio = materiale_vernice("Mat_Acciaio", (0.07, 0.072, 0.075), (0.10, 0.10, 0.105), ruggine=True)
     scuro = materiale_semplice("Mat_Interni", (0.015, 0.015, 0.017), 0.6, 0.55)
     gomma = materiale_semplice("Mat_Cavi", (0.01, 0.01, 0.01), 0.0, 0.7)
@@ -375,20 +438,19 @@ def costruisci(v):
     vetro = materiale_semplice("Mat_Vetro", (0.9, 0.95, 1.0), 0, 0.03, vetro=True)
     stencil = materiale_stencil("Mat_Stencil", V["testo"])
 
-    testa = bpy.data.objects.new("Testa", None)
-    sc.collection.objects.link(testa)
-    testa.rotation_euler = Euler((math.radians(4), 0, math.radians(-7)))
-
     # massa del cranio e piastre principali
-    scatola("Cranio", (0, 0.25, 0.22), (1.62, 1.45, 1.0), mat=vern, gen=testa, bevel=0.06, rastrema=(0.86, 0.92))
+    ammacca(scatola("Cranio", (0, 0.25, 0.22), (1.62, 1.45, 1.0), mat=vern, gen=testa, bevel=0.06, rastrema=(0.86, 0.92)), forza=0.01)
     fronte = scatola("Fronte", (0, -0.58, 0.64), (1.78, 0.42, 0.40), rot=(14, 0, 0), mat=vern_chiara, gen=testa, bevel=0.035, rastrema=(0.9, 0.95))
     scatola("Cresta", (0, 0.05, 0.86), (0.34, 1.35, 0.14), mat=vern, gen=testa, bevel=0.03)
     faccia = scatola("Faccia", (0, -0.66, 0.08), (1.16, 0.26, 0.78), mat=vern, gen=testa, bevel=0.03)
+    ammacca(fronte, livelli=3, crateri=imp[:1])
+    ammacca(faccia)
     guance = []
     scatola("Visiera", (0, -0.86, 0.43), (1.24, 0.42, 0.10), rot=(-12, 0, 0), mat=vern, gen=testa, bevel=0.02, rastrema=(1.0, 0.8))
     for s in (-1, 1):
         guance.append(scatola(f"Guancia_{'L' if s < 0 else 'R'}", (s * 0.80, -0.50, 0.02), (0.46, 0.62, 0.76), rot=(0, s * -4, s * 28),
                 mat=vern_chiara, gen=testa, bevel=0.03, rastrema=(0.9, 0.85)))
+        ammacca(guance[-1], livelli=3, crateri=imp[1:2] if s > 0 else ())
         scatola(f"Zigomo_{'L' if s < 0 else 'R'}", (s * 0.40, -0.82, -0.25), (0.42, 0.16, 0.13), rot=(0, s * 14, s * 14),
                 mat=vern, gen=testa, bevel=0.02)
         cilindro(f"Capsula_{'L' if s < 0 else 'R'}", (s * 0.93, 0.25, 0.22), 0.34, 0.26, "X", acciaio, testa, bevel=0.02)
@@ -402,7 +464,7 @@ def costruisci(v):
         cilindro(f"Sensore_{s}", (s * 0.60, -0.86, 0.43), 0.035, 0.05, "Y", acciaio, testa, bevel=0.005)
         cilindro(f"Sensore_luce_{s}", (s * 0.60, -0.888, 0.43), 0.018, 0.01, "Y", materiale_semplice(f"Mat_Led_{s}", (0, 0, 0), 0, 0.3, (1.0, 0.25, 0.05), 4.0), testa, bevel=0)
     scatola("Antenna", (-0.93, 0.32, 0.62), (0.035, 0.035, 0.55), rot=(0, -8, 0), mat=acciaio, gen=testa, bevel=0.008)
-    scatola("Mascella", (0, -0.47, -0.47), (1.02, 0.6, 0.34), rot=(-8, 0, 0), mat=vern_chiara, gen=testa, bevel=0.035, rastrema=(1.08, 0.88))
+    ammacca(scatola("Mascella", (0, -0.47, -0.47), (1.02, 0.6, 0.34), rot=(-8, 0, 0), mat=vern_chiara, gen=testa, bevel=0.035, rastrema=(1.08, 0.88)), livelli=3, crateri=imp[2:])
     scatola("Bocca_fondo", (0, -0.74, -0.46), (0.56, 0.03, 0.2), mat=bocca, gen=testa, bevel=0)
     for i in range(6):
         scatola(f"Griglia_{i}", (0, -0.79, -0.385 - i * 0.032), (0.62, 0.05, 0.016), mat=acciaio, gen=testa, bevel=0.004)
@@ -440,7 +502,7 @@ def costruisci(v):
         a.rotation_euler = Euler((0, math.radians(k * 17), 0))
     for i in range(10):  # iride a lamelle, socchiusa
         ang = 2 * math.pi * i / 10
-        bl = scatola(f"Iride_{i}", E + Vector((0.20 * math.cos(ang), 0.05, 0.20 * math.sin(ang))), (0.17, 0.008, 0.07),
+        bl = scatola(f"Iride_{i}", E + Vector((0.20 * math.cos(ang), -0.01, 0.20 * math.sin(ang))), (0.17, 0.008, 0.07),
                      rot=(0, -math.degrees(ang) - 70, 0), mat=scuro, gen=testa, bevel=0.003)
     sfera = bpy.data.meshes.new("Nucleo")
     bm = bmesh.new()
@@ -456,8 +518,25 @@ def costruisci(v):
     for s in (-1, 1):
         for j in range(3):
             bullone((s * 0.86, -0.76, 0.28 - j * 0.24), (0, 0, s * 20), acciaio, testa)
-    for x in (-0.72, -0.38, 0.38, 0.72):
+    for x in (-0.72, -0.38, 0.38):
         bullone((x, -0.80, 0.56), (14, 0, 0), acciaio, testa, r=0.024)
+    # bullone mancante: resta il foro filettato, scuro e arrugginito
+    foro = materiale_semplice("Mat_Foro", (0.05, 0.018, 0.006), 0.2, 0.9)
+    cilindro("Foro_bullone", (0.72, -0.787, 0.56), 0.016, 0.03, "Y", foro, testa, lati=16, bevel=0, rot_extra=(14, 0, 0))
+    saldatura = materiale_vernice("Mat_Saldatura", (0.05, 0.045, 0.04), (0.09, 0.07, 0.05), forza_ruggine=2.0, ao=False)
+    for nome, punti in (("Saldatura_L", [(-0.575, -0.80, -0.28), (-0.58, -0.81, 0.05), (-0.575, -0.80, 0.36)]),
+                        ("Saldatura_M", [(-0.42, -0.775, -0.305), (0.0, -0.785, -0.31), (0.42, -0.775, -0.305)])):
+        cu = bpy.data.curves.new(nome, "CURVE")
+        cu.dimensions, cu.bevel_depth, cu.bevel_resolution = "3D", 0.011, 3
+        sp = cu.splines.new("BEZIER")
+        sp.bezier_points.add(len(punti) - 1)
+        for p, co in zip(sp.bezier_points, punti):
+            p.co, p.handle_left_type, p.handle_right_type = co, "AUTO", "AUTO"
+        os_ = bpy.data.objects.new(nome, cu)
+        sc.collection.objects.link(os_)
+        os_.data.materials.append(saldatura)
+        os_.parent = testa
+        cu.resolution_u = 64  # il cordone irregolare lo fa la normale del materiale
 
     # scritte consumate (sulla fronte e sulla guancia)
     testo("Stencil_NEXO", "NEXO SRL", (0, -0.2125, 0.06), (90, 0, 0), 0.15, stencil, fronte)
@@ -477,11 +556,11 @@ def costruisci(v):
         d = Vector(mira) - Vector(pos)
         o.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
         return o
-    luce("Chiave", "AREA", (-3.2, -4.2, 3.6), 520, (0.85, 0.92, 1.0), 2.0)
+    luce("Chiave", "AREA", (-3.2, -4.2, 3.6), 300, (0.85, 0.92, 1.0), 2.0)
     luce("Controluce", "AREA", (3.6, 2.4, 1.6), 520, (1.0, 0.80, 0.62), 0.8)
     luce("Schiarita", "AREA", (3.5, -3.5, -0.6), 35, (0.7, 0.8, 1.0), 3.0)
     luce("Bordo_alto", "AREA", (0, 1.5, 3.8), 260, (0.8, 0.88, 1.0), 2.0)
-    luce("Luce_occhio", "POINT", (0, -1.05, 0.10), 14, BLU).data.shadow_soft_size = 0.2
+    luce("Luce_occhio", "POINT", (0, -1.05, 0.10), 24, BLU).data.shadow_soft_size = 0.2
 
     w = bpy.data.worlds.new("Mondo")
     sc.world = w
@@ -490,10 +569,10 @@ def costruisci(v):
     bg.inputs[0].default_value = (0.004, 0.006, 0.009, 1)
     bg.inputs[1].default_value = 1.0
     # pavimento appena visibile per un po' di profondità
-    luce("Radente_parete", "AREA", (0.0, 0.7, 3.4), 380, (0.95, 0.9, 0.85), 4.0, mira=(0, 1.6, -0.6))
-    luce("Radente_lato", "AREA", (-4.0, 0.6, 0.3), 260, (0.75, 0.85, 1.0), 2.0, mira=(0, 1.6, 0.3))
+    luce("Radente_parete", "AREA", (0.0, 1.0, 3.0), 170, (0.95, 0.9, 0.85), 4.0, mira=(0, 1.6, -0.6))
+    luce("Radente_lato", "AREA", (-4.0, 1.2, 0.3), 120, (0.75, 0.85, 1.0), 2.0, mira=(0, 1.6, 0.3))
 
-    parete(sc, materiale_vernice("Mat_Parete", (0.028, 0.029, 0.03), (0.042, 0.04, 0.036), forza_ruggine=2.2, colate=True, ao=False),
+    parete(sc, materiale_vernice("Mat_Parete", (0.016, 0.017, 0.018), (0.026, 0.024, 0.021), forza_ruggine=2.2, colate=True, ao=False),
            materiale_vernice("Mat_Rivetti", (0.06, 0.058, 0.055), (0.08, 0.075, 0.07), forza_ruggine=2.0, ao=False))
     if False:  # vecchio fondale scuro, sostituito dalla parete
         pass
@@ -524,7 +603,7 @@ def costruisci(v):
     return sc
 
 
-def renderizza(sc, file, campioni, larghezza):
+def renderizza(sc, file, campioni, larghezza, post=True):
     sc.render.engine = "CYCLES"
     sc.cycles.device = "CPU"
     sc.cycles.samples = campioni
@@ -547,12 +626,19 @@ def renderizza(sc, file, campioni, larghezza):
     sc.render.image_settings.file_format = "PNG"
     sc.render.filepath = file
     bpy.ops.render.render(write_still=True)
+    if not post:  # strati per la dashboard: alone, vignettatura e grana li fa lo shader
+        return
     try:  # alone sui punti luminosi, come il "glare" del compositore
         from PIL import Image, ImageChops, ImageFilter
         im = Image.open(file).convert("RGB")
         luce = im.point(lambda v: 0 if v < 205 else min(255, (v - 205) * 5))
         alone = luce.filter(ImageFilter.GaussianBlur(larghezza / 60)).point(lambda v: int(v * 0.85))
-        ImageChops.add(im, alone).save(file)
+        im = ImageChops.add(im, alone)
+        # vignettatura: bordi più scuri, come un obiettivo vero
+        w, h = im.size
+        mask = Image.radial_gradient("L").resize((w, h)).point(lambda v: int(255 - min(255, max(0, (v - 120) * 1.6))))
+        nero = Image.new("RGB", (w, h), (0, 0, 0))
+        Image.composite(im, nero, mask.filter(ImageFilter.GaussianBlur(w / 20))).save(file)
     except ImportError:
         pass
 

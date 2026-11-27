@@ -14,6 +14,25 @@ python3.13 -m venv .venv-blender && .venv-blender/bin/pip install bpy pillow
 - Uscita: `sentinel-<variante>.png`, il render, e `sentinel-<variante>.blend`, che si apre in Blender ma non va in git.
 - Tempi: circa 5–10 minuti a 1280 px con 64 campioni su una CPU a 4 core. Con una GPU NVIDIA è molto più veloce.
 
+## Strati per la dashboard (`strati.py`)
+La dashboard non mostra un'immagine ferma: compone dal vivo gli **strati** renderizzati dalla stessa camera.
+```bash
+.venv-blender/bin/python tools/volto3d/strati.py --uscita guardian-web/public/volto --campioni 48 --larghezza 1920
+.venv-blender/bin/python tools/volto3d/verifica_strati.py guardian-web/public/volto
+```
+Gli strati sono:
+- `base`: tutto spento;
+- `luce`: acceso − base, cioè il bagliore blu sulle piastre;
+- `anelli`;
+- `bocca`;
+- `iride`: atlante di 8 aperture;
+- `profondita`: serve alla parallasse, cioè ai micro-movimenti della testa;
+- `meta.json`: posizione ed ellisse dell'occhio.
+
+Escono in 1920×1080 e 960×540. In tutto circa 45–60 minuti su CPU. `_tmp/` contiene i render grezzi e non va in git.
+L'inquadratura degli strati è più larga di quella dei concept: la testa è intera e spostata a destra, perché a sinistra vanno
+i pannelli. Anche la parete è più scura.
+
 ## Com'è fatto il realismo (tutto procedurale, nessuna texture scaricata)
 - **Vernice consumata**:
   - sugli spigoli, che il nodo AO "inside" riconosce, compare l'acciaio sotto;
@@ -30,9 +49,16 @@ python3.13 -m venv .venv-blender && .venv-blender/bin/pip install bpy pillow
 `Testa` (radice), `Occhio` (posizione dell'occhio), `Anello_1..3`, `Iride_0..9`, `Nucleo`, materiali `Mat_Occhio`,
 `Mat_Nucleo` e `Bocca_Griglia` (emissivi). Un modello fatto da un artista con gli stessi nomi si sostituisce senza toccare il codice.
 
-## Prossimi passi (vedi `prompts/GUARDIAN_HQ_VOLTO_3D_MASTER.md`, fasi 3–5)
-1. Cuocere le texture (bake) e esportare `volto.glb` per il browser: ≤ 60.000 triangoli, ≤ 6 MB.
-2. Aggiungere shape key per l'iride e l'otturatore, poi animare il volto con gli stati reali della conversazione.
+## Usura (variante A)
+- **Geometria**:
+  - ammaccature vere (suddivisione + Displace a bassa frequenza);
+  - tre crateri d'impatto: vuoti `Impatto_*`, con vernice saltata, graffi a raggiera e annerimento.
+- **Superficie**:
+  - bruciature e colature d'olio;
+  - due cordoni di saldatura;
+  - vetro dell'occhio incrinato (Voronoi "distance to edge" su rugosità e normale);
+  - stencil ancora più consumato.
+- **Dettagli**: un bullone mancante, con il foro arrugginito.
 
 ## Strumenti open source valutati (27/11/2026)
 | Strumento | Cosa fa | Si può usare? |

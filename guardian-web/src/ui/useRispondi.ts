@@ -4,6 +4,7 @@ import { comandoStanza, DOMANDE_ESEMPIO, rispondiConContesto } from '../logic/in
 import { report } from '../logic/report';
 import { cervelloOnline, statoAgente } from '../logic/status';
 import { useG } from '../state';
+import { segnalaRichiesta } from '../volto/segnali';
 
 const CLASSICO = import.meta.env.VITE_GUARDIAN_CLASSICO_URL as string | undefined;
 const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -12,6 +13,7 @@ export function useRispondi() {
   const { snap, pannello, aggiungiMessaggio, setPensa, apri, stanza, apriStanza, chiudi, source, user } = useG();
   return useCallback(async (q: string): Promise<string | AsyncIterable<string>> => {
     const domanda = q.trim(); if (!domanda) return '';
+    segnalaRichiesta(); // il volto si sveglia a ogni richiesta (chat o voce)
     aggiungiMessaggio({ da: 'user', testo: domanda });
     const di = (testo: string, fonte?: string) => { aggiungiMessaggio({ da: 'guardian', testo, fonte }); return testo; };
     if (!snap) return di('I dati non sono ancora caricati: riprova tra un istante.');

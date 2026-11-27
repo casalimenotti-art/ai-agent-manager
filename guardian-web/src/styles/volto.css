@@ -1,0 +1,41 @@
+/* Volto di NEXO Sentinel come sfondo vivo + vetro scuro (piano in VOLTO-STILE.md) */
+:root { --nucleo: #3fb8ff; --acciaio: #8d99a8; --lamiera: #05070a;
+  --vetro-bg: rgba(9, 12, 16, 0.62); --vetro-filtro: blur(16px) saturate(130%); --lamiera-bg: rgba(8, 11, 15, 0.84);
+  --font-titoli: 'Barlow Condensed', var(--font-sans); }
+:root[data-vetro='forte'] { --vetro-bg: rgba(9, 12, 16, 0.42); --vetro-filtro: blur(22px) saturate(140%); }
+:root[data-vetro='spento'] { --vetro-bg: rgba(9, 12, 16, 0.94); --vetro-filtro: none; }
+@media (prefers-reduced-transparency: reduce) { :root { --vetro-bg: rgba(9, 12, 16, 0.94); --vetro-filtro: none; } }
+
+.volto-sfondo { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: var(--lamiera); opacity: 0; transition: opacity 600ms var(--ease); }
+.volto-sfondo.pronto { opacity: 1; }
+.volto-sfondo canvas { width: 100%; height: 100%; display: block; }
+.volto-img { position: absolute; left: 0; top: 0; transform-origin: 0 0; filter: brightness(0.82); }
+.volto-bagliore { position: absolute; border-radius: 50%; pointer-events: none; mix-blend-mode: screen; transition: opacity 250ms linear;
+  background: radial-gradient(circle, rgba(120, 205, 255, 0.55) 0%, rgba(40, 140, 255, 0.22) 30%, transparent 62%); }
+
+.con-volto body { background: var(--lamiera); }
+.con-volto .shell { position: relative; z-index: 1; }
+/* vetro solo sopra il volto: header, rail, colonna dello stato, dock, pannelli laterali */
+.con-volto .header, .con-volto .rail, .con-volto .drawer, .con-volto .dock .bar, .con-volto .hero > div:last-child {
+  background: var(--vetro-bg); -webkit-backdrop-filter: var(--vetro-filtro); backdrop-filter: var(--vetro-filtro);
+  border-color: rgba(255, 255, 255, 0.07); }
+.con-volto .card, .con-volto .porta, .con-volto .kpi { background: var(--lamiera-bg); border-color: rgba(255, 255, 255, 0.06); box-shadow: none; }
+.con-volto .hero { background: transparent; border: 0; box-shadow: none; grid-template-columns: minmax(300px, 440px); padding: 0;
+  min-height: calc(100vh - var(--header-h) - 150px); align-content: center; }
+.con-volto .hero::after, .con-volto .hero::before { display: none; }
+.con-volto .hero > .core { display: none; }
+.con-volto .hero > div:last-child { border: 1px solid rgba(255, 255, 255, 0.07); border-radius: var(--r-3); padding: var(--s-5); }
+.con-volto .hero h1, .con-volto .stanza-titolo h2, .con-volto .parete h1, .con-volto .kpi .v, .con-volto .parete-numeri b {
+  font-family: var(--font-titoli); font-weight: 600; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
+.con-volto .hero h1 { font-size: 2.6rem; }
+.con-volto .hero .stato { color: #a9d9ff; }
+.con-volto .kpi .v { font-size: 2rem; }
+.con-volto .stanza { position: relative; }
+/* parete: il volto è il nucleo */
+.con-volto .parete { background: transparent; position: relative; z-index: 1; }
+.con-volto .parete-nucleo svg { visibility: hidden; }
+.con-volto .parete-colonna, .con-volto .parete-stanza { background: var(--vetro-bg); -webkit-backdrop-filter: var(--vetro-filtro); backdrop-filter: var(--vetro-filtro); }
+@media (max-width: 720px) {
+  .con-volto .hero { min-height: 62vh; align-content: end; }
+  .con-volto .hero > div:last-child { padding: var(--s-4); }
+}

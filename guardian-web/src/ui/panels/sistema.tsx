@@ -232,6 +232,7 @@ function DiagnosticaVoce() {
         <dt>Fine frase → testo</dt><dd className="mono">{media(s.misure.fineToTesto)} · obiettivo &lt; 1200 ms</dd>
         <dt>Testo → prima frase</dt><dd className="mono">{media(s.misure.testoToVoce)} · obiettivo &lt; 1500 ms</dd>
         <dt>Interruzione → silenzio</dt><dd className="mono">{media(s.misure.bargeInToSilenzio)} · obiettivo &lt; 200 ms</dd>
+        <dt>Ampiezza della voce (volto)</dt><dd>stimata dalle parole: la voce del browser non dà l'audio</dd>
       </dl>
       <p className="dim" style={{ fontSize: 12, margin: 0 }}>Misure di questa sessione, prese durante le conversazioni reali.</p>
     </div>
@@ -261,6 +262,14 @@ export function ImpostazioniPanel() {
         <label className="field">alle<input className="input" type="time" value={p.silenzioA} onChange={(e) => salva({ ...p, silenzioA: e.target.value })} /></label>
       </div>
       <p className="dim" style={{ fontSize: 12, margin: 0 }}>Al massimo 6 annunci vocali all'ora. Le preferenze restano su questo dispositivo.</p>
+    </div>
+    <div className="card stack">
+      <h3 className="section-title" style={{ margin: 0 }}>Volto di Guardian</h3>
+      <div className="row" role="group" aria-label="Volto 3D">{([['acceso', 'Animato'], ['immagine', 'Solo immagine'], ['spento', 'Spento']] as const).map(([v, n]) => (
+        <button key={v} className={`btn sm ${p.volto === v ? 'primary' : ''}`} aria-pressed={p.volto === v} onClick={() => salva({ ...p, volto: v })}>{n}</button>))}</div>
+      <div className="row" role="group" aria-label="Vetro dei pannelli">{([['forte', 'Vetro forte'], ['leggero', 'Vetro leggero'], ['spento', 'Pannelli opachi']] as const).map(([v, n]) => (
+        <button key={v} className={`btn sm ${p.vetro === v ? 'primary' : ''}`} aria-pressed={p.vetro === v} onClick={() => salva({ ...p, vetro: v })}>{n}</button>))}</div>
+      <p className="dim" style={{ fontSize: 12, margin: 0 }}>Il volto si anima solo con cose vere: richieste, voce, eventi. Sul telefono e con «riduci movimento» resta un'immagine con l'occhio che si illumina.</p>
     </div>
     <div className="card stack">
       <h3 className="section-title" style={{ margin: 0 }}>Suoni e parete</h3>

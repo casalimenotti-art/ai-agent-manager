@@ -10,9 +10,11 @@
     "preview": "vite preview --port 4173 --strictPort",
     "test": "vitest run",
     "e2e": "node e2e/run.mjs",
-    "e2e:voce": "node e2e/voce-locale.mjs"
+    "e2e:voce": "node e2e/voce-locale.mjs",
+    "e2e:volto": "node e2e/volto.mjs"
   },
   "dependencies": {
+    "@fontsource/barlow-condensed": "5.1.1",
     "@supabase/supabase-js": "^2.45.4",
     "lucide-react": "^0.453.0",
     "react": "^18.3.1",

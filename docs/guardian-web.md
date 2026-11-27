@@ -59,6 +59,21 @@ Cloudflare Pages (consigliato), Vercel o Netlify: le impostazioni sono le stesse
    (vedi `docs/guardian-setup.md` §3c).
 9. Schermo grande in ufficio: `https://indirizzo-del-sito/?parete=1`.
 
+## Il volto di Guardian (sfondo vivo)
+Lo sfondo dell'HQ è il volto di **NEXO Sentinel**: un robot originale, renderizzato in Blender con
+`tools/volto3d/strati.py` e composto dal vivo da uno shader WebGL2 (`src/volto/`).
+- **Si anima solo con cose vere.** Si sveglia a ogni richiesta (chat, voce, palette). Gli anelli girano mentre pensa;
+  l'occhio e la griglia pulsano mentre parla; l'iride si apre mentre ascolta. Un evento nuovo produce un lampo; se lo
+  interrompi si spegne subito. Gli anelli diventano ambra con le approvazioni, rosso con gli errori. **Non segue il mouse.**
+- **Impostazioni → Volto di Guardian**:
+  - Animato, Solo immagine o Spento;
+  - Vetro forte, Vetro leggero o Pannelli opachi.
+- **Ripieghi.** Sul telefono, con «riduci movimento» o senza WebGL2 si vede l'immagine ferma da 960 px con l'occhio che si
+  illumina. Senza gli strati si torna al nucleo classico.
+- **Ampiezza della voce.** Con la voce del browser è *stimata* parola per parola, perché il browser non dà l'audio della
+  sintesi. Lo dice anche Diagnostica voce.
+- **Peso.** Circa 2 MB di immagini (WebP) caricati dopo la pagina. Il codice del volto è in un pezzo separato di circa 5 KB.
+
 ## Sicurezza
 - Nel browser c'è solo la anon key; ogni lettura e scrittura passa dalle regole RLS:
   - un account non autorizzato vede tabelle vuote;

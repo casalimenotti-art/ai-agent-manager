@@ -4,3 +4,4 @@ dist/
 .env.local
 e2e/out/
 *.tsbuildinfo
+public/volto/_tmp/

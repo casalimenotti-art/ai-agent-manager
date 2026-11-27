@@ -35,13 +35,31 @@ const scegli = async (sel, valore, dopo = 900) => { await vai(sel); await p.loca
 const scrivi = async (sel, testo) => { await clic(sel, 200); await p.locator(sel).first().pressSequentially(testo, { delay: 35 }); await pausa(300); };
 
 // --- inizio
-await p.goto('http://localhost:4173/?voce=finta');
+await p.goto('http://localhost:4173/?voce=finta&cervello=finto');
 await titolo('Guardian · NEXO HQ', 'Bozza della dashboard — dati di esempio, nessun dato reale', 3000);
 await dici('Si entra con il proprio account', 'Solo i 3 collaboratori di NEXO possono vedere i dati');
 await scrivi('input', 'menotti'); await clic('button[type=submit]', 1200);
 await dici('Il centro: Guardian e le tre stanze', 'Sviluppo & Siti (Menotti · Claude Code) · Vendite (Niko · Codex) · Amministrazione (Francesco · Codex)', 4200);
 await vai('.kpi >> nth=0'); await dici('Numeri dal vivo', 'Agenti al lavoro, task in corso, approvazioni, completati oggi', 3000);
 await vai('text=Prossime azioni'); await dici('Prossime azioni', 'Guardian ti dice cosa fare adesso: approvazioni, task bloccati, scadenze', 3000);
+
+// --- il volto
+await p.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' })); await pausa(600);
+await titolo('Il volto di Guardian', 'NEXO Sentinel: si anima solo con cose vere, non segue il mouse');
+await dici('A riposo: l\'occhio è fioco e respira piano', 'Lo sfondo è un render 3D: lamiera, ruggine, NEXO SRL consumato', 3200);
+await scrivi('.dock input', 'Quanti agenti sono attivi?'); await p.keyboard.press('Enter');
+await dici('Arriva una richiesta: si sveglia', 'L\'occhio si accende e la testa si alza appena', 2800);
+await clic('.dock button:has-text("Nascondi")', 300).catch(() => {});
+await clic('.drawer button[aria-label="Chiudi pannello"]', 300).catch(() => {});
+await clic('.conv-btn', 900);
+await dici('Ascolta: l\'iride si apre', 'L\'anello segue il livello del microfono', 2000);
+await p.evaluate(() => window.__guardianDici?.('Raccontami una storia breve'));
+await dici('Pensa: gli anelli girano e una luce scansiona', '', 1800);
+await p.waitForSelector('.conv-barra[data-fase="parla"]', { timeout: 8000 }).catch(() => {});
+await dici('Parla: occhio e griglia pulsano con la voce', '', 1600);
+await p.evaluate(() => { window.__guardianLivello = 0.3; setTimeout(() => { window.__guardianLivello = 0; }, 600); });
+await dici('Lo interrompi: si zittisce subito e ti ascolta', 'In meno di 0,2 secondi', 2600);
+await p.keyboard.press('Escape'); await pausa(500);
 
 // --- gli agenti
 await titolo('1. Gli agenti', 'Claude Code di Menotti · Codex di Niko · Codex di Francesco');

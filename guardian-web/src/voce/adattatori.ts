@@ -1,3 +1,4 @@
+import { parolaDetta } from '../volto/segnali';
 // Adattatori della conversazione: ascolto (trascrittori), parlato (TTS) e livello del microfono.
 // Livello A (locale, privato) arriva con il bridge (ondata 3); livello B = Web Speech del browser; "finto" solo per i test in demo.
 import { rms, Vad } from './vad';
@@ -96,6 +97,8 @@ export class ParlatoreWeb implements Parlatore {
     return new Promise<void>((ok) => {
       const u = new SpeechSynthesisUtterance(frase); u.lang = 'it-IT'; const v = this.voce(); if (v) u.voice = v;
       u.onend = () => ok(); u.onerror = () => ok();
+      // il browser non dà l'audio della sintesi: l'inizio di ogni parola fa da ampiezza stimata per il volto
+      u.onstart = () => parolaDetta(); u.onboundary = (e) => parolaDetta(e.charLength || 5);
       window.speechSynthesis.speak(u);
     });
   }
@@ -134,7 +137,11 @@ export class FintoTrascrittore implements Trascrittore {
 export class FintoParlatore implements Parlatore {
   readonly nome = 'Voce finta (test)'; private stop: (() => void) | null = null;
   parla(frase: string) { (F.__guardianParlato ??= []).push(frase);
-    return new Promise<void>((ok) => { const t = setTimeout(ok, 400); this.stop = () => { clearTimeout(t); ok(); }; }); }
+    return new Promise<void>((ok) => {
+      const parole = setInterval(() => parolaDetta(5), 90); parolaDetta(5);
+      const fine = () => { clearInterval(parole); ok(); };
+      const t = setTimeout(fine, 400); this.stop = () => { clearTimeout(t); fine(); };
+    }); }
   zitto() { this.stop?.(); }
 }
 export class FintoMicrofono { async apri() {} livello() { return F.__guardianLivello ?? 0; } chiudi() {} }
