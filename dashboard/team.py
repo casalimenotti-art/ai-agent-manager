@@ -6,8 +6,12 @@ così le righe che gli amici hanno pushato sul proprio branch compaiono anche pr
 import json
 import os
 import subprocess
+import threading
+import time
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 REPO = Path(__file__).resolve().parent.parent
 CARTELLA = "registro"
@@ -42,7 +46,7 @@ def analizza_righe(testo: str, fonte: str = "") -> list[dict]:
             v = json.loads(riga)
         except ValueError:
             continue
-        if not isinstance(v, dict) or not v.get("chi") or not v.get("azione") or not v.get("ts"):
+        if not isinstance(v, dict) or not all(isinstance(v.get(k), str) and v[k] for k in ("chi", "azione", "ts")):
             continue
         v = {k: v.get(k, "") for k in ("ts", "chi", "agente", "azione", "esito", "branch")} | {"file": v.get("file") or []}
         if not isinstance(v["file"], list):
@@ -52,22 +56,23 @@ def analizza_righe(testo: str, fonte: str = "") -> list[dict]:
     return out
 
 
-def _rami(repo: Path) -> list[str]:
-    out = _git(repo, "for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes")
+def _rami(repo: Path, solo_origin: bool = False) -> list[str]:
+    ambito = ("refs/remotes/origin",) if solo_origin else ("refs/heads", "refs/remotes")
+    out = _git(repo, "for-each-ref", "--format=%(refname)", *ambito)
     return [r for r in (out or "").splitlines() if r and not r.endswith("/HEAD")]
 
 
-def leggi_registro(repo: Path = REPO, da_git: bool = True) -> list[dict]:
+def leggi_registro(repo: Path = REPO, da_git: bool = True, *, solo_origin: bool = False) -> list[dict]:
     """Tutte le voci, senza doppioni, dalla più recente."""
     voci = []
     cart = repo / CARTELLA
-    for f in sorted(cart.glob("*.jsonl")) if cart.is_dir() else []:
+    for f in sorted(cart.glob("*.jsonl")) if cart.is_dir() and not solo_origin else []:
         try:
             voci += analizza_righe(f.read_text(encoding="utf-8"), "locale")
         except OSError:
             pass
     if da_git:
-        for ref in _rami(repo):
+        for ref in _rami(repo, solo_origin):
             nomi = _git(repo, "ls-tree", "--name-only", f"{ref}:{CARTELLA}")
             for nome in (nomi or "").splitlines():
                 if nome.endswith(".jsonl"):
@@ -96,7 +101,8 @@ def commit_recenti(repo: Path = REPO, giorni: int = 7, limite: int = 40) -> list
 
 def aggiorna_da_github(repo: Path = REPO) -> tuple[bool, str]:
     """git fetch (solo lettura: non tocca i file di lavoro né i branch locali)."""
-    out = _git(repo, "fetch", "--all", "--prune", "--quiet", timeout=30)
+    out = _git(repo, "fetch", "--prune", "--quiet", "--no-tags", "--no-recurse-submodules", "origin",
+               "+refs/heads/*:refs/remotes/origin/*", timeout=15)
     return (True, "Aggiornato da GitHub.") if out is not None else (False, "Fetch non riuscito: controlla la rete o l'accesso a GitHub.")
 
 
@@ -133,7 +139,7 @@ def quando(ts: str, ora: datetime | None = None) -> str:
     return f"{loc:%d/%m %H:%M}"
 
 
-def passaggi_aperti(repo: Path = REPO) -> list[dict]:
+def passaggi_aperti(repo: Path = REPO, *, solo_origin: bool = False) -> list[dict]:
     """Passaggi aperti o presi, letti dalla cartella locale e da tutti i branch.
     Lo stato va solo avanti (aperto -> preso -> chiuso): per ogni file vale la versione più avanzata."""
     import re
@@ -147,12 +153,12 @@ def passaggi_aperti(repo: Path = REPO) -> list[dict]:
             migliori[nome] = (rango, testo, fonte)
 
     cart = repo / "passaggi"
-    for f in sorted(cart.glob("*.md")) if cart.is_dir() else []:
+    for f in sorted(cart.glob("*.md")) if cart.is_dir() and not solo_origin else []:
         try:
             _vedi(f.name, f.read_text(encoding="utf-8"), "locale")
         except OSError:
             pass
-    for ref in _rami(repo):
+    for ref in _rami(repo, solo_origin):
         for nome in (_git(repo, "ls-tree", "--name-only", f"{ref}:passaggi") or "").splitlines():
             if nome.endswith(".md"):
                 _vedi(nome, _git(repo, "show", f"{ref}:passaggi/{nome}") or "", ref.split("/", 2)[-1])
@@ -165,3 +171,59 @@ def passaggi_aperti(repo: Path = REPO) -> list[dict]:
         out.append({"nome": nome, "titolo": titolo, "stato": "aperto" if rango == 1 else "preso", "da": campo("da"),
                     "per": campo("per"), "branch": campo("branch"), "creato": campo("creato"), "fonte": fonte})
     return sorted(out, key=lambda v: v["creato"], reverse=True)
+
+
+@dataclass(frozen=True)
+class StatoCondiviso:
+    persone: tuple = ()
+    voci: tuple = ()
+    passaggi: tuple = ()
+    aggiornato: datetime | None = None
+    errore: str = ""
+
+
+class RegistroCondiviso:
+    """Un fetch in volo per processo. I lettori mantengono l'ultimo snapshot durante la rete."""
+    def __init__(self, repo: Path = REPO, intervallo: float = 15):
+        self.repo = repo
+        self.intervallo = intervallo
+        self._lock = threading.Lock()
+        self._prossimo = 0.0
+        self._in_corso = False
+        self._stato = StatoCondiviso()
+
+    def leggi(self) -> tuple[StatoCondiviso, bool]:
+        with self._lock:
+            if not self._in_corso and time.monotonic() >= self._prossimo:
+                self._in_corso = True
+                threading.Thread(target=self._aggiorna, daemon=True, name="guardian-registro").start()
+            return self._stato, self._in_corso
+
+    def _aggiorna(self) -> None:
+        stato = self._stato
+        try:
+            ok, messaggio = aggiorna_da_github(self.repo)
+            if ok or stato.aggiornato is None:
+                persone = leggi_persone(self.repo)
+                voci = leggi_registro(self.repo, solo_origin=True)
+                passaggi = passaggi_aperti(self.repo, solo_origin=True)
+                stato = StatoCondiviso(tuple(persone), tuple(voci), tuple(passaggi),
+                                       datetime.now(timezone.utc) if ok else None,
+                                       "" if ok else messaggio)
+            else:
+                stato = replace(stato, errore=messaggio)
+        except (OSError, ValueError):
+            stato = replace(stato, errore="Registro GitHub temporaneamente non disponibile.")
+        finally:
+            with self._lock:
+                self._stato = stato
+                self._in_corso = False
+                self._prossimo = time.monotonic() + self.intervallo
+
+
+
+def link_passaggio(branch: str, nome: str) -> str:
+    if not branch or not nome.endswith(".md") or Path(nome).name != nome:
+        return ""
+    return ("https://github.com/casalimenotti-art/ai-agent-manager/blob/"
+            + quote(branch, safe="/") + "/passaggi/" + quote(nome, safe=""))

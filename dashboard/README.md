@@ -35,3 +35,15 @@ senza sovrascrivere nulla e con il commit di origine registrato in `.guardian-so
 **Voce.** Spazio Guardian: toggle «Voce» (risposta letta frase per frase con voce italiana femminile del sistema) e «Conversazione a voce» a mani libere nel popover Mic (ascolto locale). Dettagli in `docs/decisioni.md`.
 **Spazi.** Centro · Consumi · Costi · Agenti (feed live: deleghe, ricerche, pagine aperte) · Clienti · Siti demo · Guardian (chat col manager + microfono) · Skill · Store.
 **Documenti.** `PROMPT_30_CLIENTI.md` (operazione di oggi), `PROMPT_FINALE.md` (finire la dashboard), `PROMPT_OBIETTIVO_10K.md` (attività commerciale), `SETUP_PC.md` (browser e PC in sicurezza), `docs/spec/` (specifiche), `docs/graph/GRAPH_REPORT.md` (grafico del codice).
+
+### Registro condiviso
+
+La Control Room mostra **Aggiornamenti**, **Passaggi** e **Blocchi**, anche nella vista ospite in sola lettura.
+Usa sempre il clone del repository condiviso con il remoto `origin` impostato su `casalimenotti-art/ai-agent-manager`.
+Quando la plancia è aperta, il server aggiorna i branch pubblicati dal remoto ogni 15 secondi, senza modificare il branch locale.
+La pagina controlla lo snapshot ogni 3 secondi. Un aggiornamento appare dopo che l’agente ha scritto la voce in
+`registro/<id>.jsonl` o in `passaggi/` e completato il push dal proprio account. I file locali inediti non entrano nella vista.
+
+Per usare la stessa pagina, esegui la versione aggiornata sul computer che ospita Guardian e condividi l’accesso
+tramite la procedura privata già documentata in [guida team](../docs/team-condiviso.md). Le console dei singoli agenti
+restano sui rispettivi account. Il registro non riceve eventi interni a una risposta ancora in corso.

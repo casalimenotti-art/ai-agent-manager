@@ -134,3 +134,63 @@ def test_hook_passaggio_soglia():
     assert gp.messaggio({"five_hour": {"pct": 89}, "ts": ora}, 90, ora) is None
     assert gp.messaggio({"five_hour": {"pct": 99}, "ts": 0}, 90, ora) is None   # dati vecchi
     assert gp.messaggio({}, 90, ora) is None
+
+
+def test_registro_condiviso_aggiorna_due_checkout_dopo_push(tmp_path):
+    import threading
+
+    def git(repo, *args):
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.test", *args],
+                       cwd=repo, check=True, capture_output=True)
+
+    git(tmp_path, "init", "--bare", "-b", "main", "origin.git")
+    git(tmp_path, "clone", "origin.git", "autore")
+    autore = tmp_path / "autore"
+    cartella = autore / "registro"
+    cartella.mkdir()
+    (cartella / "persone.json").write_text('[{"id":"menotti"},{"id":"amico2"}]', encoding="utf-8")
+    (cartella / "menotti.jsonl").write_text(_voce("menotti", "Avviato Guardian") + "\n", encoding="utf-8")
+    git(autore, "add", "registro")
+    git(autore, "commit", "-m", "Inizio")
+    git(autore, "push", "origin", "main")
+    lettori = []
+    for nome in ("nicola", "menotti"):
+        git(tmp_path, "clone", "origin.git", nome)
+        lettori.append(team.RegistroCondiviso(tmp_path / nome, intervallo=0))
+
+    def sync(lettore):
+        pronto = threading.Event()
+        aggiorna = lettore._aggiorna
+
+        def lavoro():
+            try:
+                aggiorna()
+            finally:
+                pronto.set()
+
+        lettore._aggiorna = lavoro
+        lettore.leggi()
+        assert pronto.wait(8)
+        lettore._aggiorna = aggiorna
+        return lettore._stato
+
+    for lettore in lettori:
+        stato = sync(lettore)
+        assert stato.aggiornato and not stato.errore
+        assert [v["azione"] for v in stato.voci] == ["Avviato Guardian"]
+
+    git(autore, "switch", "-c", "codex/amministrazione")
+    (cartella / "amico2.jsonl").write_text(_voce("amico2", "Competenza verificata") + "\n", encoding="utf-8")
+    git(autore, "add", "registro/amico2.jsonl")
+    git(autore, "commit", "-m", "Registra il lavoro")
+    git(autore, "push", "origin", "codex/amministrazione")
+    (tmp_path / "nicola" / "registro" / "amico2.jsonl").write_text(_voce("amico2", "Bozza privata"), encoding="utf-8")
+    for lettore in lettori:
+        stato = sync(lettore)
+        assert {v["azione"] for v in stato.voci} == {"Avviato Guardian", "Competenza verificata"}
+        assert any(v["fonte"] == "origin/codex/amministrazione" for v in stato.voci)
+
+
+def test_link_passaggio_codifica_il_nome_e_rimane_su_github():
+    assert "/blob/codex/dashboard/passaggi/registro%20nuovo.md" in team.link_passaggio("codex/dashboard", "registro nuovo.md")
+    assert team.link_passaggio("main", "../estraneo.md") == ""

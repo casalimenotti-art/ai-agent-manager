@@ -602,8 +602,9 @@ def sez_guardian():
     """Guardian compatto: storico a altezza fissa con scroll interno, input in fondo, microfono e riassunto agenti."""
     st.session_state.setdefault("chat", {})  # cwd -> {"sid": ..., "msgs": [...]}
     cmd = plancia.riconosci_comando(st.session_state.pop("_testo_voce", None))   # comando vocale confermato (widget non ancora creati)
-    if cmd and cmd["tipo"] == "apri":
+    if cmd and cmd["tipo"] == "apri" and cmd["valore"] in {"skill", "squadra", "store", "siti", "scoperte"}:
         st.session_state["spazio"] = cmd["valore"]
+        st.session_state["_apri_strumenti"] = True
     elif cmd and cmd["tipo"] == "voce":
         st.session_state["voce_on"] = cmd["valore"]
     if not fonte.nome.startswith("DEMO") and not chat.agente_installato(config.MANAGER_AGENT):
@@ -1124,7 +1125,7 @@ def barra_laterale():
 OSPITE = accesso.e_ospite(st)   # amici da remoto con il PIN ospiti: solo lettura
 if OSPITE:
     SPAZI = [x for x in SPAZI if x[0] in ("team", "agenti")]
-    st.caption("Accesso ospite in sola lettura: vedi il Team e gli agenti al lavoro. Chat e lanci sono solo sul PC del titolare.")
+    st.caption("Accesso ospite in sola lettura al registro condiviso.")
 else:
     barra_laterale()
 if not OSPITE and (_ag := st.session_state.pop("_lancia_da_catalogo", None)):
@@ -1143,32 +1144,75 @@ def pannello_motori():
             st.link_button("Apri Claude Code con il tuo account", "https://claude.ai/code")
 
 
-# Panoramica operativa e passaggi rapidi per il titolare
-if not OSPITE:
-    scorciatoie = st.columns(5)
-    for col, titolo, spazio in zip(scorciatoie, ("Diretta", "Consumi", "Clienti", "Team", "Progetti"),
-                                  ("agenti", "consumi", "clienti", "team", "progetti")):
-        col.button(titolo, key=f"rapido_{spazio}", use_container_width=True,
-                   on_click=st.session_state.update, args=({"spazio": spazio},))
-    posta, centro, consumi = st.columns([1, 2.7, 1.35], gap="medium")
-    with posta:
-        pannello_motori()
-        with st.container(border=True, key="plancia_posta"):
-            st.subheader("Posta")
-            st.caption("Conteggio non letti non collegato")
-            st.link_button("Apri Gmail", "https://mail.google.com/mail/#inbox", use_container_width=True)
+@st.cache_resource
+def registro_condiviso():
+    return team.RegistroCondiviso()
+
+
+_NOMI_OPERATIVI = {"amico1": "Nicola", "menotti": "Menotti", "amico2": "Francesco"}
+_OPERATIVITA = ("Aggiornamenti", "Passaggi", "Blocchi")
+
+
+@st.fragment(run_every=3)
+def pannello_operativo():
+    st.subheader("Registro condiviso")
+    stato, aggiornamento = registro_condiviso().leggi()
+    if stato.errore:
+        st.warning(stato.errore)
+    if stato.aggiornato:
+        st.caption(f"GitHub · sincronizzato {team.quando(stato.aggiornato.isoformat())} · controllo ogni 15 s")
+    elif aggiornamento:
+        st.caption("Sto leggendo i branch pubblicati su GitHub.")
+    modo = st.segmented_control("Vista del registro", _OPERATIVITA, default=_OPERATIVITA[0], key="vista_operativa") or _OPERATIVITA[0]
+    persone = team.riepilogo(list(stato.persone), list(stato.voci))
+    if persone:
+        rows = st.columns(len(persone))
+        for col, p in zip(rows, persone):
+            col.markdown("**" + _NOMI_OPERATIVI.get(p["id"], p["id"]) + "**")
+            col.caption(team.quando(p["ultima"]["ts"]) if p["ultima"] else "Nessuna voce pubblicata")
+    if modo == "Passaggi":
+        if not stato.passaggi:
+            st.caption("Nessun passaggio aperto pubblicato.")
+        for voce in stato.passaggi[:8]:
+            with st.container(border=True):
+                st.text(voce["titolo"])
+                da = _NOMI_OPERATIVI.get(voce["da"], voce["da"])
+                a = _NOMI_OPERATIVI.get(voce["per"], voce["per"])
+                st.caption(f"{da} → {a} · {voce['stato']}")
+                fonte_git = voce["fonte"].removeprefix("origin/")
+                url = team.link_passaggio(fonte_git, voce["nome"])
+                if url:
+                    st.link_button("Apri il passaggio", url)
+        return
+    aggiornamenti = [v for v in stato.voci if modo != "Blocchi" or v.get("esito") in ("bloccato", "fallito")]
+    if not aggiornamenti:
+        st.caption("Nessun blocco pubblicato." if modo == "Blocchi" else "Nessun aggiornamento pubblicato.")
+    for v in aggiornamenti[:7]:
+        with st.container(border=True):
+            nome = _NOMI_OPERATIVI.get(v["chi"], v["chi"])
+            st.caption(f"{nome} · {v.get('agente') or 'agente'} · {team.quando(v['ts'])}")
+            st.text(v["azione"])
+            st.caption(f"{v.get('esito') or 'aggiornamento'} · {v['fonte']}")
+    st.link_button("Apri il repository condiviso", "https://github.com/casalimenotti-art/ai-agent-manager")
+
+
+if OSPITE:
+    pannello_operativo()
+else:
+    centro, operativita = st.columns([1.25, 1], gap="large")
     with centro:
         with st.container(key="plancia_guardian"):
             sez_guardian()
-    with consumi:
-        with st.container(key="plancia_utilizzo"):
-            utilizzo_reale()
-            riepilogo_modelli()
-
-# BASSO: barra di spazi; lo spazio scelto riempie l'area come una pagina a sé
-etichette = {chiave: titolo for chiave, titolo, _ in SPAZI}
-scelto = st.segmented_control("Spazi", list(etichette), format_func=etichette.get, default="agenti", key="spazio",
-                              label_visibility="collapsed")
-scelto = scelto if scelto in etichette else "agenti"
-with st.container(key=f"sez_{scelto}"):
-    next(fn for chiave, _, fn in SPAZI if chiave == scelto)()
+    with operativita:
+        with st.container(border=True, key="plancia_operativita"):
+            pannello_operativo()
+        pannello_motori()
+    strumenti = {chiave: (titolo, fn) for chiave, titolo, fn in SPAZI
+                 if chiave in {"skill", "squadra", "store", "siti", "scoperte"}}
+    if st.session_state.get("spazio") not in strumenti:
+        st.session_state["spazio"] = "skill"
+    with st.expander("Strumenti aziendali", expanded=st.session_state.pop("_apri_strumenti", False)):
+        scelto = st.segmented_control("Strumenti", list(strumenti), format_func=lambda chiave: strumenti[chiave][0],
+                                      key="spazio", label_visibility="collapsed")
+        if scelto:
+            strumenti[scelto][1]()

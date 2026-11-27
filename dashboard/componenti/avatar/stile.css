@@ -27,3 +27,8 @@ body.g-parla .guardian-avatar .guardian-speaking { display:inline; color:#9af2ff
 .g-logomark, .g-logomark * { animation:none !important; }
 .g-head-logo .g-logo { letter-spacing:.13em; }
 .st-key-plancia_motori [data-testid="stExpander"] details { margin:.4rem 0; border-color:#4b4c86; }
+
+.st-key-plancia_operativita { background:#101429; border:1px solid #3f4d76; border-radius:16px; }
+.st-key-plancia_operativita [data-testid="stText"] { white-space:pre-wrap; overflow-wrap:anywhere; }
+.st-key-plancia_operativita [data-testid="stText"] > div { white-space:pre-wrap; overflow-wrap:anywhere; }
+.st-key-plancia_operativita [data-testid="stCaptionContainer"] { color:#b1bcdd; }
