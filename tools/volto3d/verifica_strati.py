@@ -33,7 +33,7 @@ def main(cartella):
     ok(0 < c[0] < W and 0 < c[1] < H, f"occhio dentro l'immagine {[round(v) for v in c]}")
     x, y, w, h = meta["iride"]["rettangolo"]
     ok(0 <= x and 0 <= y and x + w <= W and y + h <= H and w > 50, "rettangolo dell'iride valido")
-    acceso = os.path.join(cartella, "_tmp", "acceso.png")
+    acceso = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_tmp_strati", "acceso.png")
     if os.path.exists(acceso):
         import numpy as np
         a = np.asarray(Image.open(acceso).convert("RGB"), dtype=np.float32)

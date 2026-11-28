@@ -29,7 +29,7 @@ Gli strati sono:
 - `profondita`: serve alla parallasse, cioè ai micro-movimenti della testa;
 - `meta.json`: posizione ed ellisse dell'occhio.
 
-Escono in 1920×1080 e 960×540. In tutto circa 45–60 minuti su CPU. `_tmp/` contiene i render grezzi e non va in git.
+Escono in 1920×1080 e 960×540. In tutto circa 45–60 minuti su CPU. I render grezzi finiscono in `tools/volto3d/_tmp_strati/` (fuori da `public/`, non vanno in git).
 L'inquadratura degli strati è più larga di quella dei concept: la testa è intera e spostata a destra, perché a sinistra vanno
 i pannelli. Anche la parete è più scura.
 

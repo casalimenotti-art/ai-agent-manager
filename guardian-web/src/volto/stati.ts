@@ -17,7 +17,7 @@ export interface Uscite {
 }
 
 const NEUTRO: RGB = [1, 1, 1];
-const AMBRA: RGB = [1.7, 1.05, 0.25];
+const AMBRA: RGB = [1.25, 0.95, 0.5];
 const ROSSO: RGB = [1.9, 0.35, 0.3];
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 

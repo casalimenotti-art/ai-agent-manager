@@ -129,7 +129,7 @@ def main():
     solo = set(filter(None, a.solo.split(",")))
     fai = lambda nome: not solo or nome in solo  # noqa: E731
     out = os.path.abspath(a.uscita)
-    tmp = os.path.join(out, "_tmp")
+    tmp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_tmp_strati")  # fuori da public/: non va pubblicato
     os.makedirs(tmp, exist_ok=True)
     S = Scena()
     sc = S.sc

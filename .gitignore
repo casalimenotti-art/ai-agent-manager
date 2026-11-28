@@ -11,3 +11,4 @@ __pycache__/
 # modelli 3D: i .blend si rigenerano con tools/volto3d/costruisci.py
 tools/volto3d/concept/*.blend
 tools/volto3d/concept/*.blend1
+tools/volto3d/_tmp_strati/

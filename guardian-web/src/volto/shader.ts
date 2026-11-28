@@ -48,7 +48,7 @@ void main() {
   // anelli ruotati nello spazio dell'occhio
   float cs = cos(rotazione), sn = sin(rotazione);
   vec2 pr = centro + M * (mat2(cs, sn, -sn, cs) * q);
-  col += tex(tAnelli, pr) * anelli * colAnelli * 1.1;
+  col += tex(tAnelli, pr) * anelli * colAnelli * 0.75;
   col += tex(tBocca, px) * bocca;
   // scansione mentre pensa: una banda che scorre nell'occhio
   float banda = exp(-pow((q.y - (fract(tempo * 0.6) * 2.4 - 1.2)) * 9.0, 2.0)) * (1.0 - smoothstep(0.8, 1.0, r));

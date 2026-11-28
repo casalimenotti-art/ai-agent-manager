@@ -1,0 +1,35 @@
+{
+ "larghezza": 1920,
+ "altezza": 1080,
+ "occhio": {
+  "centro": [
+   1183.1625366210938,
+   581.2901723384857
+  ],
+  "asse_x": [
+   132.91362762451172,
+   -1.1463546752929688
+  ],
+  "asse_y": [
+   -4.231452941894531,
+   -144.06137108802795
+  ],
+  "raggio_mondo": 0.3
+ },
+ "iride": {
+  "rettangolo": [
+   998,
+   369,
+   383,
+   423
+  ],
+  "fotogrammi": 8,
+  "colonne": 4,
+  "righe": 2,
+  "fotogramma": [
+   383,
+   423
+  ]
+ },
+ "generato_da": "tools/volto3d/strati.py (NEXO Sentinel, variante A, seme 7472)"
+}
