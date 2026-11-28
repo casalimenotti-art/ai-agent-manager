@@ -65,20 +65,19 @@ def frasi(pezzi: Iterable[str]) -> Iterator[str]:
         yield SEGRETO.sub("[rimosso]", resto)
 
 
-def chiedi_claude(prompt: str, bin_claude: str, timeout: float = 90) -> Iterator[str]:
+def _esegui(cmd: list[str], prompt: str, estrai, timeout: float) -> Iterator[str]:
     cartella = Path(os.environ.get("GUARDIAN_HOME", Path.home() / ".guardian")) / "cervello"
     cartella.mkdir(parents=True, exist_ok=True)
-    # la domanda passa da stdin: su Windows claude.CMD spezza gli argomenti lunghi con a capo e virgolette
-    cmd = [bin_claude, "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan",
-           "--disallowedTools", *VIETATI]
+    # la domanda passa da stdin: su Windows i .CMD spezzano gli argomenti lunghi con a capo e virgolette
     proc = subprocess.Popen(cmd, cwd=cartella, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding="utf-8")
     try:
         proc.stdin.write(prompt); proc.stdin.close()  # type: ignore[union-attr]
     except OSError:
         pass  # il processo ha già chiuso: si legge comunque quello che ha scritto
-    inizio = time.monotonic()
+    inizio, visto = time.monotonic(), False
     try:
-        for riga in testi_da_stream(proc.stdout):  # type: ignore[arg-type]
+        for riga in estrai(proc.stdout):  # type: ignore[arg-type]
+            visto = visto or bool(riga.strip())
             yield riga
             if time.monotonic() - inizio > timeout:
                 raise TimeoutError("risposta troppo lenta")
@@ -86,31 +85,69 @@ def chiedi_claude(prompt: str, bin_claude: str, timeout: float = 90) -> Iterator
         if proc.poll() is None:
             proc.kill()
         proc.wait(timeout=5)
+    if proc.returncode and not visto:  # es. limite raggiunto: nessuna risposta → si prova l'altro motore
+        raise RuntimeError(f"uscito con codice {proc.returncode}")
 
 
-def servi(client, bin_claude: str | None = None, intervallo: float = 1.5, giri: int = 0, modello: str = "claude-code") -> int:
-    """Ciclo del cervello. `giri` > 0 solo per i test."""
+def chiedi_claude(prompt: str, bin_claude: str, timeout: float = 90) -> Iterator[str]:
+    cmd = [bin_claude, "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan",
+           "--disallowedTools", *VIETATI]
+    return _esegui(cmd, prompt, testi_da_stream, timeout)
+
+
+def chiedi_codex(prompt: str, bin_codex: str, timeout: float = 120) -> Iterator[str]:
+    """Riserva: Codex CLI del titolare in sandbox di sola lettura; lo stdout contiene solo la risposta finale."""
+    cmd = [bin_codex, "exec", "--skip-git-repo-check", "--ephemeral", "-s", "read-only", "-"]
+    return _esegui(cmd, prompt, iter, timeout)
+
+
+def claude_al_limite(soglia: float = 98) -> bool:
+    """True se l'utilizzo settimanale di Claude (statusline di Guardian) è oltre la soglia e non ancora azzerato."""
+    f = Path(os.environ.get("GUARDIAN_USAGE_FILE", Path.home() / ".claude" / "guardian" / "usage.json"))
+    try:
+        sett = json.loads(f.read_text(encoding="utf-8"))["seven_day"]
+        return sett["pct"] >= soglia and time.time() < sett.get("resets_at", float("inf"))
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def servi(client, bin_claude: str | None = None, intervallo: float = 1.5, giri: int = 0, modello: str | None = None,
+          bin_codex: str | None = None) -> int:
+    """Ciclo del cervello: Claude Code, con Codex come riserva. `giri` > 0 solo per i test."""
     bin_claude = bin_claude or os.environ.get("GUARDIAN_CLAUDE_BIN") or shutil.which("claude")
-    if not bin_claude:
-        print("Comando 'claude' non trovato: installa Claude Code o imposta GUARDIAN_CLAUDE_BIN.", file=sys.stderr)
+    bin_codex = bin_codex or os.environ.get("GUARDIAN_CODEX_BIN") or shutil.which("codex")
+    motori = [m for m in (("claude-code", chiedi_claude, bin_claude), ("codex", chiedi_codex, bin_codex)) if m[2]]
+    if not motori:
+        print("Né 'claude' né 'codex' trovati: installane uno o imposta GUARDIAN_CLAUDE_BIN / GUARDIAN_CODEX_BIN.", file=sys.stderr)
         return 2
-    print("Cervello di Guardian attivo (Claude Code in sola risposta). Ctrl+C per fermare.")
+    print(f"Cervello di Guardian attivo ({', '.join(m[0] for m in motori)}, in sola risposta). Ctrl+C per fermare.")
     ultimo_battito, n = 0.0, 0
     try:
         while True:
+            pronti = [m for m in motori if not (m[0] == "claude-code" and claude_al_limite())] or motori
+            attuale = modello or pronti[0][0]
             if time.monotonic() - ultimo_battito > 20:
-                client.call("bridge_cervello_battito", modello=modello)
+                client.call("bridge_cervello_battito", modello=attuale)
                 ultimo_battito = time.monotonic()
             r = client.call("bridge_prendi_richiesta")
             if r:
-                seq = 0
-                try:
-                    for f in frasi(chiedi_claude(costruisci_prompt(r), bin_claude)):
-                        client.call("bridge_rispondi", richiesta_id=r["id"], seq=seq, testo=f, fine=False, errore=False)
-                        seq += 1
-                    client.call("bridge_rispondi", richiesta_id=r["id"], seq=seq, testo="", fine=True, errore=False)
-                except Exception as e:  # la richiesta non resta mai appesa
-                    client.call("bridge_rispondi", richiesta_id=r["id"], seq=seq, testo=f"Non sono riuscito a rispondere ({type(e).__name__}).",
+                seq, errore = 0, None
+                for nome, chiedi, bin_ in pronti:
+                    try:
+                        for f in frasi(chiedi(costruisci_prompt(r), bin_)):
+                            client.call("bridge_rispondi", richiesta_id=r["id"], seq=seq, testo=f, fine=False, errore=False)
+                            seq += 1
+                        client.call("bridge_rispondi", richiesta_id=r["id"], seq=seq, testo="", fine=True, errore=False)
+                        errore = None
+                        if nome != attuale:  # l'HQ vede quale motore ha risposto
+                            client.call("bridge_cervello_battito", modello=nome)
+                        break
+                    except Exception as e:
+                        errore = e
+                        if seq:  # risposta già iniziata: non si ricomincia con l'altro motore
+                            break
+                if errore is not None:  # la richiesta non resta mai appesa
+                    client.call("bridge_rispondi", richiesta_id=r["id"], seq=seq, testo=f"Non sono riuscito a rispondere ({type(errore).__name__}).",
                                 fine=True, errore=True)
             n += 1
             if giri and n >= giri:

@@ -35,6 +35,28 @@ def test_frasi_e_stream():
     assert list(cervello.testi_da_stream(righe)) == ["Solo risultato."]
 
 
+@pytest.fixture(autouse=True)
+def senza_motori_veri(tmp_path, monkeypatch):
+    # i test non devono mai chiamare il claude/codex installati né leggere l'utilizzo vero
+    monkeypatch.setenv("GUARDIAN_USAGE_FILE", str(tmp_path / "usage.json"))
+    monkeypatch.delenv("GUARDIAN_CODEX_BIN", raising=False)
+    monkeypatch.setattr(cervello.shutil, "which", lambda _: None)
+
+
+def finto_codex(tmp_path, testo, codice=0):
+    f = tmp_path / "codex_finto.py"
+    f.write_text("import sys, json\n"
+                 "open(sys.argv[0] + '.args', 'w').write(json.dumps(sys.argv[1:] + [sys.stdin.read()]))\n"
+                 f"print({testo!r})\nsys.exit({codice})\n")
+    if os.name == "nt":
+        c = tmp_path / "codex_finto.cmd"
+        c.write_text(f'@"{sys.executable}" "{f}" %*' + chr(10))
+        return str(c), str(f) + ".args"
+    sh = tmp_path / "codex_finto.sh"
+    sh.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{f}" "$@"\n'); sh.chmod(0o755)
+    return str(sh), str(f) + ".args"
+
+
 @pytest.fixture
 def s():
     st = SqliteStore(":memory:")
@@ -75,3 +97,40 @@ def test_comando_cervello_senza_claude(s, monkeypatch):
     _, tok = s.register_device("menotti", "PC")
     assert cervello.servi(LocalClient(s, tok), giri=1) == 2
     assert os.environ.get("GUARDIAN_CLAUDE_BIN") is None
+
+
+def test_claude_fallisce_risponde_codex_in_sola_lettura(s, tmp_path, monkeypatch):
+    monkeypatch.setenv("GUARDIAN_HOME", str(tmp_path / "casa"))
+    _, tok = s.register_device("menotti", "PC")
+    rid = s.crea_richiesta("menotti", "Chi lavora adesso?")
+    bin_codex, args_f = finto_codex(tmp_path, "Lavora solo Codex. Claude è al limite.")
+    assert cervello.servi(LocalClient(s, tok), bin_claude=str(tmp_path / "inesistente"), bin_codex=bin_codex, giri=1) == 0
+    assert [x["testo"] for x in s.risposte(rid)] == ["Lavora solo Codex.", "Claude è al limite.", ""]
+    assert s.richiesta(rid)["stato"] == "completata"
+    args = json.loads(open(args_f).read())
+    assert args[args.index("-s") + 1] == "read-only" and "Chi lavora adesso?" in args[-1]
+    assert not any("dangerously" in a for a in args)
+    assert s._q("SELECT modello FROM guardian_cervello")[0]["modello"] == "codex"
+
+
+def test_oltre_soglia_salta_claude(s, tmp_path, monkeypatch):
+    import time
+    monkeypatch.setenv("GUARDIAN_HOME", str(tmp_path / "casa"))
+    (tmp_path / "usage.json").write_text(json.dumps({"seven_day": {"pct": 98, "resets_at": time.time() + 3600}}))
+    assert cervello.claude_al_limite()
+    _, tok = s.register_device("menotti", "PC")
+    rid = s.crea_richiesta("menotti", "ciao")
+    bin_claude = finto_claude(tmp_path, "Risponde Claude, non dovrebbe.")
+    bin_codex, _ = finto_codex(tmp_path, "Risponde Codex.")
+    assert cervello.servi(LocalClient(s, tok), bin_claude=bin_claude, bin_codex=bin_codex, giri=1) == 0
+    assert s.risposte(rid)[0]["testo"] == "Risponde Codex."
+    (tmp_path / "usage.json").write_text(json.dumps({"seven_day": {"pct": 99, "resets_at": time.time() - 1}}))
+    assert not cervello.claude_al_limite()  # settimana già azzerata
+
+
+def test_codex_esce_con_errore_senza_testo_chiude_la_richiesta(s, tmp_path):
+    _, tok = s.register_device("menotti", "PC")
+    rid = s.crea_richiesta("menotti", "ciao")
+    bin_codex, _ = finto_codex(tmp_path, "", codice=1)
+    assert cervello.servi(LocalClient(s, tok), bin_claude=str(tmp_path / "no"), bin_codex=bin_codex, giri=1) == 0
+    assert s.richiesta(rid)["stato"] == "errore"
