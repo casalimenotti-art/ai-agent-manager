@@ -266,7 +266,7 @@ function Toasts() {
 export function Shell() {
   const { source, pannello, parete } = useG();
   const aspetto = useAspetto();
-  const volto = aspetto.volto !== 'spento' && <Suspense fallback={null}><VoltoSfondo key={aspetto.volto} punto={parete ? [0.24, 0.3] : undefined} /></Suspense>;
+  const volto = aspetto.volto !== 'spento' && <Suspense fallback={null}><VoltoSfondo key={aspetto.volto} punto={parete ? [0.5, 0.45] : undefined} /></Suspense>;
   if (parete) return <>{volto}<Parete /><Annunci /><Toasts /></>;
   const classi = ['shell', pannello && PANNELLI[pannello.p] ? 'con-pannello' : '', pannello && PANNELLI[pannello.p]?.largo ? 'pannello-lg' : ''].join(' ');
   return (

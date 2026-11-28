@@ -21,6 +21,14 @@ Memoria del ciclo continuo descritto in `prompts/GUARDIAN_HQ_MASTER_V3.md`. Ogni
 - Nucleo compatto: piccolo indicatore di quanti agenti sono al lavoro **in quella stanza**, oltre al totale.
 
 ## Registro delle ondate
+- **28/11 · Volto di NEXO Sentinel nella dashboard**:
+  - **Volto**: più rovinato (ammaccature vere, crateri, bruciature, olio, saldature, vetro incrinato, bullone mancante), scena scura.
+  - **Strati**: Blender (`tools/volto3d/strati.py`, 0,34 MB), verificati da `verifica_strati.py`.
+  - **Shader WebGL2** (`src/volto/`): parallasse, anelli, iride, bocca, lampi.
+  - **Stati reali** (`stati.ts`, 11 test): si sveglia alle richieste, pensa, parla, ascolta, lampo sugli eventi, barge-in, ambra/rosso. Non segue il cursore.
+  - **Stile**: scuro con vetro (`VOLTO-STILE.md`, `volto.css`). Impostazioni Volto/Vetro, parete con l'occhio al centro.
+  - **Ripieghi**: immagine su telefono e senza WebGL.
+  - **Test**: vitest 32, E2E 115 + volto 16 + voce, pytest 70.
 - **27/11 · Ondata 10**: `public/manifest.webmanifest` (standalone, icone 192/512 + maskable + Apple, scorciatoia «Parete»),
   `public/sw.js` (solo la shell dello stesso sito: pagina prima dalla rete, file con hash prima dalla cache; Supabase e voce locale mai in cache),
   registrazione solo in produzione. Test E2E: manifest e icone, SW attivo, apertura senza rete, cache solo dello stesso sito.

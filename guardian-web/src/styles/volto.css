@@ -39,3 +39,16 @@
   .con-volto .hero { min-height: 62vh; align-content: end; }
   .con-volto .hero > div:last-child { padding: var(--s-4); }
 }
+/* parete con il volto: la colonna centrale resta libera per l'occhio */
+@media (min-width: 1101px) {
+  .con-volto .parete { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr); grid-template-rows: auto 1fr 1fr auto;
+    grid-template-areas: "nucleo . stanze" "azioni . stanze" "attivita . stanze" "piede piede piede"; }
+  .con-volto .parete-nucleo { display: block; }
+  .con-volto .parete-nucleo svg { display: none; }
+  .con-volto .parete-nucleo > div { background: var(--vetro-bg); -webkit-backdrop-filter: var(--vetro-filtro); backdrop-filter: var(--vetro-filtro);
+    border: 1px solid rgba(255, 255, 255, 0.07); border-radius: var(--r-3); padding: 20px 24px; }
+  .con-volto .parete-stato { font-size: 1.25rem; }
+  .con-volto .parete-numeri { gap: 20px; } .con-volto .parete-numeri b { font-size: 2rem; }
+}
+.parete section.parete-colonna[aria-label="Prossime azioni"] { grid-area: azioni; }
+.con-volto .parete-colonna { overflow: hidden; }

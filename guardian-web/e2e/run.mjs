@@ -224,8 +224,9 @@ ok(errori.length === 0, `nessun errore in console ${errori.slice(0, 2).join(' | 
   const prima = await q.locator('[aria-label="Costi"] .porta-numeri b').first().textContent();
   await q.click('[aria-label="Costi"] button:has-text("Aggiungi")');
   await q.fill('[aria-label="Costi"] .field:has-text("Descrizione") input', 'Canva Pro'); await q.fill('[aria-label="Costi"] .field:has-text("Importo") input', '11');
-  await q.click('[aria-label="Costi"] button[type=submit]'); await q.waitForSelector('.toast.err');
-  ok((await q.locator('.toast.err').last().textContent()).includes('fonte') || await q.locator('[aria-label="Costi"] input:invalid').count() > 0, 'costi: senza fonte non si salva');
+  await q.click('[aria-label="Costi"] button[type=submit]'); await q.waitForTimeout(400); // il browser blocca il campo obbligatorio, oppure il controllo dà un errore
+  const errFonte = await q.locator('.toast.err').count() ? (await q.locator('.toast.err').last().textContent()).includes('fonte') : false;
+  ok(errFonte || await q.locator('[aria-label="Costi"] input:invalid').count() > 0, 'costi: senza fonte non si salva');
   await q.fill('[aria-label="Costi"] input[placeholder^="es. fattura"]', 'estratto conto'); await q.click('[aria-label="Costi"] button[type=submit]');
   await q.waitForSelector('.toast:has-text("Costo salvato")');
   const dopo = await q.locator('[aria-label="Costi"] .porta-numeri b').first().textContent();
@@ -244,6 +245,8 @@ ok(errori.length === 0, `nessun errore in console ${errori.slice(0, 2).join(' | 
   const suoni = () => q.evaluate(() => window.__guardianSuoni ?? []);
   await q.click('.conv-btn'); await q.waitForSelector('.conv-barra[data-fase="ascolto"]'); await q.keyboard.press('Escape'); await q.waitForTimeout(150);
   ok((await suoni()).length === 0, 'suoni spenti di default: nessun suono');
+  // orario di silenzio neutro: altrimenti di notte (22–8, predefinito) i suoni tacciono di proposito
+  await q.evaluate(() => { const k = 'guardian.pref'; const v = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify({ ...v, silenzioDa: '00:00', silenzioA: '00:00' })); });
   await q.click('.rail button:has-text("Impostazioni")'); await q.check('label:has-text("Suoni discreti") input');
   ok((await suoni()).join() === 'notifica', 'attivando i suoni se ne sente uno di prova');
   await q.click('.drawer button[aria-label="Chiudi pannello"]');
@@ -252,6 +255,7 @@ ok(errori.length === 0, `nessun errore in console ${errori.slice(0, 2).join(' | 
   ok(e5.length === 0, `suoni senza errori in console ${e5.slice(0, 2).join(' | ')}`);
   await q.close();
   const { p: w, errori: e6 } = await entra(1920, 1080, '?parete=1');
+  await w.waitForSelector('.volto-sfondo.pronto').catch(() => {}); await w.waitForTimeout(800); // il volto compare in dissolvenza
   ok(await w.locator('.parete-stanza').count() === 3 && await w.locator('.rail').count() === 0 && await w.locator('.dock').count() === 0, 'parete: tre stanze, niente menu né chat');
   ok(new globalThis.URL(w.url()).searchParams.get('parete') === '1', 'parete: resta nell\'indirizzo (condivisibile)');
   await w.addScriptTag({ content: axe });
