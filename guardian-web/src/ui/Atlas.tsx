@@ -7,6 +7,8 @@ import { createPortal } from 'react-dom';
 import { angoloAuto, COLORI_ATLAS, conProfondita, costruisciGrafo, hash01, polvere, proietta, type Grafo3, devoDisegnare, DURATA_ZOOM_MS, disponi, faseImpulso, FILTRO_TUTTI, filtraGrafo, interpolaVista, lampeggio, nodoInPunto, possoAnimare,
   puntoSulPercorso, respiro, riepilogoAtlas, schedaNodo, stileStato, VISTA_COMPLETA, vistaStanza, zonaLibera, type FiltroAtlas, type Grafo, type Nodo, type Pt, type Rett, type Scheda, type Vista } from '../logic/atlas';
 import { useG } from '../state';
+import { statoNucleo } from '../logic/guardian';
+import { ThreeBrain } from './ThreeBrain';
 
 const FONDO = '#050912';
 const TELEFONO = 600;
@@ -184,7 +186,7 @@ const dentro = (z: Rett, x: number, y: number) => x >= z.x - 20 && x <= z.x + z.
 interface Tip { id: string; x: number; y: number }
 
 export default function Atlas() {
-  const { snap, pensa, apri, pannello, paletteAperta, parete } = useG();
+  const { snap, pensa, pingOk, apri, pannello, paletteAperta, parete } = useG();
   const canvas = useRef<HTMLCanvasElement>(null);
   const radice = useRef<HTMLDivElement>(null);
   const rispondendo = useRef(false); rispondendo.current = pensa;
@@ -194,6 +196,11 @@ export default function Atlas() {
   const [filtro, setFiltro] = useState<FiltroAtlas>(FILTRO_TUTTI);
   const [stanzaZoom, setStanzaZoom] = useState<string | null>(null);
   const [tip, setTip] = useState<Tip | null>(null);
+  const [threeReady, setThreeReady] = useState(false);
+  const stato = statoNucleo(snap, { pingOk, ascolta: false, pensa });
+  const trePronto = useCallback(() => setThreeReady(true), []);
+  const treFallback = useCallback(() => setThreeReady(false), []);
+  const apriDispositivi = useCallback(() => apri({ p: 'dispositivi' }), [apri]);
   useEffect(() => {
     const misura = () => {
       setDim((d) => (d.w === window.innerWidth && d.h === window.innerHeight ? d : { w: window.innerWidth, h: window.innerHeight }));
@@ -307,6 +314,7 @@ export default function Atlas() {
   }, []);
 
   useEffect(() => {
+    if (threeReady) { radice.current?.setAttribute('data-atlas-fps', '0'); return; }
     const el = canvas.current; const c = el?.getContext('2d'); if (!el || !c) return;
     const dpr = Math.min(1.5, window.devicePixelRatio || 1);
     el.width = Math.round(dim.w * dpr); el.height = Math.round(dim.h * dpr);
@@ -342,15 +350,17 @@ export default function Atlas() {
     };
     document.addEventListener('visibilitychange', aggiorna); aggiorna();
     return () => { document.removeEventListener('visibilitychange', aggiorna); cancelAnimationFrame(raf); ridisegna.current = null; };
-  }, [grafo, dim, snap, zona, ridotto, telefono]);
+  }, [grafo, dim, snap, zona, ridotto, telefono, threeReady]);
 
   const nodoTip = tip && grafo ? grafo.nodi.find((n) => n.id === tip.id) : undefined;
   const scheda: Scheda | null = nodoTip && snap ? schedaNodo(snap, nodoTip) : null;
   const stanze = (snap?.stanze ?? []).filter((st) => st.attiva).sort((a, b) => a.ordine - b.ordine);
   const nascondi = !!pannello || paletteAperta || parete;
   return (
-    <div ref={radice} className="atlas-sfondo" data-atlas={grafo ? 'pronto' : 'attesa'} data-atlas-nodi={grafo?.nodi.length ?? 0}>
+    <div ref={radice} className="atlas-sfondo" data-atlas={grafo ? 'pronto' : 'attesa'} data-atlas-nodi={grafo?.nodi.length ?? 0} data-three-ready={threeReady}>
       <canvas ref={canvas} aria-hidden="true" />
+      <ThreeBrain stato={stato} ridotto={ridotto} dispositivi={snap?.devices ?? []} agenti={snap?.agents ?? []}
+        onReady={trePronto} onFallback={treFallback} onApriDispositivi={apriDispositivi} />
       <p className="sr-only" role="status">{`Atlas di Guardian, in 3D. ${testo} I puntini tenui sullo sfondo sono solo decorativi.`}</p>
       {!nascondi && createPortal(
         <div className="atlas-controlli" role="group" aria-label="Filtri dell'Atlas">

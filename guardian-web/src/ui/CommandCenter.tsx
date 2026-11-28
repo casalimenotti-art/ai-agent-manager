@@ -25,8 +25,8 @@ export function taskImportanti(tasks: Task[], n = 7) {
 export function CommandCenter() {
   const { snap, pingOk, pensa, apri, errore, stanza, apriStanza } = useG();
   const { ascolta: pushToTalk } = useVoce();
-  const [numeri, setNumeri] = useState(() => leggiPreferenze().numeriAperti);
-  const cambiaNumeri = () => { const v = !numeri; setNumeri(v); salvaPreferenze({ ...leggiPreferenze(), numeriAperti: v }); window.setTimeout(() => window.dispatchEvent(new Event('resize')), 30); };
+  const [dettagli, setDettagli] = useState(() => leggiPreferenze().dettagliAperti);
+  const cambiaDettagli = () => { const v = !dettagli; setDettagli(v); salvaPreferenze({ ...leggiPreferenze(), dettagliAperti: v }); };
   const conv = useConversazione();
   const ascolta = pushToTalk || conv.fase === 'ascolto';
   const opz = { pingOk, ascolta, pensa: pensa || conv.fase === 'elaborazione', parla: conv.fase === 'parla' };
@@ -52,11 +52,15 @@ export function CommandCenter() {
         <div>
           <h1>Guardian</h1>
           <p className="stato" aria-live="polite">{testoStato(snap, opz)}</p>
-          <div className="row" style={{ marginBottom: numeri ? 16 : 0 }}><PulsanteConversazione /><StatoCervello />
-            <button type="button" className="btn ghost sm tendina-btn" aria-expanded={numeri} aria-controls="numeri-centro" onClick={cambiaNumeri}>
-              <BarChart3 size={14} aria-hidden /> {numeri ? 'Nascondi i numeri' : 'Mostra i numeri'}</button></div>
+          <div className="row hero-comandi"><PulsanteConversazione /><StatoCervello />
+            <button type="button" className="btn ghost sm tendina-btn" aria-expanded={dettagli} aria-controls="dettagli-centro" onClick={cambiaDettagli}>
+              <BarChart3 size={14} aria-hidden /> {dettagli ? 'Chiudi dettagli' : 'Dettagli'}</button></div>
+          <div className="stellar-status" aria-label="Stato dei collegamenti">
+            <button type="button" onClick={() => apri({ p: 'email' })}>Email non collegata</button>
+            <button type="button" onClick={() => apri({ p: 'dispositivi' })}>PC {snap ? `${snap.devices.filter((d) => d.stato === 'online').length}/3` : '—/3'}</button>
+          </div>
           {errore && <p className="err" role="alert">{errore}</p>}
-          {numeri && <div className="kpis tendina" id="numeri-centro">
+          <div className="kpis tendina stellar-kpis" id="numeri-centro">
             {snap ? (<>
               <button className="kpi" onClick={() => apri({ p: 'agenti' })}>
                 <div className="v">{agentiAlLavoro(snap)}<span className="dim" style={{ fontSize: '1rem' }}>/{snap.agents.length}</span></div>
@@ -70,10 +74,11 @@ export function CommandCenter() {
                 <div className="v">{completatiOggi(snap)}</div><div className="l">Completati oggi</div>
                 <div className="f">{errori24h(snap)} errori nelle ultime 24 h</div></button>
             </>) : Array.from({ length: 4 }, (_, i) => <div key={i} className="kpi"><Scheletro righe={2} /></div>)}
-          </div>}
+          </div>
         </div>
       </section>
 
+      {dettagli && <div className="dettagli-centro" id="dettagli-centro">
       <OrbitaStanze />
 
       <Sezione titolo="Prossime azioni" icona={Sparkles} conta={r?.prossime.length} className="col-5">
@@ -169,6 +174,7 @@ export function CommandCenter() {
             })}
           </div>)}
       </Sezione>
+      </div>}
     </div>
   );
 }

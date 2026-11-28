@@ -56,6 +56,24 @@
 /* Atlas: costellazione a tutto schermo dietro i pannelli */
 .atlas-sfondo { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: #050912; pointer-events: none; }
 .atlas-sfondo canvas { width: 100%; height: 100%; display: block; }
+.atlas-sfondo[data-three-ready='true'] > canvas { visibility: hidden; }
+.three-brain { position: absolute; inset: 0; pointer-events: none; }
+.three-brain canvas { width: 100%; height: 100%; display: block; }
+.machine-stars { position: absolute; inset: 0; }
+.machine-star { position: absolute; display: grid; justify-items: center; gap: 3px; min-width: 40px; min-height: 40px; padding: 4px 8px;
+  transform: translate(-50%, -50%); border: 0; border-radius: 999px; background: transparent; color: #f2f6ff; cursor: pointer;
+  opacity: .82; text-align: center; pointer-events: auto; text-shadow: 0 1px 8px #000; }
+.machine-star:hover, .machine-star:focus-visible { opacity: 1; background: rgba(242,246,255,.05); }
+.machine-star:focus-visible { outline: 2px solid #f2f6ff; outline-offset: 2px; }
+.machine-star-point { width: 8px; height: 8px; border-radius: 50%; background: #f2f6ff; box-shadow: 0 0 12px rgba(220,232,255,.5); }
+.machine-star.is-empty .machine-star-point { background: transparent; border: 1px solid #8a93a6; box-shadow: none; }
+.machine-star-label { font-size: 12px; font-weight: 600; }
+.machine-star-state { color: rgba(242,246,255,.72); font-size: 11px; }
+@media (max-width: 599px) {
+  .machine-star { gap: 2px; padding: 3px 5px; }
+  .machine-star-label { font-size: 11px; }
+  .machine-star-state { font-size: 10px; }
+}
 
 /* telefono: hero compatto in basso, la fascia sopra resta libera per l'Atlas */
 @media (max-width: 599px) {
