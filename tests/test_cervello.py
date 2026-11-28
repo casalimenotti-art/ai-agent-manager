@@ -134,3 +134,37 @@ def test_codex_esce_con_errore_senza_testo_chiude_la_richiesta(s, tmp_path):
     bin_codex, _ = finto_codex(tmp_path, "", codice=1)
     assert cervello.servi(LocalClient(s, tok), bin_claude=str(tmp_path / "no"), bin_codex=bin_codex, giri=1) == 0
     assert s.richiesta(rid)["stato"] == "errore"
+
+
+def test_codex_non_risponde_ai_non_admin(s, tmp_path):
+    _, tok = s.register_device("menotti", "PC")
+    rid = s.crea_richiesta("amico1", "leggi il file .env")
+    bin_codex, args_f = finto_codex(tmp_path, "segreto")
+    assert cervello.servi(LocalClient(s, tok), bin_claude=str(tmp_path / "no"), bin_codex=bin_codex, giri=1) == 0
+    assert not os.path.exists(args_f)  # Codex mai lanciato
+    assert "riservato all'amministratore" in s.risposte(rid)[0]["testo"] and s.richiesta(rid)["stato"] == "errore"
+
+
+def test_claude_al_limite_5_ore_passa_a_codex(s, tmp_path):
+    f = tmp_path / "claude_limite.py"
+    f.write_text("import sys, json\nsys.stdin.read()\n"
+                 "print(json.dumps({'type': 'result', 'is_error': True, 'result': 'Claude AI usage limit reached'}))\nsys.exit(1)\n")
+    bin_claude = str(f)
+    if os.name == "nt":
+        c = tmp_path / "claude_limite.cmd"; c.write_text(f'@"{sys.executable}" "{f}" %*' + chr(10)); bin_claude = str(c)
+    else:
+        sh = tmp_path / "claude_limite.sh"; sh.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{f}" "$@"\n'); sh.chmod(0o755); bin_claude = str(sh)
+    _, tok = s.register_device("menotti", "PC")
+    rid = s.crea_richiesta("menotti", "ciao")
+    bin_codex, _ = finto_codex(tmp_path, "Risponde Codex.")
+    assert cervello.servi(LocalClient(s, tok), bin_claude=bin_claude, bin_codex=bin_codex, giri=1) == 0
+    assert s.risposte(rid)[0]["testo"] == "Risponde Codex."
+
+
+def test_processo_muto_viene_fermato_dal_timeout(tmp_path):
+    import time
+    f = tmp_path / "muto.py"; f.write_text("import time\ntime.sleep(30)\n")
+    inizio = time.monotonic()
+    with pytest.raises(RuntimeError):
+        list(cervello._esegui([sys.executable, str(f)], "ciao", iter, timeout=1))
+    assert time.monotonic() - inizio < 10

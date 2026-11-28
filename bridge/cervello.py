@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Iterable, Iterator
@@ -46,7 +47,8 @@ def testi_da_stream(righe: Iterable[str]) -> Iterator[str]:
                 if blocco.get("type") == "text" and blocco.get("text"):
                     visto = True
                     yield blocco["text"]
-        elif ev.get("type") == "result" and not visto and ev.get("result"):
+        # is_error = limite raggiunto o guasto: non è una risposta, così scatta la riserva
+        elif ev.get("type") == "result" and not visto and ev.get("result") and not ev.get("is_error"):
             yield str(ev["result"])
 
 
@@ -74,14 +76,15 @@ def _esegui(cmd: list[str], prompt: str, estrai, timeout: float) -> Iterator[str
         proc.stdin.write(prompt); proc.stdin.close()  # type: ignore[union-attr]
     except OSError:
         pass  # il processo ha già chiuso: si legge comunque quello che ha scritto
-    inizio, visto = time.monotonic(), False
+    scaduto = threading.Timer(timeout, proc.kill)  # scatta anche se il processo non scrive nulla (Codex stampa solo alla fine)
+    scaduto.start()
+    visto = False
     try:
         for riga in estrai(proc.stdout):  # type: ignore[arg-type]
             visto = visto or bool(riga.strip())
             yield riga
-            if time.monotonic() - inizio > timeout:
-                raise TimeoutError("risposta troppo lenta")
     finally:
+        scaduto.cancel()
         if proc.poll() is None:
             proc.kill()
         proc.wait(timeout=5)
@@ -111,6 +114,12 @@ def claude_al_limite(soglia: float = 98) -> bool:
         return False
 
 
+def codex_permesso(r: dict) -> bool:
+    """Codex in sandbox read-only può comunque LEGGERE tutto il disco: risponde solo a chi è in GUARDIAN_CODEX_PER."""
+    ammessi = {x.strip().lower() for x in os.environ.get("GUARDIAN_CODEX_PER", "menotti").split(",") if x.strip()}
+    return str(r.get("utente", "")).strip().lower() in ammessi
+
+
 def servi(client, bin_claude: str | None = None, intervallo: float = 1.5, giri: int = 0, modello: str | None = None,
           bin_codex: str | None = None) -> int:
     """Ciclo del cervello: Claude Code, con Codex come riserva. `giri` > 0 solo per i test."""
@@ -133,6 +142,11 @@ def servi(client, bin_claude: str | None = None, intervallo: float = 1.5, giri: 
             if r:
                 seq, errore = 0, None
                 for nome, chiedi, bin_ in pronti:
+                    if nome == "codex" and not codex_permesso(r):
+                        client.call("bridge_rispondi", richiesta_id=r["id"], seq=seq, fine=True, errore=True,
+                                    testo="Il cervello principale non è disponibile e quello di riserva è riservato all'amministratore.")
+                        errore = None
+                        break
                     try:
                         for f in frasi(chiedi(costruisci_prompt(r), bin_)):
                             client.call("bridge_rispondi", richiesta_id=r["id"], seq=seq, testo=f, fine=False, errore=False)
