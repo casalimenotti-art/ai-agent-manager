@@ -59,17 +59,40 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
         }));
         neural.add(inner);
 
-        // nuvola neurale a forma di cervello: due emisferi, solco centrale, densità irregolare (niente griglia regolare)
-        const N = innerWidth < 600 ? 1400 : 2600;
-        const shellPositions = new Float32Array(N * 3); const luci = new Float32Array(N * 3);
+        // cervello anatomico a punti: emisferi con circonvoluzioni, scissura, lobi temporali, cervelletto, tronco e neuroni interni
+        const piccolo = innerWidth < 600;
+        const N = piccolo ? 3200 : 7600; const NC = piccolo ? 520 : 1100; const NI = piccolo ? 500 : 1300; const NT = piccolo ? 120 : 260;
+        const TOT = N + NC + NI + NT;
+        const shellPositions = new Float32Array(TOT * 3); const luci = new Float32Array(TOT * 3);
         let seme = 7; const rnd = () => { seme = (seme * 16807) % 2147483647; return seme / 2147483647; };
+        const cresta = (v: number) => 1 - Math.abs(Math.sin(v)); // pieghe nette come i giri cerebrali
         for (let i = 0; i < N; i++) {
           const y = 1 - (2 * (i + 0.5)) / N; const r = Math.sqrt(1 - y * y); const t = i * 2.399963;
           let x = Math.cos(t) * r; const z = Math.sin(t) * r;
-          const pieghe = 0.82 + 0.1 * Math.sin(x * 9 + y * 5) * Math.cos(z * 7 - y * 4) + 0.12 * rnd(); // circonvoluzioni
-          x += Math.sign(x || 1) * 0.07; // solco tra gli emisferi
-          shellPositions.set([x * 1.18 * pieghe, y * 0.86 * pieghe - 0.04, z * 1.02 * pieghe], i * 3);
-          const l = 0.45 + 0.55 * rnd() ** 2; luci.set([l, l, l], i * 3); // stelle più e meno luminose
+          const giri = 0.055 * cresta(x * 7.5 + Math.sin(z * 3.1) * 1.6 + y * 2.2) + 0.035 * cresta(z * 11 - y * 6.5 + Math.cos(x * 4) * 1.2)
+            + 0.02 * cresta((x + y + z) * 17) + 0.025 * rnd();
+          let raggio = 0.84 + giri;
+          if (Math.abs(x) < 0.14 && y > -0.25) raggio -= 0.09 * (1 - Math.abs(x) / 0.14); // scissura longitudinale
+          const temporale = y < 0.05 && Math.abs(x) > 0.45 ? 0.1 * (0.05 - y) * Math.abs(x) : 0; // lobi temporali più bassi e larghi
+          x += Math.sign(x || 1) * 0.06;
+          shellPositions.set([x * 1.16 * raggio * (1 + temporale), y * 0.84 * raggio - 0.02 - temporale * 0.4, z * 1.06 * raggio + (y > 0.2 ? 0.04 : 0)], i * 3);
+          const l = 0.35 + 0.65 * giri / 0.135; luci.set([l, l, l], i * 3); // le creste dei giri brillano di più
+        }
+        for (let k = 0; k < NC; k++) { // cervelletto: dietro e sotto, a lamelle orizzontali fitte
+          const i = N + k; const u = rnd() * Math.PI * 2; const v = Math.acos(2 * rnd() - 1);
+          const lam = 0.9 + 0.1 * cresta(Math.cos(v) * 26);
+          shellPositions.set([Math.sin(v) * Math.cos(u) * 0.52 * lam, Math.cos(v) * 0.24 * lam - 0.66, Math.sin(v) * Math.sin(u) * 0.34 * lam - 0.62], i * 3);
+          const l = 0.3 + 0.5 * lam ** 8; luci.set([l, l, l], i * 3);
+        }
+        for (let k = 0; k < NI; k++) { // neuroni interni, deboli: danno profondità quando ruota
+          const i = N + NC + k; const u = rnd() * Math.PI * 2; const v = Math.acos(2 * rnd() - 1); const d = Math.cbrt(rnd()) * 0.72;
+          shellPositions.set([Math.sin(v) * Math.cos(u) * d * 1.1, Math.cos(v) * d * 0.78, Math.sin(v) * Math.sin(u) * d], i * 3);
+          const l = 0.12 + 0.25 * rnd(); luci.set([l, l, l], i * 3);
+        }
+        for (let k = 0; k < NT; k++) { // tronco encefalico
+          const i = N + NC + NI + k; const h = rnd(); const a = rnd() * Math.PI * 2; const rr = 0.13 - h * 0.04;
+          shellPositions.set([Math.cos(a) * rr, -0.45 - h * 0.62, Math.sin(a) * rr - 0.3 - h * 0.08], i * 3);
+          const l = 0.25 + 0.3 * rnd(); luci.set([l, l, l], i * 3);
         }
         const shell = new THREE.BufferGeometry();
         shell.setAttribute('position', new THREE.BufferAttribute(shellPositions, 3));
@@ -78,23 +101,46 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
         const gr = tc.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, '#fff'); gr.addColorStop(0.35, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
         tc.fillStyle = gr; tc.fillRect(0, 0, 32, 32);
         const stella = new THREE.CanvasTexture(tela);
-        const shellPoints = new THREE.Points(shell, new THREE.PointsMaterial({ color: 0xdceBff, size: 0.05, map: stella, vertexColors: true, transparent: true,
+        const shellPoints = new THREE.Points(shell, new THREE.PointsMaterial({ color: 0xdceBff, size: piccolo ? 0.04 : 0.032, map: stella, vertexColors: true, transparent: true,
           opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true }));
         materialiStato.current.push(shellPoints.material as PointsMaterial);
         neural.add(shellPoints);
 
-        // sinapsi: ogni punto di un campione si collega ai 2 vicini più prossimi
-        const campione = Array.from({ length: 420 }, (_, i) => Math.floor((i * N) / 420));
-        const sinapsi: number[] = [];
+        // sinapsi: ogni punto di un campione si collega ai 3 vicini più prossimi (griglia spaziale: niente confronti tutti-con-tutti)
+        const M = piccolo ? 900 : 2200; const passo = 0.16; const griglia = new Map<string, number[]>();
+        const campione = Array.from({ length: M }, (_, i) => Math.floor((i * TOT) / M));
+        const cella = (i: number) => [0, 1, 2].map((c) => Math.floor(shellPositions[i * 3 + c] / passo));
+        for (const i of campione) { const k = cella(i).join(','); const lista = griglia.get(k); if (lista) lista.push(i); else griglia.set(k, [i]); }
+        const sinapsi: number[] = []; const lungo: number[] = []; const semi: number[] = [];
         for (const i of campione) {
-          const vicini = campione.filter((j) => j !== i).map((j) => [j, (shellPositions[i * 3] - shellPositions[j * 3]) ** 2 + (shellPositions[i * 3 + 1] - shellPositions[j * 3 + 1]) ** 2 + (shellPositions[i * 3 + 2] - shellPositions[j * 3 + 2]) ** 2] as const)
-            .sort((m, n) => m[1] - n[1]).slice(0, 2);
-          for (const [j] of vicini) sinapsi.push(...shellPositions.slice(i * 3, i * 3 + 3), ...shellPositions.slice(j * 3, j * 3 + 3));
+          const [cx, cy, cz] = cella(i); const vicini: [number, number][] = [];
+          for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++)
+            for (const j of griglia.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) {
+              if (j <= i) continue;
+              vicini.push([j, (shellPositions[i * 3] - shellPositions[j * 3]) ** 2 + (shellPositions[i * 3 + 1] - shellPositions[j * 3 + 1]) ** 2 + (shellPositions[i * 3 + 2] - shellPositions[j * 3 + 2]) ** 2]);
+            }
+          const semeSinapsi = rnd();
+          for (const [j] of vicini.sort((m, n) => m[1] - n[1]).slice(0, 3)) {
+            sinapsi.push(...shellPositions.slice(i * 3, i * 3 + 3), ...shellPositions.slice(j * 3, j * 3 + 3));
+            lungo.push(0, 1); semi.push(semeSinapsi, semeSinapsi);
+          }
         }
         const filamentGeometry = new THREE.BufferGeometry();
         filamentGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sinapsi), 3));
-        neural.add(new THREE.LineSegments(filamentGeometry, new THREE.LineBasicMaterial({ color: 0xdceBff, transparent: true,
-          opacity: 0.11, blending: THREE.AdditiveBlending, depthWrite: false })));
+        filamentGeometry.setAttribute('aT', new THREE.BufferAttribute(new Float32Array(lungo), 1));
+        filamentGeometry.setAttribute('aSeme', new THREE.BufferAttribute(new Float32Array(semi), 1));
+        // impulsi che viaggiano lungo le sinapsi: più veloci e frequenti quando Guardian lavora
+        const impulsi = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+          uniforms: { uTime: { value: 0 }, uAttivita: { value: 0.3 }, uColore: { value: new THREE.Color(0xdceBff) } },
+          vertexShader: `attribute float aT; attribute float aSeme; varying float vT; varying float vSeme;
+            void main() { vT = aT; vSeme = aSeme; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+          fragmentShader: `uniform float uTime; uniform float uAttivita; uniform vec3 uColore; varying float vT; varying float vSeme;
+            void main() { float ciclo = fract(uTime * (0.25 + uAttivita * 0.6) + vSeme * 7.0);
+              float acceso = step(vSeme, 0.18 + uAttivita * 0.5);
+              float scintilla = acceso * (1.0 - smoothstep(0.0, 0.12, abs(vT - (ciclo * 1.6 - 0.3))));
+              gl_FragColor = vec4(uColore, 0.07 + scintilla * 0.75); }`,
+        });
+        neural.add(new THREE.LineSegments(filamentGeometry, impulsi));
 
         const machinePositions = [new THREE.Vector3(-2.65, 1.45, -0.25), new THREE.Vector3(2.65, 1.45, -0.25), new THREE.Vector3(0, -1.55, 0.12)];
         const activeMarkers: { mesh: import('three').Mesh; curve: PercorsoSpazio; phase: number;
@@ -243,6 +289,8 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
           const pulse = statoAttuale === 'completed' ? 0.055 * Math.max(0, 1 - (now - cambiatoStato) / 950) : 0;
           const breath = 1 + Math.sin(t * (busy ? 1.8 : 0.55)) * (busy ? 0.045 : 0.03) + pulse;
           neural.scale.setScalar(breath);
+          impulsi.uniforms.uTime.value = t; impulsi.uniforms.uColore.value.setHex(color);
+          impulsi.uniforms.uAttivita.value += ((statoAttuale === 'offline' ? 0 : busy ? 1 : 0.3) - impulsi.uniforms.uAttivita.value) * 0.05;
           neural.rotation.y = t * Math.PI * 2 / 90;
           neural.rotation.x = pitch + Math.sin(t / 13) * 0.06;
           neural.rotation.z = yaw + Math.sin(t / 17) * 0.025;
