@@ -11,12 +11,13 @@ import { Parete } from './Parete';
 import { segnalaRichiesta } from '../volto/segnali';
 
 const VoltoSfondo = lazy(() => import('../volto/VoltoSfondo'));
+const Atlas = lazy(() => import('./Atlas'));
 
 /** Preferenze d'aspetto (volto e vetro), aggiornate subito quando si cambiano in Impostazioni. */
 function useAspetto() {
   const [p, setP] = useState(leggiPreferenze);
   useEffect(() => { const f = () => setP(leggiPreferenze()); window.addEventListener('guardian:preferenze', f); return () => window.removeEventListener('guardian:preferenze', f); }, []);
-  useEffect(() => { const h = document.documentElement; h.classList.toggle('con-volto', p.volto !== 'spento'); h.dataset.vetro = p.vetro; }, [p.volto, p.vetro]);
+  useEffect(() => { const h = document.documentElement; h.classList.toggle('con-volto', p.sfondo === 'atlas' || p.volto !== 'spento'); h.dataset.vetro = p.vetro; }, [p.sfondo, p.volto, p.vetro]);
   return p;
 }
 import { PANNELLI, titoloPannello } from './panels';
@@ -266,7 +267,7 @@ function Toasts() {
 export function Shell() {
   const { source, pannello, parete } = useG();
   const aspetto = useAspetto();
-  const volto = aspetto.volto !== 'spento' && <Suspense fallback={null}><VoltoSfondo key={aspetto.volto} punto={parete ? [0.5, 0.45] : undefined} /></Suspense>;
+  const volto = aspetto.sfondo === 'atlas' ? <Suspense fallback={null}><Atlas /></Suspense> : aspetto.volto !== 'spento' && <Suspense fallback={null}><VoltoSfondo key={aspetto.volto} punto={parete ? [0.5, 0.45] : undefined} /></Suspense>;
   if (parete) return <>{volto}<Parete /><Annunci /><Toasts /></>;
   const classi = ['shell', pannello && PANNELLI[pannello.p] ? 'con-pannello' : '', pannello && PANNELLI[pannello.p]?.largo ? 'pannello-lg' : ''].join(' ');
   return (

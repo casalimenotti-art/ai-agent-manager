@@ -52,3 +52,7 @@
 }
 .parete section.parete-colonna[aria-label="Prossime azioni"] { grid-area: azioni; }
 .con-volto .parete-colonna { overflow: hidden; }
+
+/* Atlas: costellazione a tutto schermo dietro i pannelli (nessuna animazione in questa ondata) */
+.atlas-sfondo { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: #050912; pointer-events: none; }
+.atlas-sfondo canvas { width: 100%; height: 100%; display: block; }

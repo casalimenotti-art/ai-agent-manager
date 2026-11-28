@@ -21,6 +21,13 @@ Memoria del ciclo continuo descritto in `prompts/GUARDIAN_HQ_MASTER_V3.md`. Ogni
 - Nucleo compatto: piccolo indicatore di quanti agenti sono al lavoro **in quella stanza**, oltre al totale.
 
 ## Registro delle ondate
+- **28/11 · Atlas, ondata 1 (statica con dati veri)**: sfondo del Centro a costellazione, ispirato al prompt `prompts/GUARDIAN_HQ_ATLAS.md`.
+  - file: `src/logic/atlas.ts` (grafo nucleo > stanze > agenti > task/eventi, colori per stanza, stato > stile, layout a forze con seed),
+    `src/logic/atlas.test.ts` (9 test), `src/ui/Atlas.tsx` (Canvas 2D, DPR max 2, resize, `aria-hidden` + riepilogo testuale), più
+    impostazione «Sfondo: Atlas / Volto» (predefinito Atlas) in Impostazioni, `state.tsx`, `Shell.tsx`, `volto.css`; `e2e/volto.mjs` ora imposta lo sfondo Volto.
+  - telefono (< 600 px): solo nucleo, stanze e agenti. Nessun agente: nucleo, 3 stanze e la scritta «Nessun agente collegato».
+  - test: vitest 41 verdi, build ok, screenshot 1440 px (demo) ok. Non verificato: E2E (Playwright non installato qui), Cloudflare dopo il push.
+  - limiti noti: su telefono il pannello iniziale copre quasi tutto il disegno; nessuna animazione (ondata 2); nessun tooltip/clic (ondata 3).
 - **28/11 · Volto di NEXO Sentinel nella dashboard**:
   - **Volto**: più rovinato (ammaccature vere, crateri, bruciature, olio, saldature, vetro incrinato, bullone mancante), scena scura.
   - **Strati**: Blender (`tools/volto3d/strati.py`, 0,34 MB), verificati da `verifica_strati.py`.

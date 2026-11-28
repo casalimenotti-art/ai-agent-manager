@@ -264,7 +264,10 @@ export function ImpostazioniPanel() {
       <p className="dim" style={{ fontSize: 12, margin: 0 }}>Al massimo 6 annunci vocali all'ora. Le preferenze restano su questo dispositivo.</p>
     </div>
     <div className="card stack">
-      <h3 className="section-title" style={{ margin: 0 }}>Volto di Guardian</h3>
+      <h3 className="section-title" style={{ margin: 0 }}>Sfondo</h3>
+      <div className="row" role="group" aria-label="Sfondo del Centro">{([['atlas', 'Atlas'], ['volto', 'Volto']] as const).map(([v, n]) => (
+        <button key={v} className={`btn sm ${p.sfondo === v ? 'primary' : ''}`} aria-pressed={p.sfondo === v} onClick={() => salva({ ...p, sfondo: v })}>{n}</button>))}</div>
+      <p className="dim" style={{ fontSize: 12, margin: 0 }}>Atlas: nucleo, stanze, agenti e task disegnati dai dati veri. Volto: l'immagine di NEXO Sentinel (le opzioni qui sotto valgono per il Volto).</p>
       <div className="row" role="group" aria-label="Volto 3D">{([['acceso', 'Animato'], ['immagine', 'Solo immagine'], ['spento', 'Spento']] as const).map(([v, n]) => (
         <button key={v} className={`btn sm ${p.volto === v ? 'primary' : ''}`} aria-pressed={p.volto === v} onClick={() => salva({ ...p, volto: v })}>{n}</button>))}</div>
       <div className="row" role="group" aria-label="Vetro dei pannelli">{([['forte', 'Vetro forte'], ['leggero', 'Vetro leggero'], ['spento', 'Pannelli opachi']] as const).map(([v, n]) => (

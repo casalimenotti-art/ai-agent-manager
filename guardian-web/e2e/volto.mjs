@@ -13,6 +13,7 @@ let falliti = 0; const ok = (c, m) => { console.log(`${c ? 'OK  ' : 'FAIL'} ${m}
 const b = await chromium.launch();
 async function entra(w, h, query = '', ctxOpts = {}) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, ...ctxOpts });
+  await ctx.addInitScript(() => { try { localStorage.setItem('guardian.pref', JSON.stringify({ sfondo: 'volto' })); } catch {} }); // il volto non è più lo sfondo predefinito
   const p = await ctx.newPage();
   const errori = []; p.on('pageerror', (e) => errori.push(e.message)); p.on('console', (m) => m.type() === 'error' && errori.push(m.text()));
   const scaricati = []; p.on('request', (r) => scaricati.push(r.url()));
