@@ -31,7 +31,8 @@ export function useRispondi() {
     try {
       const r = rispondiConContesto(domanda, snap, pannello ?? (stanza ? { p: 'stanza', id: stanza } : null));
       if (r) { if (r.apri) apri({ p: r.apri.p, filtro: r.apri.filtro }); else if (r.stanza && r.stanza !== stanza) apriStanza(r.stanza); return di(r.testo, r.fonte); }
-      if (cervelloOnline(snap.cervello)) {
+      // lo snapshot può avere un battito vecchio: se sembra spento, si rilegge il battito dal database prima di arrendersi
+      if (cervelloOnline(snap.cervello) || cervelloOnline({ ultimo_battito: await source.battitoCervello?.().catch(() => null) })) {
         // contesto MINIMO per il cervello: numeri e stati, mai dati personali o log interi
         const rp = report(snap);
         const contesto = { stanza, pannello: pannello ? { p: pannello.p, id: pannello.id } : null, conteggi_task: rp.conteggi,

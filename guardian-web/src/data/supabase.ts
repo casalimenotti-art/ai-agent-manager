@@ -235,6 +235,11 @@ export class SupabaseSource implements DataSource {
     await this.q(this.c.from('memory').insert({ kind: m.kind, content, source, project_id: m.project_id ?? null, task_id: m.task_id ?? null, created_by: by }));
   }
 
+  async battitoCervello(): Promise<string | null> {
+    const { data } = await this.c.from('guardian_cervello').select('ultimo_battito').limit(1);
+    return (data?.[0] as { ultimo_battito?: string } | undefined)?.ultimo_battito ?? null;
+  }
+
   async *chiediCervello(userId: string, testo: string, contesto: Record<string, unknown>): AsyncIterable<string> {
     const [r] = await this.q<{ id: number }[]>(this.c.from('guardian_richieste').insert({ user_id: userId, testo: controllaTesto(testo, 'domanda', 2000), contesto }).select('id'));
     const coda: { seq: number; testo: string; fine: boolean }[] = []; let sveglia: (() => void) | null = null;

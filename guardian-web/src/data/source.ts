@@ -49,6 +49,8 @@ export interface DataSource {
   revocaPc(id: number, nuovoHash: string, by: string, nome: string): Promise<void>;
   /** Domanda al cervello sul PC del titolare: restituisce le frasi della risposta mentre arrivano. */
   chiediCervello(userId: string, testo: string, contesto: Record<string, unknown>): AsyncIterable<string>;
+  /** Ultimo battito del cervello letto ora dal database (lo snapshot può essere vecchio). Facoltativo. */
+  battitoCervello?(): Promise<string | null>;
 }
 
 export class ErroreDati extends Error {}
