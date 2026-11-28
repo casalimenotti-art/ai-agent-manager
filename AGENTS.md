@@ -32,3 +32,6 @@ Regole del registro:
 - File condivisi: `leads/2026-11-26-30-clienti.csv` (fonte unica dei clienti), `visite/*.md`, `esiti.csv`.
 - Nessun agente invia messaggi, email o pubblica qualcosa da solo: prepara bozze, le invia una persona.
 - Non committare mai `.env` o altri file con segreti.
+
+## Design di Guardian HQ
+Prima di toccare guardian-web/ leggi guardian-web/DESIGN-GUARDIAN.md.
