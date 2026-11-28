@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Agent, Snapshot, Stanza, Task } from '../types';
-import { COLORI_ATLAS, costruisciGrafo, coloreStanzaAtlas, disponi, riepilogoAtlas, statoAgenteAtlas, statoTaskAtlas, stileStato } from './atlas';
+import { COLORI_ATLAS, costruisciGrafo, coloreStanzaAtlas, devoDisegnare, disponi, faseImpulso, lampeggio, possoAnimare, puntoSulPercorso, respiro, riepilogoAtlas, statoAgenteAtlas, statoTaskAtlas, stileStato, zonaLibera } from './atlas';
 
 const ORA = Date.parse('2026-11-28T10:00:00Z');
 const fa = (s: number) => new Date(ORA - s * 1000).toISOString();
@@ -92,5 +92,58 @@ describe('atlas: layout', () => {
     const d = (a: string, b: string) => Math.hypot(per(a).x - per(b).x, per(a).y - per(b).y);
     expect(d('a:a1', 's:sviluppo')).toBeLessThan(d('a:a1', 's:vendite'));
     expect(d('a:a1', 's:sviluppo')).toBeLessThan(d('a:a1', 's:amministrazione'));
+  });
+});
+
+describe('atlas: vita (ondata 2)', () => {
+  it('limite di fps: 30 fps = almeno ~33 ms tra due disegni', () => {
+    expect(devoDisegnare(null, 0)).toBe(true);
+    expect(devoDisegnare(1000, 1016)).toBe(false); // 60 Hz: salta un frame
+    expect(devoDisegnare(1000, 1033.4)).toBe(true);
+    expect(devoDisegnare(1000, 1020, 60)).toBe(true);
+    // simulazione a 60 Hz per 1 s: al massimo 30 disegni
+    let ultimo: number | null = null; let n = 0;
+    for (let t = 0; t < 1000; t += 1000 / 60) if (devoDisegnare(ultimo, t)) { ultimo = t; n++; }
+    expect(n).toBeLessThanOrEqual(31); expect(n).toBeGreaterThanOrEqual(28);
+  });
+  it('anima solo se visibile e senza reduced-motion', () => {
+    expect(possoAnimare(false, false)).toBe(true);
+    expect(possoAnimare(true, false)).toBe(false);
+    expect(possoAnimare(false, true)).toBe(false);
+  });
+  it('impulso lungo la spezzata e fase ciclica', () => {
+    const pts = [[0, 0], [10, 0], [10, 10]] as const;
+    expect(puntoSulPercorso(pts, 0)).toEqual([0, 0]);
+    expect(puntoSulPercorso(pts, 0.5)).toEqual([10, 0]);
+    expect(puntoSulPercorso(pts, 1)).toEqual([10, 10]);
+    const f = faseImpulso(123456, 3); expect(f).toBeGreaterThanOrEqual(0); expect(f).toBeLessThan(1);
+  });
+  it('respiro più ampio quando il cervello risponde; lampeggio in 0..1', () => {
+    expect(respiro(0, true).ampiezza).toBeGreaterThan(respiro(0, false).ampiezza);
+    for (const t of [0, 300, 999, 5000]) { const l = lampeggio(t); expect(l).toBeGreaterThanOrEqual(0); expect(l).toBeLessThanOrEqual(1); }
+  });
+  it('stati: attivo con etichetta attività, bloccato, serve OK (stato o approvazione)', () => {
+    const s = snap([agente('a1', 'menotti', 'working'), agente('a2', 'amico1', 'error'), agente('a3', 'amico2', 'idle')],
+      [task(1, 'running', { titolo: 'Rifare la pagina prezzi con il nuovo listino e le foto', assigned_agent_id: 'a1' })]);
+    s.agents[0].current_task_id = 1;
+    s.approvals = [{ id: 1, action: 'x', status: 'richiesta', created_at: fa(5), action_type: 'email', agent_id: 'a3' }];
+    const g = costruisciGrafo(s, { ora: ORA }); const per = (id: string) => g.nodi.find((n) => n.id === `a:${id}`)!;
+    expect(per('a1').stato).toBe('attivo'); expect(per('a1').attivita!.length).toBeLessThanOrEqual(40); expect(per('a1').attivita).toMatch(/…$/);
+    expect(per('a2').stato).toBe('bloccato'); expect(per('a2').attivita).toBeUndefined();
+    expect(per('a3').okInAttesa).toBe(true); expect(per('a1').okInAttesa).toBe(false);
+  });
+  it("attività: senza task usa l'ultimo evento", () => {
+    const s = snap([agente('a1', 'menotti', 'working')]);
+    s.events = [{ id: 1, event_type: 'x', message: 'vecchio', files: [], severity: 'info', timestamp: fa(500), agent_id: 'a1' },
+      { id: 2, event_type: 'x', message: 'ultimo evento', files: [], severity: 'info', timestamp: fa(20), agent_id: 'a1' }];
+    expect(costruisciGrafo(s, { ora: ORA }).nodi.find((n) => n.id === 'a:a1')!.attivita).toBe('ultimo evento');
+  });
+  it('zona libera: sceglie il rettangolo più grande fuori dal pannello', () => {
+    const area = { x: 72, y: 64, w: 1368, h: 700 };
+    const z = zonaLibera(area, { x: 96, y: 193, w: 440, h: 456 });
+    expect(z.x).toBe(536); expect(z.x + z.w).toBe(1440);
+    const t = zonaLibera({ x: 0, y: 64, w: 390, h: 700 }, { x: 12, y: 400, w: 366, h: 340 });
+    expect(t.y).toBe(64); expect(t.y + t.h).toBeLessThanOrEqual(400);
+    expect(zonaLibera(area, null)).toBe(area);
   });
 });

@@ -27,7 +27,12 @@ Memoria del ciclo continuo descritto in `prompts/GUARDIAN_HQ_MASTER_V3.md`. Ogni
     impostazione «Sfondo: Atlas / Volto» (predefinito Atlas) in Impostazioni, `state.tsx`, `Shell.tsx`, `volto.css`; `e2e/volto.mjs` ora imposta lo sfondo Volto.
   - telefono (< 600 px): solo nucleo, stanze e agenti. Nessun agente: nucleo, 3 stanze e la scritta «Nessun agente collegato».
   - test: vitest 41 verdi, build ok, screenshot 1440 px (demo) ok. Non verificato: E2E (Playwright non installato qui), Cloudflare dopo il push.
-  - limiti noti: su telefono il pannello iniziale copre quasi tutto il disegno; nessuna animazione (ondata 2); nessun tooltip/clic (ondata 3).
+  - limiti noti (ondata 1, risolti nella 2: pannello sul telefono e animazione); resta: nessun tooltip/clic (ondata 3).
+- **28/11 · Atlas, ondata 2 (vita)**:
+  - `atlas.ts`: funzioni pure (limite fps, pausa, percorso impulsi, respiro, lampeggio, `zonaLibera`, etichetta attività max 40 caratteri); `Atlas.tsx`: strato fermo su canvas fuori schermo + strato vivo a max 30 fps (rAF), stop con `document.hidden`, solo immagine con reduced-motion. Solo globalAlpha, niente blur.
+  - impulsi nucleo > stanza > agente (solo attivi), nucleo che respira (più forte quando `pensa`), anello ambra/rosso per i bloccati, puntino rosa per «serve OK».
+  - correzioni: nodi fuori dal pannello del Centro (rettangolo letto dal DOM, costante di ripiego); telefono con hero compatto in basso e Atlas nella fascia libera sopra.
+  - misura: 30 fps in Edge headless (demo `VITE_DEMO=1`, 1440 e 390 px), console pulita. vitest 57 verdi, build ok. Non misurato su telefono reale né su GPU vera.
 - **28/11 · Volto di NEXO Sentinel nella dashboard**:
   - **Volto**: più rovinato (ammaccature vere, crateri, bruciature, olio, saldature, vetro incrinato, bullone mancante), scena scura.
   - **Strati**: Blender (`tools/volto3d/strati.py`, 0,34 MB), verificati da `verifica_strati.py`.

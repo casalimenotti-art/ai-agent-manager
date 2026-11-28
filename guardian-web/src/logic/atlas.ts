@@ -16,6 +16,10 @@ export interface Nodo {
   stanza: string | null; colore: string; raggio: number; alpha: number;
   /** posizione normalizzata nel quadrato [-1, 1]; vale 0 prima del layout */
   x: number; y: number;
+  /** solo agenti: cosa sta facendo (task corrente o ultimo evento), al massimo 40 caratteri */
+  attivita?: string;
+  /** solo agenti: serve il via libera di una persona (stato "ok" o approvazione in attesa) */
+  okInAttesa?: boolean;
 }
 export interface Link { da: string; a: string; stato: StatoAtlas; stanza: string | null }
 export interface Grafo { nodi: Nodo[]; link: Link[] }
@@ -68,6 +72,15 @@ const PESO: Record<StatoAtlas, number> = { bloccato: 0, ok: 1, attivo: 2, fermo:
 const RAGGIO = { nucleo: 14, stanza: 7, agenteAttivo: 6, agente: 4.2, task: 1.8, evento: 1.3 };
 const BREVE = (t: string, n = 40) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 
+/** Cosa sta facendo un agente: titolo del task corrente, altrimenti messaggio dell'ultimo evento. Massimo 40 caratteri, con ellissi. */
+export function attivitaAgente(s: Snapshot, a: Agent): string | undefined {
+  const t = a.current_task_id != null ? s.tasks.find((x) => x.id === a.current_task_id) : undefined;
+  if (t?.titolo) return BREVE(t.titolo);
+  let ultimo: { timestamp: string; message: string } | undefined;
+  for (const e of s.events) if (e.agent_id === a.id && e.message && (!ultimo || e.timestamp > ultimo.timestamp)) ultimo = e;
+  return ultimo ? BREVE(ultimo.message) : undefined;
+}
+
 export function costruisciGrafo(s: Snapshot, o: OpzioniGrafo = {}): Grafo {
   const ora = o.ora ?? Date.now();
   const maxTask = o.maxTask ?? 120; const maxEventi = o.maxEventi ?? 24;
@@ -87,8 +100,9 @@ export function costruisciGrafo(s: Snapshot, o: OpzioniGrafo = {}): Grafo {
   for (const a of s.agents) {
     const st = statoAgenteAtlas(a, ora); const sid = agenteStanza(a); const stile = stileStato(st, sid ? colore.get(sid)! : COLORI_ATLAS.nucleo);
     idAgenti.add(a.id);
+    const okInAttesa = st === 'ok' || s.approvals.some((x) => x.status === 'richiesta' && x.agent_id === a.id);
     nodo({ id: `a:${a.id}`, tipo: 'agente', etichetta: a.nome, stato: st, stanza: sid, colore: stile.colore, alpha: stile.alpha,
-      raggio: st === 'attivo' ? RAGGIO.agenteAttivo : RAGGIO.agente });
+      raggio: st === 'attivo' ? RAGGIO.agenteAttivo : RAGGIO.agente, okInAttesa, attivita: st === 'attivo' ? attivitaAgente(s, a) : undefined });
     link.push({ da: sid ? `s:${sid}` : 'nucleo', a: `a:${a.id}`, stato: st, stanza: sid });
   }
 
@@ -173,4 +187,57 @@ export function riepilogoAtlas(s: Snapshot, ora: number = Date.now()): string {
   const ok = s.agents.filter((a) => statoAgenteAtlas(a, ora) === 'ok').length; const bl = s.agents.filter((a) => statoAgenteAtlas(a, ora) === 'bloccato').length;
   const testo = al.length === 0 ? 'Nessun agente al lavoro' : `${al.length} ${al.length === 1 ? 'agente al lavoro' : 'agenti al lavoro'}: ${al.map((a) => a.nome).join(', ')}`;
   return `${testo} su ${s.agents.length}.${ok ? ` ${ok} in attesa del tuo OK.` : ''}${bl ? ` ${bl} bloccati.` : ''}`;
+}
+
+// ---------- ondata 2: vita (funzioni pure, il disegno sta in ui/Atlas.tsx) ----------
+export const FPS_MAX = 30;
+/** Si ridisegna solo se è passato almeno 1/fps secondi dall'ultimo disegno (tolleranza 1 ms per i salti di rAF). */
+export function devoDisegnare(ultimoMs: number | null, oraMs: number, fps: number = FPS_MAX): boolean {
+  return ultimoMs === null || oraMs - ultimoMs >= 1000 / fps - 1;
+}
+/** Animare solo se la scheda è visibile e la persona non ha chiesto meno movimento. */
+export function possoAnimare(nascosta: boolean, ridotto: boolean): boolean { return !nascosta && !ridotto; }
+
+export type Pt = readonly [number, number];
+/** Punto a frazione u (0..1) lungo una spezzata. */
+export function puntoSulPercorso(pts: readonly Pt[], u: number): Pt {
+  if (pts.length === 0) return [0, 0];
+  if (pts.length === 1) return pts[0];
+  const seg: number[] = []; let tot = 0;
+  for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(d); tot += d; }
+  let r = Math.max(0, Math.min(1, u)) * tot;
+  for (let i = 0; i < seg.length; i++) {
+    if (r <= seg[i] || i === seg.length - 1) { const f = seg[i] === 0 ? 0 : Math.min(1, r / seg[i]); return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * f, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * f]; }
+    r -= seg[i];
+  }
+  return pts[pts.length - 1];
+}
+/** Posizione 0..1 di un impulso: ciclico, ogni agente con la propria fase. */
+export function faseImpulso(tMs: number, indice: number, durataMs = 2600): number {
+  return (((tMs / durataMs + indice * 0.37) % 1) + 1) % 1;
+}
+/** Respiro del nucleo: 0..1 sinusoidale. Più rapido e ampio mentre il cervello risponde. */
+export function respiro(tMs: number, rispondendo: boolean): { fase: number; ampiezza: number } {
+  const periodo = rispondendo ? 1400 : 4200;
+  return { fase: 0.5 + 0.5 * Math.sin((tMs / periodo) * Math.PI * 2), ampiezza: rispondendo ? 0.22 : 0.07 };
+}
+/** Lampeggio on/off morbido 0..1 (anello bloccato). */
+export function lampeggio(tMs: number, periodoMs = 1200): number { return 0.5 + 0.5 * Math.sin((tMs / periodoMs) * Math.PI * 2); }
+
+export interface Rett { x: number; y: number; w: number; h: number }
+/**
+ * Zona libera in cui disegnare l'Atlas: il più grande dei rettangoli attorno al pannello (destra, sinistra, sopra, sotto)
+ * dentro i limiti dati. Senza pannello vale tutta l'area. Così nessun nodo finisce sotto il pannello del Centro.
+ */
+export function zonaLibera(area: Rett, pannello: Rett | null): Rett {
+  if (!pannello) return area;
+  const a1 = { x: area.x, y: area.y, r: area.x + area.w, b: area.y + area.h };
+  const p = { x: Math.max(a1.x, pannello.x), y: Math.max(a1.y, pannello.y), r: Math.min(a1.r, pannello.x + pannello.w), b: Math.min(a1.b, pannello.y + pannello.h) };
+  if (p.r <= p.x || p.b <= p.y) return area; // il pannello non tocca l'area
+  const cand: Rett[] = [
+    { x: p.r, y: a1.y, w: a1.r - p.r, h: area.h }, { x: a1.x, y: a1.y, w: p.x - a1.x, h: area.h },
+    { x: a1.x, y: a1.y, w: area.w, h: p.y - a1.y }, { x: a1.x, y: p.b, w: area.w, h: a1.b - p.b },
+  ].filter((r) => r.w > 0 && r.h > 0);
+  if (cand.length === 0) return area;
+  return cand.reduce((m, r) => (r.w * r.h > m.w * m.h ? r : m));
 }
