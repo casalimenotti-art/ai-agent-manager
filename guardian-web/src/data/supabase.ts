@@ -193,6 +193,17 @@ export class SupabaseSource implements DataSource {
     await this.evento({ event_type: 'agent_state', message: `${agentId}: ${disponibile ? 'disponibile' : 'non disponibile'} (manuale)`, user_id: by, agent_id: agentId });
   }
 
+  async registraPc(userId: string, nome: string, hashCodice: string, by: string) {
+    // token_hash non è leggibile: insert/update senza .select() (nessuna riga restituita).
+    await this.q(this.c.from('devices').insert({ user_id: userId, nome, token_hash: hashCodice }));
+    await this.evento({ event_type: 'device_registered', message: `PC registrato: ${nome}`, user_id: by });
+  }
+
+  async revocaPc(id: number, nuovoHash: string, by: string) {
+    await this.q(this.c.from('devices').update({ token_hash: nuovoHash, stato: 'offline' }).eq('id', id));
+    await this.evento({ event_type: 'device_revoked', message: `PC revocato (#${id})`, user_id: by, severity: 'warning' });
+  }
+
   async prendiHandoff(id: number, agentId: string | null, by: string) {
     const campi = agentId ? { stato: 'preso', to_agent_id: agentId } : { stato: 'preso' };
     const r = await this.q<unknown[]>(this.c.from('handoffs').update(campi).eq('id', id).eq('stato', 'aperto').select('id'));

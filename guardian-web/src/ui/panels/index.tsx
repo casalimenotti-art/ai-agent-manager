@@ -1,9 +1,10 @@
 import type { ComponentType } from 'react';
 import type { Pannello } from '../../state';
 import { ApprovalPanel, ApprovalsPanel, HandoffPanel, MemoriaPanel, TaskPanel, TasksPanel } from './lavoro';
-import { AgentePanel, AgentiPanel, AttivitaPanel, AziendaPanel, AziendePanel, DispositiviPanel, ImpostazioniPanel, NotifichePanel, SalutePanel,
+import { AgentePanel, AgentiPanel, AttivitaPanel, AziendaPanel, AziendePanel, ImpostazioniPanel, NotifichePanel, SalutePanel,
   StatistichePanel, WorkflowPanel } from './sistema';
 import { MappaPanel } from './mappa';
+import { DispositiviAdminPanel } from './dispositivi';
 
 export const PANNELLI: Record<string, { titolo: string; componente: ComponentType<Pannello>; largo?: boolean }> = {
   agenti: { titolo: 'Agenti', componente: AgentiPanel }, agente: { titolo: 'Agente', componente: AgentePanel, largo: true },
@@ -13,7 +14,7 @@ export const PANNELLI: Record<string, { titolo: string; componente: ComponentTyp
   handoff: { titolo: 'Handoff', componente: HandoffPanel }, memoria: { titolo: 'Memoria condivisa', componente: MemoriaPanel },
   notifiche: { titolo: 'Notifiche', componente: NotifichePanel }, attivita: { titolo: 'Attività', componente: AttivitaPanel, largo: true },
   statistiche: { titolo: 'Statistiche', componente: StatistichePanel, largo: true }, workflow: { titolo: 'Workflow', componente: WorkflowPanel },
-  dispositivi: { titolo: 'PC collegati', componente: DispositiviPanel }, salute: { titolo: 'Salute del sistema', componente: SalutePanel },
+  dispositivi: { titolo: 'Dispositivi', componente: DispositiviAdminPanel }, salute: { titolo: 'Salute del sistema', componente: SalutePanel },
   impostazioni: { titolo: 'Impostazioni', componente: ImpostazioniPanel },
   mappa: { titolo: 'Mappa operativa', componente: MappaPanel, largo: true },
 };

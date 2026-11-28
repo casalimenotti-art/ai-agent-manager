@@ -267,6 +267,18 @@ export class DemoSource implements DataSource {
     this.cambiato();
   }
 
+  async registraPc(userId: string, nome: string, _hash: string, by: string) {
+    const id = Math.max(0, ...this.d.devices.map((x) => x.id)) + 1;
+    this.d.devices.push({ id, user_id: userId, nome, stato: 'offline', last_seen: null } as never);
+    this.evento({ event_type: 'device_registered', message: `PC registrato: ${nome}`, user_id: by }); this.cambiato();
+  }
+
+  async revocaPc(id: number, _hash: string, by: string) {
+    const x = this.d.devices.find((v) => v.id === id);
+    if (x) x.stato = 'offline';
+    this.evento({ event_type: 'device_revoked', message: `PC revocato (#${id})`, user_id: by, severity: 'warning' }); this.cambiato();
+  }
+
   async disponibilitaAgente(agentId: string, disponibile: boolean, by: string) {
     const a = this.d.agents.find((x) => x.id === agentId);
     if (a) a.disponibile = disponibile;
