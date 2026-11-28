@@ -19,6 +19,7 @@ interface Ctx {
   toasts: Toast[]; toast: (testo: string, errore?: boolean) => void;
   pannello: Pannello | null; traccia: Pannello[]; apri: (p: Pannello) => void; indietro: () => void; chiudi: () => void;
   messaggi: Messaggio[]; aggiungiMessaggio: (m: Messaggio) => void; pensa: boolean; setPensa: (v: boolean) => void;
+  voce: 'ascolto' | 'parla' | null; setVoce: (v: 'ascolto' | 'parla' | null) => void;
   paletteAperta: boolean; setPalette: (v: boolean) => void; esci: () => void;
   stanza: string | null; apriStanza: (id: string | null) => void;
   /** Applica subito la modifica a schermo; se il database la rifiuta torna com'era e lo dice. */
@@ -53,6 +54,7 @@ export function GuardianProvider({ source, user, onEsci, children }: { source: D
   const [traccia, setTraccia] = useState<Pannello[]>(() => { const p = leggiUrl(); return p ? [p] : []; });
   const [messaggi, setMessaggi] = useState<Messaggio[]>([]);
   const [pensa, setPensa] = useState(false);
+  const [voce, setVoce] = useState<'ascolto' | 'parla' | null>(null);
   const [paletteAperta, setPalette] = useState(false);
   const [stanza, apriStanza] = useState<string | null>(() => new URLSearchParams(location.search).get('s'));
   const inCorso = useRef(false);
@@ -133,9 +135,9 @@ export function GuardianProvider({ source, user, onEsci, children }: { source: D
 
   const v = useMemo<Ctx>(() => ({
     source, user, snap, errore, caricato, diretta, pingMs: ping.ms, pingOk: ping.ok, pingAl: ping.al, ricarica, esegui, toasts, toast,
-    pannello, traccia, apri, indietro, chiudi, messaggi, aggiungiMessaggio, pensa, setPensa, paletteAperta, setPalette, esci: onEsci, stanza, apriStanza, ottimistico, presenti, parete, setParete,
+    pannello, traccia, apri, indietro, chiudi, messaggi, aggiungiMessaggio, pensa, setPensa, voce, setVoce, paletteAperta, setPalette, esci: onEsci, stanza, apriStanza, ottimistico, presenti, parete, setParete,
   }), [source, user, snap, errore, caricato, diretta, ping, ricarica, esegui, toasts, toast, pannello, traccia, apri, indietro, chiudi,
-    messaggi, aggiungiMessaggio, pensa, paletteAperta, onEsci, stanza, ottimistico, presenti, parete]);
+    messaggi, aggiungiMessaggio, pensa, voce, paletteAperta, onEsci, stanza, ottimistico, presenti, parete]);
   return <C.Provider value={v}>{children}</C.Provider>;
 }
 

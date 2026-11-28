@@ -2,7 +2,7 @@
 import type { Snapshot } from '../types';
 import { statoAgente } from './status';
 
-export type StatoNucleo = 'offline' | 'error' | 'listening' | 'speaking' | 'thinking' | 'approval' | 'working' | 'idle';
+export type StatoNucleo = 'offline' | 'error' | 'listening' | 'speaking' | 'thinking' | 'approval' | 'working' | 'completed' | 'idle';
 
 export function statoNucleo(s: Snapshot | null, o: { pingOk: boolean | null; ascolta: boolean; pensa: boolean; parla?: boolean }, ora?: number): StatoNucleo {
   if (o.pingOk === false) return 'error';
@@ -12,6 +12,8 @@ export function statoNucleo(s: Snapshot | null, o: { pingOk: boolean | null; asc
   if (o.pensa) return 'thinking';
   if (s.approvals.some((a) => a.status === 'richiesta')) return 'approval';
   if (s.agents.some((a) => statoAgente(a, ora) === 'working')) return 'working';
+  const momento = ora ?? Date.now();
+  if (s.events.some((e) => e.event_type === 'task_completed' && Number.isFinite(Date.parse(e.timestamp)) && momento - Date.parse(e.timestamp) >= 0 && momento - Date.parse(e.timestamp) < 4000)) return 'completed';
   return 'idle';
 }
 

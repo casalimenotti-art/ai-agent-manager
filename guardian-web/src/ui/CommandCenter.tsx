@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { statoNucleo, testoStato } from '../logic/guardian';
 import { agentiAlLavoro, completatiOggi, errori24h } from '../logic/metrics';
 import { report } from '../logic/report';
-import { fa, statoAgente } from '../logic/status';
+import { fa, statoAgente, statoDispositivo } from '../logic/status';
 import { leggiPreferenze, salvaPreferenze, useG } from '../state';
 import { TASK_TERMINALI, type Task } from '../types';
 import { GuardianCore } from './GuardianCore';
@@ -23,12 +23,14 @@ export function taskImportanti(tasks: Task[], n = 7) {
 }
 
 export function CommandCenter() {
-  const { snap, pingOk, pensa, apri, errore, stanza, apriStanza } = useG();
+  const { snap, pingOk, pensa, setVoce, apri, errore, stanza, apriStanza } = useG();
   const { ascolta: pushToTalk } = useVoce();
   const [dettagli, setDettagli] = useState(() => leggiPreferenze().dettagliAperti);
   const cambiaDettagli = () => { const v = !dettagli; setDettagli(v); salvaPreferenze({ ...leggiPreferenze(), dettagliAperti: v }); };
   const conv = useConversazione();
   const ascolta = pushToTalk || conv.fase === 'ascolto';
+  const voce = conv.fase === 'parla' ? 'parla' : ascolta ? 'ascolto' : null;
+  useEffect(() => setVoce(voce), [setVoce, voce]);
   const opz = { pingOk, ascolta, pensa: pensa || conv.fase === 'elaborazione', parla: conv.fase === 'parla' };
   const stato = statoNucleo(snap, opz);
   useEffect(() => { window.scrollTo({ top: 0 }); }, [stanza]);
@@ -57,7 +59,7 @@ export function CommandCenter() {
               <BarChart3 size={14} aria-hidden /> {dettagli ? 'Chiudi dettagli' : 'Dettagli'}</button></div>
           <div className="stellar-status" aria-label="Stato dei collegamenti">
             <button type="button" onClick={() => apri({ p: 'email' })}>Email non collegata</button>
-            <button type="button" onClick={() => apri({ p: 'dispositivi' })}>PC {snap ? `${snap.devices.filter((d) => d.stato === 'online').length}/3` : '—/3'}</button>
+            <button type="button" onClick={() => apri({ p: 'dispositivi' })}>PC {snap ? `${snap.devices.slice(0, 3).filter((d) => statoDispositivo(d) === 'online').length}/3` : '—/3'}</button>
           </div>
           {errore && <p className="err" role="alert">{errore}</p>}
           <div className="kpis tendina stellar-kpis" id="numeri-centro">
@@ -78,7 +80,8 @@ export function CommandCenter() {
         </div>
       </section>
 
-      {dettagli && <div className="dettagli-centro" id="dettagli-centro">
+      {dettagli && <aside className="dettagli-centro" id="dettagli-centro" aria-labelledby="titolo-dettagli">
+      <h2 id="titolo-dettagli" className="details-heading">Dettagli del Centro</h2>
       <OrbitaStanze />
 
       <Sezione titolo="Prossime azioni" icona={Sparkles} conta={r?.prossime.length} className="col-5">
@@ -174,7 +177,7 @@ export function CommandCenter() {
             })}
           </div>)}
       </Sezione>
-      </div>}
+      </aside>}
     </div>
   );
 }

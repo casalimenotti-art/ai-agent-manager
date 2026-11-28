@@ -104,10 +104,18 @@ function DrawerHost() {
   const largo = window.matchMedia?.('(min-width: 1280px)').matches ?? false;
   return (<>
     <div className="scrim desk-hidden" onClick={chiudi} aria-hidden />
-    <div className={`drawer ${def.largo ? 'lg' : ''}`} role="dialog" aria-modal={!largo} aria-label={titoloPannello(pannello)} tabIndex={-1} ref={ref}>
+    <div className={`drawer ${def.largo ? 'lg' : ''}`} role="dialog" aria-modal={!largo} aria-labelledby="pannello-titolo" tabIndex={-1} ref={ref}
+      onKeyDown={(e) => {
+        if (e.key !== 'Tab' || largo) return;
+        const elementi = [...(e.currentTarget.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'))];
+        if (!elementi.length) { e.preventDefault(); e.currentTarget.focus(); return; }
+        const primo = elementi[0]; const ultimo = elementi[elementi.length - 1];
+        if (e.shiftKey && document.activeElement === primo) { e.preventDefault(); ultimo.focus(); }
+        else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primo.focus(); }
+      }}>
       <header>
         {traccia.length > 1 && <button className="btn ghost icon" onClick={indietro} aria-label="Indietro"><ArrowLeft size={18} aria-hidden /></button>}
-        <h2>{titoloPannello(pannello)}</h2>
+        <h2 id="pannello-titolo">{titoloPannello(pannello)}</h2>
         <button className="btn ghost icon" onClick={chiudi} aria-label="Chiudi pannello"><X size={18} aria-hidden /></button>
       </header>
       {traccia.length > 1 && <div className="crumbs">{traccia.map((t) => titoloPannello(t)).join(' › ')}</div>}

@@ -69,6 +69,14 @@
 .machine-star.is-empty .machine-star-point { background: transparent; border: 1px solid #8a93a6; box-shadow: none; }
 .machine-star-label { font-size: 12px; font-weight: 600; }
 .machine-star-state { color: rgba(242,246,255,.72); font-size: 11px; }
+.agent-star { position: absolute; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; transform: translate(-50%, -50%);
+  border: 0; border-radius: 50%; background: transparent; color: #f2f6ff; cursor: pointer; pointer-events: auto; }
+.agent-star-point { width: 6px; height: 6px; border-radius: 50%; background: #9fe8f5; box-shadow: 0 0 10px rgba(159,232,245,.46); }
+.agent-star.is-waiting .agent-star-point { background: #ffd9a0; box-shadow: 0 0 8px rgba(255,217,160,.34); }
+.agent-star-name { position: absolute; left: 50%; bottom: 100%; width: max-content; max-width: 180px; padding: 3px 7px; border: 1px solid rgba(242,246,255,.16);
+  border-radius: 999px; background: rgba(0,0,0,.86); color: #f2f6ff; font-size: 11px; opacity: 0; transform: translate(-50%, 3px); transition: opacity 150ms ease; }
+.agent-star:hover .agent-star-name, .agent-star:focus-visible .agent-star-name { opacity: 1; }
+.agent-star:focus-visible { outline: 2px solid #f2f6ff; outline-offset: 1px; }
 @media (max-width: 599px) {
   .machine-star { gap: 2px; padding: 3px 5px; }
   .machine-star-label { font-size: 11px; }
@@ -110,3 +118,75 @@
 @media (prefers-reduced-motion: reduce) { .kpis.tendina { animation: none; } }
 .tendina-btn { gap: 6px; }
 @media (min-width: 600px) { .con-volto .hero { min-height: 72vh; } }
+
+/* Visione Nexo: scena nera, nucleo leggibile e controlli stellari leggeri. */
+body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6ff; color-scheme: dark; }
+.atlas-sfondo { background: #000; }
+.shell { background: transparent; }
+.header { background: rgba(0,0,0,.72); border-color: rgba(242,246,255,.12); backdrop-filter: none; }
+.cc { display: block; min-height: calc(100svh - var(--header-h)); }
+.cc .hero { display: block; height: calc(100svh - var(--header-h) - 8px); min-height: 560px; padding: 0; overflow: visible;
+  background: transparent; border: 0; border-radius: 0; text-align: center; }
+.cc .hero::after, .cc .hero > .core { display: none; }
+.cc .hero > div:last-child { position: absolute; inset: 0; width: auto; padding: 0; }
+.cc .hero h1 { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); margin: 0; font-size: 14px;
+  color: rgba(242,246,255,.72); font-weight: 500; letter-spacing: .12em; }
+.cc .hero .stato { position: absolute; top: 59%; left: 50%; transform: translateX(-50%); width: min(80vw, 520px); margin: 0;
+  color: rgba(242,246,255,.86); font-size: 14px; text-wrap: balance; }
+.hero-comandi { position: fixed; z-index: 5; bottom: max(10px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  width: min(calc(100vw - 32px), 580px); min-height: 44px; justify-content: center; padding: 5px 8px;
+  border: 1px solid rgba(242,246,255,.16); border-radius: 999px; background: rgba(0,0,0,.82); }
+.stellar-status { position: fixed; z-index: 4; top: calc(var(--header-h) + 10px); right: 16px; display: flex; gap: 8px; }
+.stellar-status button { min-height: 32px; padding: 5px 12px; border: 1px solid rgba(242,246,255,.2); border-radius: 999px;
+  background: rgba(242,246,255,.035); color: rgba(242,246,255,.88); cursor: pointer; font-size: 12px; }
+.stellar-status button:hover { border-color: rgba(242,246,255,.4); box-shadow: 0 0 14px rgba(220,232,255,.14); }
+.stellar-status button:focus-visible { outline: 2px solid #f2f6ff; outline-offset: 2px; }
+.stellar-kpis { position: absolute; inset: 0; display: block; pointer-events: none; }
+.stellar-kpis .kpi { position: absolute; display: grid; justify-items: center; gap: 4px; width: 190px; min-height: 76px; padding: 8px;
+  border: 0; border-radius: 999px; background: transparent; color: #f2f6ff; text-align: center; pointer-events: auto; }
+.stellar-kpis .kpi:nth-child(1) { left: 12%; top: 36%; }
+.stellar-kpis .kpi:nth-child(2) { right: 12%; top: 36%; }
+.stellar-kpis .kpi:nth-child(3) { left: 12%; top: 64%; }
+.stellar-kpis .kpi:nth-child(4) { right: 12%; top: 64%; }
+.stellar-kpis .kpi:hover { background: rgba(242,246,255,.035); box-shadow: 0 0 18px rgba(220,232,255,.12); }
+.stellar-kpis .kpi:focus-visible { outline: 2px solid #f2f6ff; outline-offset: 2px; }
+.stellar-kpis .kpi .v { font: 300 32px/1.05 var(--font-sans); font-variant-numeric: tabular-nums; }
+.stellar-kpis .kpi .l { color: rgba(242,246,255,.76); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.stellar-kpis .kpi .f { display: none; }
+.dettagli-centro { position: fixed; z-index: 6; top: calc(var(--header-h) + 10px); right: 16px; bottom: 16px; width: min(36vw, 560px);
+  min-width: 360px; overflow-y: auto; overscroll-behavior: contain; padding: 18px; display: grid; align-content: start;
+  grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; border: 1px solid rgba(242,246,255,.12); border-radius: 18px;
+  background: rgba(4,6,12,.82); color: #f2f6ff; box-shadow: 0 18px 56px rgba(0,0,0,.45); backdrop-filter: blur(14px);
+  animation: pannello-arriva 220ms ease-out both; }
+.dettagli-centro > * { grid-column: 1 / -1; min-width: 0; }
+.dettagli-centro .details-heading { margin: 0; font-size: 19px; font-weight: 500; }
+.dettagli-centro .card, .dettagli-centro .item { background: rgba(242,246,255,.035); border-color: rgba(242,246,255,.13); }
+.dettagli-centro .btn, .hero-comandi .btn, .hero-comandi button { border-radius: 999px; }
+.dettagli-centro h2, .dettagli-centro h3 { color: #f2f6ff; }
+.cc .err { position: fixed; z-index: 4; top: calc(var(--header-h) + 56px); left: 50%; transform: translateX(-50%); }
+@keyframes pannello-arriva { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+.drawer { background: rgba(4,6,12,.84); border-color: rgba(242,246,255,.12); backdrop-filter: blur(14px); overscroll-behavior: contain;
+  animation: pannello-arriva 220ms ease-out both; }
+.drawer header { background: rgba(4,6,12,.65); border-color: rgba(242,246,255,.12); }
+.drawer .body { color: #f2f6ff; }
+.btn.ghost, .atlas-controlli button, .atlas-controlli select { background: rgba(242,246,255,.04); border-color: rgba(242,246,255,.22); color: #f2f6ff; }
+.atlas-controlli button[aria-pressed='true'], .atlas-controlli button[aria-checked='true'] { background: rgba(242,246,255,.92); color: #05070d; border-color: rgba(242,246,255,.92); }
+.atlas-controlli button.vista { background: rgba(242,246,255,.92); color: #05070d; border-color: rgba(242,246,255,.92); }
+@media (max-width: 599px) {
+  .cc .hero { min-height: calc(100svh - var(--header-h)); }
+  .cc .hero .stato { top: 62%; font-size: 13px; }
+  .stellar-status { top: calc(var(--header-h) + 8px); right: 8px; gap: 4px; }
+  .stellar-status button { min-height: 40px; padding: 5px 8px; font-size: 11px; }
+  .stellar-kpis .kpi { width: 136px; min-height: 68px; }
+  .stellar-kpis .kpi:nth-child(1) { left: 0; top: 35%; }
+  .stellar-kpis .kpi:nth-child(2) { right: 0; top: 35%; }
+  .stellar-kpis .kpi:nth-child(3) { left: 0; top: 67%; }
+  .stellar-kpis .kpi:nth-child(4) { right: 0; top: 67%; }
+  .stellar-kpis .kpi .v { font-size: 27px; }
+  .stellar-kpis .kpi .l { font-size: 10px; }
+  .dettagli-centro { top: auto; right: 0; bottom: 0; left: 0; width: 100%; min-width: 0; height: 85svh; padding: 16px;
+    border-radius: 18px 18px 0 0; animation: pannello-arriva 220ms ease-out both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dettagli-centro, .drawer { animation: none; }
+}

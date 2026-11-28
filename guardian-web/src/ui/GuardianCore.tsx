@@ -2,7 +2,7 @@
 import type { StatoNucleo } from '../logic/guardian';
 
 const NOMI: Record<StatoNucleo, string> = { offline: 'Non collegato', error: 'Errore', listening: 'In ascolto', speaking: 'Sta parlando', thinking: 'Sto pensando',
-  approval: 'In attesa di approvazione', working: 'Coordino gli agenti', idle: 'Online' };
+  approval: 'In attesa di approvazione', working: 'Coordino gli agenti', completed: 'Attività completata', idle: 'Online' };
 
 export function GuardianCore({ stato }: { stato: StatoNucleo }) {
   const tick = Array.from({ length: 60 }, (_, i) => i);

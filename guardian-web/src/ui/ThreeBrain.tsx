@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { MeshBasicMaterial, Points, PointsMaterial } from 'three';
 import type { StatoNucleo } from '../logic/guardian';
-import { statoAgente } from '../logic/status';
-import type { Agent, Device } from '../types';
+import { statoAgente, statoDispositivo } from '../logic/status';
+import type { ActivityEvent, Agent, Device } from '../types';
 
 type Macchina = { id: number | null; nome: string; stato: string; agenti: Agent[] };
 
 function macchinePerScena(dispositivi: Device[], agenti: Agent[]): Macchina[] {
-  const elenco = dispositivi.slice(0, 3).map((device) => {
+  const elenco: Macchina[] = dispositivi.slice(0, 3).map((device) => {
     const perId = agenti.filter((agent) => agent.device_id === device.id);
     const perUtente = dispositivi.filter((d) => d.user_id === device.user_id).length === 1
       ? agenti.filter((agent) => !agent.device_id && agent.user_id === device.user_id) : [];
-    return { id: device.id, nome: device.nome, stato: device.stato, agenti: [...perId, ...perUtente] };
+    return { id: device.id, nome: device.nome, stato: statoDispositivo(device), agenti: [...perId, ...perUtente] };
   });
   while (elenco.length < 3) elenco.push({ id: null, nome: 'PC non collegato', stato: 'offline', agenti: [] });
   return elenco;
@@ -20,9 +20,9 @@ function macchinePerScena(dispositivi: Device[], agenti: Agent[]): Macchina[] {
 function statoMacchina(macchina: Macchina): string {
   if (macchina.id === null) return 'Registra un PC';
   if (macchina.agenti.some((agent) => statoAgente(agent) === 'working')) return 'Al lavoro';
-  if (macchina.stato === 'online') return 'Collegato';
+  if (macchina.stato === 'online') return 'Inattivo';
   if (['connecting', 'in_collegamento'].includes(macchina.stato)) return 'In collegamento';
-  if (macchina.stato === 'error') return 'Errore';
+  if (macchina.stato === 'error' || macchina.stato === 'errore' || macchina.stato === 'limite') return 'Errore';
   return 'Scollegato';
 }
 
@@ -32,13 +32,17 @@ const PALETTE: Record<StatoNucleo, number> = {
 };
 
 /** Cervello Three.js caricato solo quando Atlas è già visibile; il Canvas 2D resta il fallback. */
-export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = [], onReady, onFallback, onApriDispositivi }: {
-  stato: StatoNucleo; ridotto?: boolean; dispositivi?: Device[]; agenti?: Agent[]; onReady?: () => void;
-  onFallback?: () => void; onApriDispositivi?: () => void;
+export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = [], eventi = [], pannelloAperto = false,
+  onReady, onFallback, onApriDispositivi, onApriAgente }: {
+  stato: StatoNucleo; ridotto?: boolean; dispositivi?: Device[]; agenti?: Agent[]; eventi?: ActivityEvent[]; pannelloAperto?: boolean;
+  onReady?: () => void; onFallback?: () => void; onApriDispositivi?: () => void; onApriAgente?: (id: string) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const statoRef = useRef(stato); statoRef.current = stato;
   const ridottoRef = useRef(ridotto); ridottoRef.current = ridotto;
+  const pannelloRef = useRef(pannelloAperto); pannelloRef.current = pannelloAperto;
+  const materialiStato = useRef<(MeshBasicMaterial | PointsMaterial)[]>([]);
+  const ridisegna = useRef<() => void>(() => {});
   const machineData = useMemo(() => macchinePerScena(dispositivi, agenti), [dispositivi, agenti]);
 
   useEffect(() => {
@@ -65,6 +69,7 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
         const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.64, 4), new THREE.MeshBasicMaterial({
           color: 0xf2f6ff, transparent: true, opacity: 0.94, blending: THREE.AdditiveBlending,
         }));
+        materialiStato.current = [core.material as MeshBasicMaterial];
         neural.add(core);
         const inner = new THREE.Mesh(new THREE.SphereGeometry(0.34, 32, 24), new THREE.MeshBasicMaterial({
           color: 0xffffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending,
@@ -77,6 +82,7 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
         shell.setAttribute('position', new THREE.BufferAttribute(shellPositions.slice(), 3));
         const shellPoints = new THREE.Points(shell, new THREE.PointsMaterial({ color: 0xdceBff, size: 0.026, transparent: true,
           opacity: 0.62, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true }));
+        materialiStato.current.push(shellPoints.material as PointsMaterial);
         neural.add(shellPoints);
 
         const filaments = new Float32Array(78 * 6);
@@ -94,7 +100,8 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
 
         const machinePositions = [new THREE.Vector3(-2.2, 1.05, -0.25), new THREE.Vector3(2.2, 1.05, -0.25), new THREE.Vector3(0, -2.05, 0.12)];
         const machineCurves: import('three').CatmullRomCurve3[] = [];
-        const activeMarkers: { mesh: import('three').Mesh; curve: import('three').CatmullRomCurve3; phase: number }[] = [];
+        const activeMarkers: { mesh: import('three').Mesh; curve: import('three').CatmullRomCurve3; phase: number;
+          beganAt: number | null; direction: 'out' | 'back' | 'hold' }[] = [];
         const machineGroup = new THREE.Group(); scene.add(machineGroup);
         machineData.forEach((machine, index) => {
           const point = machinePositions[index];
@@ -118,11 +125,23 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
           orbit.rotation.x = index * 0.62; node.add(orbit);
           node.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.085, 1), new THREE.MeshBasicMaterial({ color: tint,
             transparent: true, opacity: machine.id === null ? 0.3 : 0.8, blending: THREE.AdditiveBlending })));
-          for (let i = 0; i < activeCount; i++) {
-            const marker = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshBasicMaterial({ color: 0x9fe8f5,
+          const agents = machine.agenti;
+          for (let i = 0; i < agents.length; i++) {
+            const agent = agents[i];
+            const latest = eventi.filter((event) => event.agent_id === agent.id && ['task_started', 'task_completed'].includes(event.event_type))
+              .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
+            const statoAgent = statoAgente(agent);
+            const active = statoAgent === 'working';
+            const waiting = statoAgent === 'waiting' || statoAgent === 'needs_approval';
+            const age = latest ? Date.now() - Date.parse(latest.timestamp) : Number.POSITIVE_INFINITY;
+            const returning = !active && latest?.event_type === 'task_completed' && age >= 0 && age < 1800;
+            if (!active && !returning && !waiting) continue;
+            const marker = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshBasicMaterial({ color: waiting ? 0xffd9a0 : 0x9fe8f5,
               transparent: true, opacity: 0.92, blending: THREE.AdditiveBlending }));
             machineGroup.add(marker);
-            activeMarkers.push({ mesh: marker, curve, phase: i / Math.max(1, activeCount) });
+            activeMarkers.push({ mesh: marker, curve, phase: i / Math.max(1, agents.length),
+              beganAt: returning ? Date.parse(latest.timestamp) : active && latest?.event_type === 'task_started' && age >= 0 && age < 2800 ? Date.parse(latest.timestamp) : null,
+              direction: waiting ? 'hold' : returning ? 'back' : 'out' });
           }
         });
 
@@ -165,7 +184,8 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
         const rootEl = host.current.closest('.atlas-sfondo');
         rootEl?.setAttribute('data-three-ready', 'true');
         onReady?.();
-        let start = 0; let last = 0; let count = 0; let fpsStart = 0;
+        let start = 0; let last = 0; let count = 0; let fpsStart = 0; let fpsLentoDa = 0;
+        let ultimoStato = ''; let cambiatoStato = 0;
         let yaw = 0; let pitch = 0; let zoom = 7.2;
         let drag: { x: number; y: number } | null = null;
         let pointerX = 0; let pointerY = 0;
@@ -197,29 +217,54 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
           last = now; start ||= now; fpsStart ||= now; count++;
           const t = (now - start) / 1000;
           const statoAttuale = statoRef.current;
+          if (statoAttuale !== ultimoStato) { ultimoStato = statoAttuale; cambiatoStato = now; }
           const color = PALETTE[statoAttuale];
           (core.material as MeshBasicMaterial).color.setHex(color);
           (shellPoints.material as PointsMaterial).color.setHex(color);
           const busy = statoAttuale === 'thinking' || statoAttuale === 'working' || statoAttuale === 'listening' || statoAttuale === 'speaking';
-          const breath = 1 + Math.sin(t * (busy ? 1.8 : 0.55)) * (busy ? 0.045 : 0.03);
+          const pulse = statoAttuale === 'completed' ? 0.055 * Math.max(0, 1 - (now - cambiatoStato) / 950) : 0;
+          const breath = 1 + Math.sin(t * (busy ? 1.8 : 0.55)) * (busy ? 0.045 : 0.03) + pulse;
           neural.scale.setScalar(breath);
           neural.rotation.y += 0.00072;
           neural.rotation.x = pitch + Math.sin(t / 13) * 0.06;
           neural.rotation.z = yaw + Math.sin(t / 17) * 0.025;
           rings.forEach((ring, i) => { ring.rotation.z = t * (i === 1 ? -0.022 : 0.016); });
-          activeMarkers.forEach(({ mesh, curve, phase }) => mesh.position.copy(curve.getPoint((t * 0.045 + phase) % 1)));
+          activeMarkers.forEach(({ mesh, curve, phase, beganAt, direction }) => {
+            if (direction === 'hold') {
+              mesh.position.copy(curve.getPoint(1));
+            } else if (direction === 'back') {
+              const age = Math.max(0, Math.min(1, (Date.now() - (beganAt ?? Date.now())) / 1800));
+              mesh.position.copy(curve.getPoint(1 - age));
+            } else if (beganAt !== null) {
+              const progress = Math.max(0, Math.min(1, (Date.now() - beganAt) / 2800));
+              mesh.position.copy(curve.getPoint(progress));
+            } else {
+              const base = curve.getPoint(1);
+              base.x += Math.cos(t * 0.32 + phase * Math.PI * 2) * 0.16;
+              base.y += Math.sin(t * 0.32 + phase * Math.PI * 2) * 0.12;
+              mesh.position.copy(base);
+            }
+          });
           machineGroup.rotation.y = Math.sin(t / 19) * 0.025;
           starField.rotation.z = t * 0.00016;
-          camera.position.x += (pointerX * 0.036 - camera.position.x) * 0.025;
-          camera.position.y += (-pointerY * 0.036 - camera.position.y) * 0.025;
+          const shiftX = pannelloRef.current ? -0.52 : 0;
+          const shiftY = pannelloRef.current && innerWidth < 600 ? -0.82 : 0;
+          camera.position.x += (shiftX + pointerX * 0.036 - camera.position.x) * 0.025;
+          camera.position.y += (shiftY - pointerY * 0.036 - camera.position.y) * 0.025;
           camera.position.z += (zoom - camera.position.z) * 0.08;
           renderer?.render(scene, camera);
           if (now - fpsStart >= 1000) {
-            rootEl?.setAttribute('data-atlas-fps', String(Math.round(count * 1000 / (now - fpsStart))));
+            const fps = Math.round(count * 1000 / (now - fpsStart));
+            rootEl?.setAttribute('data-atlas-fps', String(fps));
+            if (fps < 24) fpsLentoDa ||= now; else fpsLentoDa = 0;
+            if (fpsLentoDa && now - fpsLentoDa > 2000 && starGeometry.drawRange.count > 280) {
+              starGeometry.setDrawRange(0, 280); rootEl?.setAttribute('data-atlas-polvere', '280'); fpsLentoDa = 0;
+            }
             count = 0; fpsStart = now;
           }
         };
         const drawStill = () => renderer?.render(scene, camera);
+        ridisegna.current = drawStill;
         const visibility = () => {
           if (document.hidden || ridottoRef.current) { cancelAnimationFrame(frame); drawStill(); }
           else { last = 0; frame = requestAnimationFrame(draw); }
@@ -241,6 +286,7 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
             }
           });
           renderer?.dispose(); renderer?.domElement.remove();
+          materialiStato.current = []; ridisegna.current = () => {};
           rootEl?.setAttribute('data-three-ready', 'false');
         };
       } catch {
@@ -249,11 +295,16 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
     }).catch(fallback);
 
     return () => { chiuso = true; stop?.(); cancelAnimationFrame(frame); };
-  }, [machineData, onReady, onFallback]);
+  }, [machineData, eventi, onReady, onFallback]);
+
+  useEffect(() => {
+    for (const material of materialiStato.current) material.color.setHex(PALETTE[stato]);
+    ridisegna.current();
+  }, [stato]);
 
   return (
     <div className="three-brain" ref={host} data-stato={stato}>
-      <div className="machine-stars" aria-label="Dispositivi collegati">
+      <div className="machine-stars" role="group" aria-label="Dispositivi collegati">
         {machineData.map((machine, i) => {
           const posizione = [{ left: '35%', top: '34%' }, { left: '66%', top: '34%' }, { left: '50%', top: '72%' }][i];
           const label = machine.id === null ? 'PC non collegato — Registra un PC' : `${machine.nome}, ${statoMacchina(machine)}, ${machine.agenti.length} agenti`;
@@ -264,6 +315,18 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
             <span className="machine-star-state">{statoMacchina(machine)} · {machine.agenti.length} agenti</span>
           </button>;
         })}
+        {machineData.flatMap((machine, i) => machine.agenti
+          .filter((agent) => ['working', 'waiting', 'needs_approval'].includes(statoAgente(agent)))
+          .map((agent, j) => {
+            const base = [{ left: '35%', top: '34%' }, { left: '66%', top: '34%' }, { left: '50%', top: '72%' }][i];
+            const stato = statoAgente(agent);
+            const label = `${agent.nome}, ${stato === 'working' ? 'al lavoro' : 'in attesa di approvazione'}`;
+            return <button key={agent.id} className={`agent-star${stato === 'needs_approval' || stato === 'waiting' ? ' is-waiting' : ''}`}
+              style={{ left: `calc(${base.left} + ${(j - 1) * 14}px)`, top: `calc(${base.top} + 22px)` }} aria-label={label} title={label}
+              onClick={() => onApriAgente?.(agent.id)}>
+              <span className="agent-star-point" aria-hidden="true" /><span className="agent-star-name">{agent.nome}</span>
+            </button>;
+          }))}
       </div>
     </div>
   );

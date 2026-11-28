@@ -10,7 +10,7 @@ import { useG } from '../state';
 import { statoNucleo } from '../logic/guardian';
 import { ThreeBrain } from './ThreeBrain';
 
-const FONDO = '#050912';
+const FONDO = '#000000';
 const TELEFONO = 600;
 
 /** Etichetta in maiuscolo spaziato, centrata (spaziatura a mano: letterSpacing non c'è in tutti i browser). */
@@ -52,11 +52,6 @@ const luce = (p: number) => 0.3 + 0.7 * p; // i nodi dietro sono più tenui
 export function disegna(c: CanvasRenderingContext2D, g: Grafo3, w: number, h: number, vuoto: boolean, geo: Geo, dust: Polvere | null) {
   const { k, Q, cx, cy, sx, sy, v } = geo; const piccolo = k < 0.8;
   c.globalAlpha = 1; c.fillStyle = FONDO; c.fillRect(0, 0, w, h);
-  // bagliore di fondo attorno al nucleo, come nel riferimento
-  const rg = Math.max(sx, sy) * 1.25 * Math.min(v.z, 1.6); const gr = c.createRadialGradient(cx, cy, 0, cx, cy, rg);
-  gr.addColorStop(0, 'rgba(60,90,170,0.16)'); gr.addColorStop(0.5, 'rgba(40,40,110,0.06)'); gr.addColorStop(1, 'rgba(5,9,18,0)');
-  c.fillStyle = gr; c.fillRect(0, 0, w, h);
-
   // polvere neurale decorativa: linee in due fasce (dietro, davanti) e puntini come quadratini
   if (dust) {
     const pr = dust.punti.map((q) => { const r = proietta(q, geo.ay, geo.ax); return [cx + r.x * sx * 1.12 * v.z, cy + r.y * sy * 1.12 * v.z, r.p] as const; });
@@ -171,7 +166,7 @@ export function disegnaVita(c: CanvasRenderingContext2D, g: Grafo, geo: Geo, t: 
 
 /** Rettangolo del pannello iniziale del Centro letto dal DOM (coordinate di pagina), oppure una costante ragionevole. */
 function leggiPannello(w: number): Rett | null {
-  const el = document.querySelector('.hero > div:last-child');
+  const el = document.querySelector('.drawer, .dettagli-centro');
   if (el) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) return { x: r.x + window.scrollX, y: r.y + window.scrollY, w: r.width, h: r.height }; }
   return w >= TELEFONO ? { x: 96, y: 100, w: 440, h: 470 } : null; // costante: colonna del Centro a sinistra
 }
@@ -186,7 +181,7 @@ const dentro = (z: Rett, x: number, y: number) => x >= z.x - 20 && x <= z.x + z.
 interface Tip { id: string; x: number; y: number }
 
 export default function Atlas() {
-  const { snap, pensa, pingOk, apri, pannello, paletteAperta, parete } = useG();
+  const { snap, pensa, pingOk, voce, apri, pannello, paletteAperta, parete } = useG();
   const canvas = useRef<HTMLCanvasElement>(null);
   const radice = useRef<HTMLDivElement>(null);
   const rispondendo = useRef(false); rispondendo.current = pensa;
@@ -197,10 +192,11 @@ export default function Atlas() {
   const [stanzaZoom, setStanzaZoom] = useState<string | null>(null);
   const [tip, setTip] = useState<Tip | null>(null);
   const [threeReady, setThreeReady] = useState(false);
-  const stato = statoNucleo(snap, { pingOk, ascolta: false, pensa });
+  const stato = statoNucleo(snap, { pingOk, ascolta: voce === 'ascolto', pensa, parla: voce === 'parla' });
   const trePronto = useCallback(() => setThreeReady(true), []);
   const treFallback = useCallback(() => setThreeReady(false), []);
   const apriDispositivi = useCallback(() => apri({ p: 'dispositivi' }), [apri]);
+  const apriAgente = useCallback((id: string) => apri({ p: 'agente', id }), [apri]);
   useEffect(() => {
     const misura = () => {
       setDim((d) => (d.w === window.innerWidth && d.h === window.innerHeight ? d : { w: window.innerWidth, h: window.innerHeight }));
@@ -319,7 +315,7 @@ export default function Atlas() {
     const dpr = Math.min(1.5, window.devicePixelRatio || 1);
     el.width = Math.round(dim.w * dpr); el.height = Math.round(dim.h * dpr);
     const g: Grafo3 = grafo ?? { nodi: [], link: [] };
-    let dust = polvere(telefono ? 360 : 900, 7); const radiceEl = radice.current; const vuoto = !!snap && snap.agents.length === 0;
+    let dust = polvere(420, 7); const radiceEl = radice.current; const vuoto = !!snap && snap.agents.length === 0;
     let t0: number | null = null; let tUltimo = 0;
     // un fotogramma completo: tutto ruota, quindi niente strato fermo
     const disegnaTutto = (t: number) => {
@@ -360,7 +356,8 @@ export default function Atlas() {
     <div ref={radice} className="atlas-sfondo" data-atlas={grafo ? 'pronto' : 'attesa'} data-atlas-nodi={grafo?.nodi.length ?? 0} data-three-ready={threeReady}>
       <canvas ref={canvas} aria-hidden="true" />
       <ThreeBrain stato={stato} ridotto={ridotto} dispositivi={snap?.devices ?? []} agenti={snap?.agents ?? []}
-        onReady={trePronto} onFallback={treFallback} onApriDispositivi={apriDispositivi} />
+        eventi={snap?.events ?? []} pannelloAperto={!!pannello} onReady={trePronto} onFallback={treFallback}
+        onApriDispositivi={apriDispositivi} onApriAgente={apriAgente} />
       <p className="sr-only" role="status">{`Atlas di Guardian, in 3D. ${testo} I puntini tenui sullo sfondo sono solo decorativi.`}</p>
       {!nascondi && createPortal(
         <div className="atlas-controlli" role="group" aria-label="Filtri dell'Atlas">
