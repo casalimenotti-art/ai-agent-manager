@@ -7,12 +7,17 @@ import { useG, type Pannello } from '../../state';
 import { Scheletro, Vuoto } from '../kit';
 import { DispositiviPanel } from './sistema';
 
+// Il codice resta in memoria finché la persona non preme "Ho copiato": un aggiornamento dei dati o la riapertura del pannello non lo fa sparire
+// (solo in memoria della scheda, mai salvato: un ricaricamento della pagina lo cancella).
+let codiceInSospeso: { nome: string; valore: string } | null = null;
+
 export function DispositiviAdminPanel() {
   const { snap, source, user, esegui, toast } = useG();
   const [nome, setNome] = useState('');
   const [persona, setPersona] = useState(user.id);
   const [toccato, setToccato] = useState(false);
-  const [codice, setCodice] = useState<{ nome: string; valore: string } | null>(null);
+  const [codice, setCodiceStato] = useState<{ nome: string; valore: string } | null>(() => codiceInSospeso);
+  const setCodice = (c: { nome: string; valore: string } | null) => { codiceInSospeso = c; setCodiceStato(c); };
   const [copiato, setCopiato] = useState(false);
   const [occupato, setOccupato] = useState(false);
   const [daRevocare, setDaRevocare] = useState<number | null>(null);
