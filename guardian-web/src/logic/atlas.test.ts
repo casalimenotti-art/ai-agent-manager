@@ -193,3 +193,38 @@ describe('atlas ondata 3', () => {
     expect(schedaNodo(s, g.nodi.find((n) => n.id === 's:vendite')!).apre).toEqual({ zoom: 'vendite' });
   });
 });
+
+// ---------- 3D ----------
+import { conProfondita, hash01, polvere, proietta, angoloAuto, GIRO_MS } from './atlas';
+describe('atlas 3D', () => {
+  const s = snap([agente('a1', 'menotti', 'working'), agente('a2', 'amico1', 'idle')], [task(1, 'running', { assigned_agent_id: 'a1' })]);
+  const g = disponi(costruisciGrafo(s, { ora: ORA }));
+  it('hash01 è stabile e sta in [0,1)', () => {
+    expect(hash01('abc')).toBe(hash01('abc')); expect(hash01('abc')).not.toBe(hash01('abd'));
+    for (const k of ['a', 'nucleo', 's:vendite', 't:99']) { const v = hash01(k); expect(v).toBeGreaterThanOrEqual(0); expect(v).toBeLessThan(1); }
+  });
+  it('profondità: nucleo a z 0, tutti hanno z in [-1,1], input intatto, stabile', () => {
+    const p = conProfondita(g);
+    expect(p.nodi.find((n) => n.id === 'nucleo')!.z).toBe(0);
+    for (const n of p.nodi) { expect(n.z).toBeGreaterThanOrEqual(-1); expect(n.z).toBeLessThanOrEqual(1); }
+    expect((g.nodi[0] as { z?: number }).z).toBeUndefined();
+    expect(conProfondita(g).nodi.map((n) => n.z)).toEqual(p.nodi.map((n) => n.z));
+  });
+  it('proiezione: angolo 0 lascia x,y; il punto vicino è più grande del lontano; 90° porta z su x', () => {
+    const a = proietta({ x: 0.5, y: 0.2, z: 0 }, 0, 0);
+    expect(a.x).toBeCloseTo(0.5); expect(a.y).toBeCloseTo(0.2); expect(a.s).toBeCloseTo(1);
+    expect(proietta({ x: 0, y: 0, z: -0.5 }, 0, 0).s).toBeGreaterThan(proietta({ x: 0, y: 0, z: 0.5 }, 0, 0).s);
+    const r = proietta({ x: 0, y: 0, z: 0.5 }, Math.PI / 2, 0); expect(Math.abs(r.x)).toBeGreaterThan(0.3);
+    expect(r.p).toBeGreaterThanOrEqual(0); expect(r.p).toBeLessThanOrEqual(1);
+  });
+  it('polvere: n punti nella sfera, linee verso vicini validi, stessa seed = stessi punti', () => {
+    const d = polvere(200, 7);
+    expect(d.punti).toHaveLength(200);
+    for (const p of d.punti) expect(Math.hypot(p.x, p.y, p.z)).toBeLessThanOrEqual(1.0001);
+    for (const [i, j] of d.linee) { expect(i).not.toBe(j); expect(i).toBeLessThan(200); expect(j).toBeLessThan(200); }
+    expect(polvere(200, 7).punti[5]).toEqual(d.punti[5]);
+  });
+  it('rotazione automatica: un giro in GIRO_MS', () => {
+    expect(GIRO_MS).toBe(90000); expect(angoloAuto(0)).toBe(0); expect(angoloAuto(GIRO_MS / 4)).toBeCloseTo(Math.PI / 2);
+  });
+});

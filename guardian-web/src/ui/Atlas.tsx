@@ -4,7 +4,7 @@
 // solo immagine ferma con prefers-reduced-motion. Niente blur né filter: cerchi e linee con globalAlpha.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { COLORI_ATLAS, costruisciGrafo, devoDisegnare, DURATA_ZOOM_MS, disponi, faseImpulso, FILTRO_TUTTI, filtraGrafo, interpolaVista, lampeggio, nodoInPunto, possoAnimare,
+import { angoloAuto, COLORI_ATLAS, conProfondita, costruisciGrafo, hash01, polvere, proietta, type Grafo3, devoDisegnare, DURATA_ZOOM_MS, disponi, faseImpulso, FILTRO_TUTTI, filtraGrafo, interpolaVista, lampeggio, nodoInPunto, possoAnimare,
   puntoSulPercorso, respiro, riepilogoAtlas, schedaNodo, stileStato, VISTA_COMPLETA, vistaStanza, zonaLibera, type FiltroAtlas, type Grafo, type Nodo, type Pt, type Rett, type Scheda, type Vista } from '../logic/atlas';
 import { useG } from '../state';
 
@@ -19,83 +19,113 @@ function etichetta(c: CanvasRenderingContext2D, t: string, x: number, y: number,
   lettere.forEach((l, i) => { c.fillText(l, px, y); px += larg[i] + spazio; });
 }
 
+// sprite di luce precalcolati (uno per colore): niente shadowBlur né filter a ogni fotogramma
+const SPRITE = new Map<string, HTMLCanvasElement>();
+function sprite(colore: string): HTMLCanvasElement {
+  let sp = SPRITE.get(colore); if (sp) return sp;
+  sp = document.createElement('canvas'); sp.width = sp.height = 64; const c = sp.getContext('2d');
+  if (c) { const g = c.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, colore); g.addColorStop(0.18, colore + 'aa'); g.addColorStop(0.45, colore + '33'); g.addColorStop(1, colore + '00'); c.fillStyle = g; c.fillRect(0, 0, 64, 64); }
+  SPRITE.set(colore, sp); return sp;
+}
 function punto(c: CanvasRenderingContext2D, x: number, y: number, r: number, colore: string, alpha: number) {
-  c.fillStyle = colore;
-  c.globalAlpha = alpha * 0.1; c.beginPath(); c.arc(x, y, r * 3.2, 0, Math.PI * 2); c.fill(); // alone largo
-  c.globalAlpha = alpha * 0.22; c.beginPath(); c.arc(x, y, r * 1.9, 0, Math.PI * 2); c.fill(); // alone vicino
-  c.globalAlpha = alpha; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+  const al = r * 4.2; c.globalAlpha = alpha * 0.55; c.drawImage(sprite(colore), x - al, y - al, al * 2, al * 2); // alone
+  c.globalAlpha = alpha; c.fillStyle = colore; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
 }
 
-/** Da coordinate normalizzate [-1,1] a pixel, dentro la zona libera (fuori dal pannello del Centro). */
-export function geometria(zona: Rett, v: Vista = VISTA_COMPLETA) {
+/** Inclinazione di base della camera (radianti): si guarda il cervello un po' dall'alto. */
+export const INCLINAZIONE = 0.22;
+/** Da coordinate normalizzate 3D a pixel, dentro la zona libera, con rotazione (ay, ax), prospettiva e zoom della vista. */
+export function geometria(zona: Rett, v: Vista = VISTA_COMPLETA, ay = 0, ax = INCLINAZIONE) {
   const pad = 34; const cx = zona.x + zona.w / 2; const cy = zona.y + zona.h / 2;
-  const sx = Math.max(20, zona.w / 2 - pad); const sy = Math.max(20, zona.h / 2 - pad);
+  const sx = Math.max(20, zona.w / 2 - pad) * 0.86; const sy = Math.max(20, zona.h / 2 - pad) * 0.86;
   const k = Math.max(0.55, Math.min(1, Math.min(zona.w, zona.h) / 600)); // scala di nucleo e caratteri
-  const P = (n: { x: number; y: number }) => [cx + (n.x - v.fx) * sx * v.z, cy + (n.y - v.fy) * sy * v.z] as const;
-  return { cx, cy, sx, sy, k, P };
+  const Q = (n: { x: number; y: number; z?: number }) => { const q = proietta({ x: n.x - v.fx, y: n.y - v.fy, z: n.z ?? 0 }, ay, ax); return { ...q, px: cx + q.x * sx * v.z, py: cy + q.y * sy * v.z }; };
+  const P = (n: { x: number; y: number; z?: number }) => { const q = Q(n); return [q.px, q.py] as const; };
+  return { cx, cy, sx, sy, k, P, Q, ay, ax, v };
 }
 type Geo = ReturnType<typeof geometria>;
+type Polvere = ReturnType<typeof polvere>;
+const luce = (p: number) => 0.3 + 0.7 * p; // i nodi dietro sono più tenui
 
-export function disegna(c: CanvasRenderingContext2D, g: Grafo, w: number, h: number, vuoto: boolean, zona: Rett = { x: 0, y: 0, w, h }, vista: Vista = VISTA_COMPLETA) {
-  const { k, P } = geometria(zona, vista); const piccolo = k < 0.8;
-  c.clearRect(0, 0, w, h);
-  c.fillStyle = FONDO; c.fillRect(0, 0, w, h);
+export function disegna(c: CanvasRenderingContext2D, g: Grafo3, w: number, h: number, vuoto: boolean, geo: Geo, dust: Polvere | null) {
+  const { k, Q, cx, cy, sx, sy, v } = geo; const piccolo = k < 0.8;
+  c.globalAlpha = 1; c.fillStyle = FONDO; c.fillRect(0, 0, w, h);
+  // bagliore di fondo attorno al nucleo, come nel riferimento
+  const rg = Math.max(sx, sy) * 1.25 * Math.min(v.z, 1.6); const gr = c.createRadialGradient(cx, cy, 0, cx, cy, rg);
+  gr.addColorStop(0, 'rgba(60,90,170,0.16)'); gr.addColorStop(0.5, 'rgba(40,40,110,0.06)'); gr.addColorStop(1, 'rgba(5,9,18,0)');
+  c.fillStyle = gr; c.fillRect(0, 0, w, h);
+
+  // polvere neurale decorativa: linee in due fasce (dietro, davanti) e puntini come quadratini
+  if (dust) {
+    const pr = dust.punti.map((q) => { const r = proietta(q, geo.ay, geo.ax); return [cx + r.x * sx * 1.12 * v.z, cy + r.y * sy * 1.12 * v.z, r.p] as const; });
+    c.lineWidth = 0.6;
+    for (const [dietro, al] of [[true, 0.05], [false, 0.11]] as const) {
+      c.strokeStyle = '#8fa6ff'; c.globalAlpha = al; c.beginPath();
+      for (const [i, j] of dust.linee) { const a = pr[i]; const b = pr[j]; if ((a[2] + b[2] < 1) !== dietro) continue; c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); }
+      c.stroke();
+    }
+    c.fillStyle = '#cdd6ff';
+    for (const [x, y, p] of pr) { c.globalAlpha = 0.18 + 0.6 * p * p; const r = 0.7 + 1.2 * p; c.fillRect(x - r / 2, y - r / 2, r, r); }
+  }
+
   const per = new Map(g.nodi.map((n) => [n.id, n]));
+  const pos = new Map(g.nodi.map((n) => [n.id, Q(n)]));
   const colStanza = (id: string | null) => (id ? per.get(`s:${id}`)?.colore : undefined) ?? COLORI_ATLAS.nucleo;
 
-  // linee sottili: 0.06 per i collegamenti fermi, fino a 0.15 per quelli di chi lavora
+  // nervi: nucleo > stanze > agenti > task, più visibili davanti
   c.lineWidth = 1;
   for (const l of g.link) {
-    const a = per.get(l.da); const b = per.get(l.a); if (!a || !b) continue;
-    const [x1, y1] = P(a); const [x2, y2] = P(b);
+    const a = per.get(l.da); const b = per.get(l.a); const qa = pos.get(l.da); const qb = pos.get(l.a); if (!a || !b || !qa || !qb) continue;
     c.strokeStyle = l.stato === 'fermo' ? (a.tipo === 'nucleo' ? colStanza(l.stanza) : COLORI_ATLAS.fermo) : stileStato(l.stato, colStanza(l.stanza)).colore;
-    c.globalAlpha = a.escluso || b.escluso ? 0.03 : l.stato === 'fermo' ? (a.tipo === 'nucleo' ? 0.1 : 0.06) : 0.15;
-    c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+    const base = a.escluso || b.escluso ? 0.03 : l.stato === 'fermo' ? (a.tipo === 'nucleo' ? 0.16 : 0.09) : 0.26;
+    c.globalAlpha = base * luce((qa.p + qb.p) / 2);
+    c.beginPath(); c.moveTo(qa.px, qa.py); c.lineTo(qb.px, qb.py); c.stroke();
   }
 
-  // nucleo: disco ghiaccio, nucleo bianco e anelli di puntini
-  const nu = per.get('nucleo');
-  if (nu) {
-    const [x, y] = P(nu);
-    c.fillStyle = COLORI_ATLAS.nucleo;
-    for (const [rg, n, al, rd] of [[64, 56, 0.16, 1.1], [48, 40, 0.28, 1.3], [34, 28, 0.42, 1.5]] as const) {
-      c.globalAlpha = al;
-      for (let i = 0; i < n; i++) { const t = (i / n) * Math.PI * 2; c.beginPath(); c.arc(x + Math.cos(t) * rg * k, y + Math.sin(t) * rg * k, rd, 0, Math.PI * 2); c.fill(); }
+  // nodi ordinati per profondità: prima quelli dietro
+  const ordine = [...g.nodi].sort((x, y) => (pos.get(x.id)!.p - pos.get(y.id)!.p));
+  for (const n of ordine) {
+    const q = pos.get(n.id)!; const x = q.px; const y = q.py; const L = luce(q.p); const r = n.raggio * q.s;
+    if (n.tipo === 'nucleo') {
+      // anelli di puntini su tre piani diversi, come un atomo
+      for (const [rag, num, al, rd, inc] of [[0.2, 64, 0.22, 1.1, 0.0], [0.15, 48, 0.32, 1.3, 1.1], [0.11, 36, 0.45, 1.5, -1.0]] as const) {
+        c.fillStyle = COLORI_ATLAS.nucleo; const ca = Math.cos(inc); const sa = Math.sin(inc);
+        for (let i = 0; i < num; i++) {
+          const t = (i / num) * Math.PI * 2;
+          const qq = Q({ x: n.x + Math.cos(t) * rag, y: n.y + Math.sin(t) * rag * ca, z: n.z + Math.sin(t) * rag * sa });
+          c.globalAlpha = al * (0.35 + qq.p); c.beginPath(); c.arc(qq.px, qq.py, rd * qq.s, 0, Math.PI * 2); c.fill();
+        }
+      }
+      punto(c, x, y, 15 * k * q.s, COLORI_ATLAS.nucleo, 0.7);
+      c.globalAlpha = 1; c.fillStyle = '#ffffff'; c.beginPath(); c.arc(x, y, 6 * k * q.s, 0, Math.PI * 2); c.fill();
+      c.globalAlpha = 0.85; c.fillStyle = '#dbe8ff'; c.font = `600 ${piccolo ? 11 : 13}px system-ui, sans-serif`;
+      etichetta(c, 'Guardian', x, y + 60 * k * q.s, piccolo ? 2 : 3);
+      if (vuoto) { c.globalAlpha = 0.7; c.fillStyle = '#cfe6fb'; c.font = `500 ${piccolo ? 11 : 12}px system-ui, sans-serif`; etichetta(c, 'Nessun agente collegato', x, y + 82 * k, 2); }
+      continue;
     }
-    punto(c, x, y, 17 * k, COLORI_ATLAS.nucleo, 0.55);
-    c.globalAlpha = 1; c.fillStyle = '#ffffff'; c.beginPath(); c.arc(x, y, 6 * k, 0, Math.PI * 2); c.fill();
-    if (vuoto) {
-      c.globalAlpha = 0.7; c.fillStyle = '#cfe6fb'; c.font = `500 ${piccolo ? 11 : 12}px system-ui, sans-serif`;
-      etichetta(c, 'Nessun agente collegato', x, y + 92 * k, 2);
+    if (n.tipo === 'task' || n.tipo === 'evento') { punto(c, x, y, Math.max(0.8, r), n.colore, n.alpha * L); continue; }
+    if (n.escluso) { punto(c, x, y, r, n.colore, 0.08); continue; }
+    if (n.tipo === 'agente') {
+      const stile = stileStato(n.stato, n.colore);
+      if (stile.fiore) { // fiore di puntini attorno a chi lavora
+        c.fillStyle = stile.colore; c.globalAlpha = 0.7 * L;
+        for (let i = 0; i < 10; i++) { const t = (i / 10) * Math.PI * 2; c.beginPath(); c.arc(x + Math.cos(t) * r * 2.4, y + Math.sin(t) * r * 2.4, 1.3 * q.s, 0, Math.PI * 2); c.fill(); }
+      }
+      if (stile.anello) { c.strokeStyle = stile.colore; c.globalAlpha = 0.7 * L; c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, r * 2.2, 0, Math.PI * 2); c.stroke(); }
+      punto(c, x, y, r, n.colore, n.alpha * L);
+      if (q.p > 0.35 || n.stato === 'attivo') { // etichette solo davanti, per non affollare
+        c.globalAlpha = (n.alpha < 0.6 ? 0.5 : 0.85) * L; c.fillStyle = '#d6deea'; c.font = `${n.stato === 'attivo' ? 600 : 400} 11px system-ui, sans-serif`; c.textAlign = 'center';
+        c.fillText(n.etichetta, x, y + r * 2.4 + 13);
+        if (n.attivita) { c.globalAlpha = 0.7 * L; c.fillStyle = stile.colore; c.font = '10px system-ui, sans-serif'; c.fillText(n.attivita, x, y + r * 2.4 + 26); }
+      }
+      continue;
     }
-  }
-
-  // puntini piccoli (task ed eventi), poi agenti e stanze sopra
-  for (const n of g.nodi) if (n.tipo === 'task' || n.tipo === 'evento') { const [x, y] = P(n); punto(c, x, y, n.raggio, n.colore, n.alpha); }
-  for (const n of g.nodi) if (n.tipo === 'agente') {
-    const [x, y] = P(n); const stile = stileStato(n.stato, n.colore);
-    if (n.escluso) { punto(c, x, y, n.raggio, n.colore, 0.1); continue; }
-    if (stile.fiore) { // "fiore" di puntini attorno a chi lavora
-      c.fillStyle = stile.colore; c.globalAlpha = 0.7;
-      for (let i = 0; i < 6; i++) { const t = (i / 6) * Math.PI * 2; c.beginPath(); c.arc(x + Math.cos(t) * n.raggio * 2.3, y + Math.sin(t) * n.raggio * 2.3, 1.4, 0, Math.PI * 2); c.fill(); }
-    }
-    if (stile.anello) { c.strokeStyle = stile.colore; c.globalAlpha = 0.7; c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, n.raggio * 2.2, 0, Math.PI * 2); c.stroke(); }
-    punto(c, x, y, n.raggio, n.colore, n.alpha);
-    c.globalAlpha = n.alpha < 0.6 ? 0.55 : 0.8; c.fillStyle = '#cfd8e6'; c.font = '10px system-ui, sans-serif'; c.textAlign = 'center';
-    c.fillText(n.etichetta, x, y + n.raggio * 2.2 + 12);
-    if (n.attivita) { // cosa sta facendo (già tagliata a 40 caratteri con ellissi)
-      c.globalAlpha = 0.65; c.fillStyle = stile.colore; c.font = '9px system-ui, sans-serif';
-      c.fillText(n.attivita, x, y + n.raggio * 2.2 + 24);
-    }
-  }
-  for (const n of g.nodi) if (n.tipo === 'stanza') {
-    const [x, y] = P(n);
-    if (n.escluso) { punto(c, x, y, n.raggio, n.colore, 0.1); continue; }
+    // stanza: cluster di puntini e nome in maiuscolo spaziato
     c.fillStyle = n.colore;
-    for (let i = 0; i < 8; i++) { const t = (i / 8) * Math.PI * 2; c.globalAlpha = 0.55; c.beginPath(); c.arc(x + Math.cos(t) * 13, y + Math.sin(t) * 13, 1.5, 0, Math.PI * 2); c.fill(); }
-    punto(c, x, y, n.raggio, n.colore, 1);
-    c.globalAlpha = 0.9; c.fillStyle = n.colore; c.font = `600 ${piccolo ? 10 : 11}px system-ui, sans-serif`;
-    etichetta(c, n.etichetta, x, y - 24, piccolo ? 1.5 : 2.6);
+    for (let i = 0; i < 14; i++) { const t = (i / 14) * Math.PI * 2 + hash01(n.id + i) * 0.4; const rr = (9 + 7 * hash01(n.id + 'r' + i)) * q.s; c.globalAlpha = 0.6 * L; c.beginPath(); c.arc(x + Math.cos(t) * rr, y + Math.sin(t) * rr, 1.4 * q.s, 0, Math.PI * 2); c.fill(); }
+    punto(c, x, y, r * 1.1, n.colore, L);
+    c.globalAlpha = 0.95 * L; c.fillStyle = n.colore; c.font = `700 ${piccolo ? 11 : 13}px system-ui, sans-serif`;
+    etichetta(c, n.etichetta, x, y - 26 * q.s, piccolo ? 2 : 3.2);
   }
   c.globalAlpha = 1;
 }
@@ -179,20 +209,26 @@ export default function Atlas() {
     const f = () => setRidotto(m.matches); m.addEventListener('change', f); return () => m.removeEventListener('change', f);
   }, []);
   const telefono = dim.w < TELEFONO;
-  const base = useMemo(() => (snap ? disponi(costruisciGrafo(snap, { telefono })) : null), [snap, telefono]);
-  const grafo = useMemo(() => (base ? filtraGrafo(base, filtro) : null), [base, filtro]);
+  const base = useMemo(() => (snap ? conProfondita(disponi(costruisciGrafo(snap, { telefono }))) : null), [snap, telefono]);
+  const grafo = useMemo(() => (base ? (filtraGrafo(base, filtro) as Grafo3) : null), [base, filtro]);
   const testo = snap ? riepilogoAtlas(snap, Date.now(), filtro) : 'Caricamento dei dati.';
   const zona = useMemo(() => {
     const sinistra = dim.w >= 721 ? 72 : 0; // rail del Centro
-    return zonaLibera({ x: sinistra, y: 64, w: dim.w - sinistra, h: Math.max(120, dim.h * (telefono ? 0.9 : 0.86) - 64) }, pannelloRett);
+    const tutta = { x: sinistra, y: 64, w: dim.w - sinistra, h: Math.max(120, dim.h * (telefono ? 0.9 : 0.86) - 64) };
+    const z = zonaLibera(tutta, pannelloRett);
+    // se la zona libera è troppo stretta, il cervello usa tutto lo sfondo e il pannello di vetro gli sta davanti
+    return z.w * z.h < tutta.w * tutta.h * 0.45 ? tutta : z;
   }, [dim, pannelloRett, telefono]);
 
   // vista (zoom e pan): la corrente sta in un ref, l'animazione la sposta e chiede il ridisegno dello strato fermo
   const vistaRef = useRef<Vista>(VISTA_COMPLETA);
   const ridisegna = useRef<(() => void) | null>(null);
   const anim = useRef(0);
-  const grafoRef = useRef<Grafo | null>(null); grafoRef.current = grafo;
-  const geoRef = useRef<Geo>(geometria(zona)); geoRef.current = geometria(zona, vistaRef.current);
+  const grafoRef = useRef<Grafo3 | null>(null); grafoRef.current = grafo;
+  const geoRef = useRef<Geo>(geometria(zona));
+  // rotazione: y = offset dato dal trascinamento (si somma alla rotazione automatica), x = inclinazione
+  const rot = useRef({ y: 0.5, x: INCLINAZIONE });
+  const trascina = useRef<{ x: number; y: number; mosso: boolean } | null>(null);
   const zonaRef = useRef(zona); zonaRef.current = zona;
   const vaiA = useCallback((target: Vista) => {
     cancelAnimationFrame(anim.current);
@@ -214,18 +250,28 @@ export default function Atlas() {
   // passaggio del mouse, clic e tocco: il canvas sta sotto la pagina, quindi si ascolta la finestra e si guarda se il punto è libero
   const azioni = useRef({ snap, apri, zoomStanza, vistaCompleta }); azioni.current = { snap, apri, zoomStanza, vistaCompleta };
   const toccato = useRef<string | null>(null);
+  const trascinato = useRef(false);
   useEffect(() => {
     const trova = (e: MouseEvent, tocco: boolean): Nodo | null => {
       const g = grafoRef.current; if (!g || !libero(e.target) || !dentro(zonaRef.current, e.clientX, e.clientY)) return null;
       return nodoInPunto(g, geoRef.current.P, e.clientX, e.clientY, tocco);
     };
     const mossa = (e: PointerEvent) => {
+      const tr = trascina.current;
+      if (tr) {
+        const dx = e.clientX - tr.x; const dy = e.clientY - tr.y;
+        if (!tr.mosso && Math.hypot(dx, dy) < 5) return;
+        tr.mosso = true; tr.x = e.clientX; tr.y = e.clientY; setTip(null);
+        rot.current = { y: rot.current.y + dx * 0.006, x: Math.max(-0.7, Math.min(0.9, rot.current.x + dy * 0.004)) };
+        document.documentElement.style.cursor = 'grabbing'; ridisegna.current?.(); return;
+      }
       if (e.pointerType === 'touch') return;
       const n = trova(e, false);
       document.documentElement.style.cursor = n && n.tipo !== 'nucleo' ? 'pointer' : '';
       setTip((t) => (n ? { id: n.id, x: e.clientX, y: e.clientY } : t ? null : t));
     };
     const clic = (e: MouseEvent) => {
+      if (trascinato.current) { trascinato.current = false; return; } // fine di un trascinamento, non un clic
       const pt = (e as PointerEvent).pointerType;
       const tocco = pt === 'touch' || (pt === undefined && !!window.matchMedia?.('(pointer: coarse)').matches);
       const n = trova(e, tocco);
@@ -241,32 +287,50 @@ export default function Atlas() {
       setTip(null); toccato.current = null;
       const v = vistaRef.current; if (v.z !== 1 || v.fx !== 0 || v.fy !== 0) azioni.current.vistaCompleta();
     };
+    const giu = (e: PointerEvent) => { if (e.button === 0 && libero(e.target) && dentro(zonaRef.current, e.clientX, e.clientY)) trascina.current = { x: e.clientX, y: e.clientY, mosso: false }; };
+    const su = () => { const tr = trascina.current; trascina.current = null; if (tr?.mosso) { trascinato.current = true; document.documentElement.style.cursor = ''; window.setTimeout(() => { trascinato.current = false; }, 0); } };
+    const rotella = (e: WheelEvent) => {
+      if (!libero(e.target) || !dentro(zonaRef.current, e.clientX, e.clientY)) return;
+      e.preventDefault(); const v = vistaRef.current;
+      vistaRef.current = { ...v, z: Math.max(0.6, Math.min(3, v.z * Math.exp(-e.deltaY * 0.0012))) }; ridisegna.current?.();
+    };
     window.addEventListener('pointermove', mossa); window.addEventListener('click', clic); window.addEventListener('keydown', tasto);
-    return () => { window.removeEventListener('pointermove', mossa); window.removeEventListener('click', clic); window.removeEventListener('keydown', tasto); document.documentElement.style.cursor = ''; };
+    window.addEventListener('pointerdown', giu); window.addEventListener('pointerup', su); window.addEventListener('pointercancel', su); window.addEventListener('wheel', rotella, { passive: false });
+    return () => {
+      window.removeEventListener('pointermove', mossa); window.removeEventListener('click', clic); window.removeEventListener('keydown', tasto);
+      window.removeEventListener('pointerdown', giu); window.removeEventListener('pointerup', su); window.removeEventListener('pointercancel', su); window.removeEventListener('wheel', rotella);
+      document.documentElement.style.cursor = '';
+    };
   }, []);
 
   useEffect(() => {
     const el = canvas.current; const c = el?.getContext('2d'); if (!el || !c) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
     el.width = Math.round(dim.w * dpr); el.height = Math.round(dim.h * dpr);
-    const g = grafo ?? { nodi: [], link: [] };
-    const fermo = document.createElement('canvas'); fermo.width = el.width; fermo.height = el.height; const cf = fermo.getContext('2d'); if (!cf) return;
-    const mostraFermo = () => { c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.drawImage(fermo, 0, 0); c.setTransform(dpr, 0, 0, dpr, 0, 0); };
-    let geo = geometria(zona, vistaRef.current); const radiceEl = radice.current;
-    const disegnaFermo = () => {
-      cf.setTransform(dpr, 0, 0, dpr, 0, 0); disegna(cf, g, dim.w, dim.h, !!snap && snap.agents.length === 0, zona, vistaRef.current);
-      geo = geometria(zona, vistaRef.current); mostraFermo();
+    const g: Grafo3 = grafo ?? { nodi: [], link: [] };
+    let dust = polvere(telefono ? 360 : 900, 7); const radiceEl = radice.current; const vuoto = !!snap && snap.agents.length === 0;
+    let t0: number | null = null; let tUltimo = 0;
+    // un fotogramma completo: tutto ruota, quindi niente strato fermo
+    const disegnaTutto = (t: number) => {
+      const geo = geometria(zona, vistaRef.current, rot.current.y + (ridotto ? 0 : angoloAuto(t)), rot.current.x); geoRef.current = geo;
+      c.setTransform(dpr, 0, 0, dpr, 0, 0); disegna(c, g, dim.w, dim.h, vuoto, geo, dust);
+      if (grafo) disegnaVita(c, grafo, geo, t, rispondendo.current);
     };
-    disegnaFermo(); ridisegna.current = disegnaFermo;
+    disegnaTutto(0); ridisegna.current = () => disegnaTutto(tUltimo);
     if (!grafo || ridotto) { radiceEl?.setAttribute('data-atlas-fps', '0'); return () => { ridisegna.current = null; }; }
 
-    let raf = 0; let ultimo: number | null = null; let t0: number | null = null; let conta = 0; let inizioFps = 0; let attivo = false;
+    let raf = 0; let ultimo: number | null = null; let conta = 0; let inizioFps = 0; let attivo = false; let lenti = 0;
     const frame = (ora: number) => {
       raf = requestAnimationFrame(frame);
       if (!devoDisegnare(ultimo, ora)) return;
-      ultimo = ora; t0 ??= ora; inizioFps ||= ora; conta++;
-      mostraFermo(); disegnaVita(c, grafo, geo, ora - t0, rispondendo.current);
-      if (ora - inizioFps >= 1000) { radiceEl?.setAttribute('data-atlas-fps', String(Math.round((conta * 1000) / (ora - inizioFps)))); conta = 0; inizioFps = ora; }
+      ultimo = ora; t0 ??= ora; inizioFps ||= ora; conta++; tUltimo = ora - t0;
+      disegnaTutto(tUltimo);
+      if (ora - inizioFps >= 1000) {
+        const fps = Math.round((conta * 1000) / (ora - inizioFps)); radiceEl?.setAttribute('data-atlas-fps', String(fps));
+        // qualità adattiva: se la grafica fatica, meno polvere decorativa
+        lenti = fps < 22 ? lenti + 1 : 0; if (lenti >= 2 && dust.punti.length > 200) { dust = polvere(Math.round(dust.punti.length / 2), 7); lenti = 0; }
+        radiceEl?.setAttribute('data-atlas-polvere', String(dust.punti.length)); conta = 0; inizioFps = ora;
+      }
     };
     const aggiorna = () => {
       const vai = possoAnimare(document.hidden, ridotto);
@@ -275,7 +339,7 @@ export default function Atlas() {
     };
     document.addEventListener('visibilitychange', aggiorna); aggiorna();
     return () => { document.removeEventListener('visibilitychange', aggiorna); cancelAnimationFrame(raf); ridisegna.current = null; };
-  }, [grafo, dim, snap, zona, ridotto]);
+  }, [grafo, dim, snap, zona, ridotto, telefono]);
 
   const nodoTip = tip && grafo ? grafo.nodi.find((n) => n.id === tip.id) : undefined;
   const scheda: Scheda | null = nodoTip && snap ? schedaNodo(snap, nodoTip) : null;
@@ -284,7 +348,7 @@ export default function Atlas() {
   return (
     <div ref={radice} className="atlas-sfondo" data-atlas={grafo ? 'pronto' : 'attesa'} data-atlas-nodi={grafo?.nodi.length ?? 0}>
       <canvas ref={canvas} aria-hidden="true" />
-      <p className="sr-only" role="status">{`Atlas di Guardian. ${testo}`}</p>
+      <p className="sr-only" role="status">{`Atlas di Guardian, in 3D. ${testo} I puntini tenui sullo sfondo sono solo decorativi.`}</p>
       {!nascondi && createPortal(
         <div className="atlas-controlli" role="group" aria-label="Filtri dell'Atlas">
           {telefono ? (

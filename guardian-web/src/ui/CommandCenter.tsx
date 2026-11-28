@@ -1,11 +1,11 @@
 // Vista centrale permanente: non viene mai sostituita dai pannelli.
-import { Activity, Bot, Building2, ListTodo, ShieldCheck, Sparkles } from 'lucide-react';
-import { useEffect } from 'react';
+import { Activity, BarChart3, Bot, Building2, ListTodo, ShieldCheck, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { statoNucleo, testoStato } from '../logic/guardian';
 import { agentiAlLavoro, completatiOggi, errori24h } from '../logic/metrics';
 import { report } from '../logic/report';
 import { fa, statoAgente } from '../logic/status';
-import { useG } from '../state';
+import { leggiPreferenze, salvaPreferenze, useG } from '../state';
 import { TASK_TERMINALI, type Task } from '../types';
 import { GuardianCore } from './GuardianCore';
 import { Gravita, Scheletro, Sezione, StatoAgente, StatoTask, Vuoto } from './kit';
@@ -25,6 +25,8 @@ export function taskImportanti(tasks: Task[], n = 7) {
 export function CommandCenter() {
   const { snap, pingOk, pensa, apri, errore, stanza, apriStanza } = useG();
   const { ascolta: pushToTalk } = useVoce();
+  const [numeri, setNumeri] = useState(() => leggiPreferenze().numeriAperti);
+  const cambiaNumeri = () => { const v = !numeri; setNumeri(v); salvaPreferenze({ ...leggiPreferenze(), numeriAperti: v }); window.setTimeout(() => window.dispatchEvent(new Event('resize')), 30); };
   const conv = useConversazione();
   const ascolta = pushToTalk || conv.fase === 'ascolto';
   const opz = { pingOk, ascolta, pensa: pensa || conv.fase === 'elaborazione', parla: conv.fase === 'parla' };
@@ -50,9 +52,11 @@ export function CommandCenter() {
         <div>
           <h1>Guardian</h1>
           <p className="stato" aria-live="polite">{testoStato(snap, opz)}</p>
-          <div className="row" style={{ marginBottom: 16 }}><PulsanteConversazione /><StatoCervello /></div>
+          <div className="row" style={{ marginBottom: numeri ? 16 : 0 }}><PulsanteConversazione /><StatoCervello />
+            <button type="button" className="btn ghost sm tendina-btn" aria-expanded={numeri} aria-controls="numeri-centro" onClick={cambiaNumeri}>
+              <BarChart3 size={14} aria-hidden /> {numeri ? 'Nascondi i numeri' : 'Mostra i numeri'}</button></div>
           {errore && <p className="err" role="alert">{errore}</p>}
-          <div className="kpis">
+          {numeri && <div className="kpis tendina" id="numeri-centro">
             {snap ? (<>
               <button className="kpi" onClick={() => apri({ p: 'agenti' })}>
                 <div className="v">{agentiAlLavoro(snap)}<span className="dim" style={{ fontSize: '1rem' }}>/{snap.agents.length}</span></div>
@@ -66,7 +70,7 @@ export function CommandCenter() {
                 <div className="v">{completatiOggi(snap)}</div><div className="l">Completati oggi</div>
                 <div className="f">{errori24h(snap)} errori nelle ultime 24 h</div></button>
             </>) : Array.from({ length: 4 }, (_, i) => <div key={i} className="kpi"><Scheletro righe={2} /></div>)}
-          </div>
+          </div>}
         </div>
       </section>
 

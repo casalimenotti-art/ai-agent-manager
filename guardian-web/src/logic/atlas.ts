@@ -342,3 +342,77 @@ export function schedaNodo(s: Snapshot, n: Nodo): Scheda {
   }
   return { titolo: 'Guardian', apre: null, righe: [riga('Agenti', String(s.agents.length)), riga('Task aperti', String(s.tasks.filter((t) => !TASK_TERMINALI.includes(t.stato)).length))] };
 }
+
+// ---------- 3D: profondità, proiezione prospettica, polvere neurale (funzioni pure) ----------
+export interface P3 { x: number; y: number; z: number }
+export interface Proiettato { x: number; y: number; s: number; p: number }
+export type Nodo3 = Nodo & { z: number };
+export interface Grafo3 { nodi: Nodo3[]; link: Link[] }
+/** Un giro completo ogni 90 secondi: lento, ma si capisce che è 3D. */
+export const GIRO_MS = 90000;
+/** Distanza della camera: più piccola = prospettiva più forte. */
+export const CAMERA = 2.6;
+export const angoloAuto = (t: number) => (t / GIRO_MS) * Math.PI * 2;
+
+/** Numero stabile in [0,1) da una stringa (FNV-1a). */
+export function hash01(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) / 4294967296;
+}
+const lim = (v: number) => Math.max(-1, Math.min(1, v));
+
+/** Aggiunge la profondità z: nucleo al centro, stanze su piani diversi, agenti e satelliti attorno alla loro stanza. Non modifica l'input. */
+export function conProfondita(g: Grafo): Grafo3 {
+  const stanze = g.nodi.filter((n) => n.tipo === 'stanza');
+  const zStanza = new Map(stanze.map((n, i) => [n.stanza, Math.sin((i / Math.max(1, stanze.length)) * Math.PI * 2 + 0.6) * 0.62]));
+  return {
+    link: g.link,
+    nodi: g.nodi.map((n) => {
+      if (n.tipo === 'nucleo') return { ...n, z: 0 };
+      const base = n.stanza != null ? (zStanza.get(n.stanza) ?? 0) : 0;
+      if (n.tipo === 'stanza') return { ...n, z: lim(base) };
+      const ampiezza = n.tipo === 'agente' ? (n.stanza != null ? 0.5 : 0.9) : 0.7;
+      return { ...n, z: lim(base + (hash01(n.id) - 0.5) * ampiezza) };
+    }),
+  };
+}
+
+/** Ruota sull'asse Y (ay) e poi su X (ax), poi prospettiva. s = scala (1 a z 0), p = vicinanza 0 (dietro) .. 1 (davanti). */
+export function proietta(q: P3, ay: number, ax: number, d: number = CAMERA): Proiettato {
+  const cy = Math.cos(ay); const sy = Math.sin(ay);
+  const x1 = q.x * cy + q.z * sy; const z1 = -q.x * sy + q.z * cy;
+  const cx = Math.cos(ax); const sx = Math.sin(ax);
+  const y2 = q.y * cx - z1 * sx; const z2 = q.y * sx + z1 * cx;
+  const s = d / (d + z2);
+  return { x: x1 * s, y: y2 * s, s, p: Math.max(0, Math.min(1, (1 - z2) / 2)) };
+}
+
+/** Generatore pseudo-casuale con seme (mulberry32). */
+function casuale3(seed: number) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+/**
+ * Polvere neurale DECORATIVA (non sono dati): n puntini nella sfera unitaria e, per ognuno, le linee verso i 2 vicini più prossimi
+ * (entro 0,28). Calcolata una volta sola.
+ */
+export function polvere(n: number, seed = 1): { punti: P3[]; linee: [number, number][] } {
+  const r = casuale3(seed); const punti: P3[] = [];
+  while (punti.length < n) {
+    const x = r() * 2 - 1; const y = r() * 2 - 1; const z = r() * 2 - 1; const d = Math.hypot(x, y, z);
+    if (d > 1 || d < 0.18) continue; // niente polvere dentro il nucleo
+    punti.push({ x, y: y * 0.85, z });
+  }
+  const linee: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    let b1 = -1; let d1 = 0.28 ** 2; let b2 = -1; let d2 = 0.28 ** 2;
+    for (let j = 0; j < n; j++) {
+      if (j === i) continue;
+      const dx = punti[i].x - punti[j].x; const dy = punti[i].y - punti[j].y; const dz = punti[i].z - punti[j].z; const q = dx * dx + dy * dy + dz * dz;
+      if (q < d1) { b2 = b1; d2 = d1; b1 = j; d1 = q; } else if (q < d2) { b2 = j; d2 = q; }
+    }
+    if (b1 > i) linee.push([i, b1]); if (b2 > i) linee.push([i, b2]);
+  }
+  return { punti, linee };
+}

@@ -85,3 +85,10 @@
 .atlas-tip dd { margin: 0; overflow-wrap: anywhere; }
 .atlas-tip em { display: block; margin-top: 4px; color: #ffd89a; font-style: normal; }
 @media (max-width: 599px) { .atlas-controlli button, .atlas-controlli select { min-height: 36px; } }
+
+/* tendina dei numeri del Centro: chiusa all'avvio, si apre morbida (solo transform e opacity) */
+.kpis.tendina { animation: tendina-apri 200ms ease-out; }
+@keyframes tendina-apri { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .kpis.tendina { animation: none; } }
+.tendina-btn { gap: 6px; }
+@media (min-width: 600px) { .con-volto .hero { min-height: 72vh; } }
