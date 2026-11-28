@@ -2,8 +2,8 @@
 import { Check, Copy, Cpu, KeyRound, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { erroreNomePc, hashCodice, nuovoCodice, pcOnline, validaNomePc } from '../../logic/dispositivi';
-import { fa } from '../../logic/status';
-import { useG } from '../../state';
+import { fa, statoAgente, statoDispositivo } from '../../logic/status';
+import { useG, type Pannello } from '../../state';
 import { Scheletro, Vuoto } from '../kit';
 import { DispositiviPanel } from './sistema';
 
@@ -75,4 +75,29 @@ export function DispositiviAdminPanel() {
       </div>);
     })}</div>}
   </div>);
+}
+
+/** Scheda in sola lettura del PC selezionato dalla scena. Mostra solo campi presenti nello snapshot. */
+export function MacchinaPanel({ id }: Pannello) {
+  const { snap, apri } = useG();
+  if (!snap) return <Scheletro />;
+  const device = snap.devices.find((d) => String(d.id) === id);
+  if (!device) return <Vuoto icona={Cpu}>Questo PC non è più registrato.</Vuoto>;
+  const unSoloPc = snap.devices.filter((d) => d.user_id === device.user_id).length === 1;
+  const agents = snap.agents.filter((a) => a.device_id === device.id || (!a.device_id && unSoloPc && a.user_id === device.user_id));
+  const taskId = device.current_task_id ?? agents.find((a) => a.current_task_id != null)?.current_task_id;
+  const task = taskId == null ? undefined : snap.tasks.find((t) => t.id === taskId);
+  const attivita = agents.map((a) => a.last_activity).filter((s): s is string => !!s).sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? device.last_seen;
+  const stato = statoDispositivo(device);
+  return <section className="stack machine-detail" aria-label={`Dettagli ${device.nome}`}>
+    <div className="machine-detail-status"><span className="machine-star-point" aria-hidden="true" /><strong>{stato === 'online' ? 'Collegato' : stato === 'offline' ? 'Scollegato' : stato === 'error' || stato === 'errore' ? 'Errore' : stato}</strong></div>
+    <dl>
+      <div><dt>PC</dt><dd>{device.nome}</dd></div>
+      <div><dt>Persona</dt><dd>{snap.users.find((u) => u.id === device.user_id)?.nome ?? device.user_id}</dd></div>
+      <div><dt>Agenti</dt><dd>{agents.length ? agents.map((a) => <button key={a.id} className="link-t" type="button" onClick={() => apri({ p: 'agente', id: a.id })}>{a.nome} · {statoAgente(a)}</button>) : 'Nessun agente associato'}</dd></div>
+      <div><dt>Task corrente</dt><dd>{task ? <button className="link-t" type="button" onClick={() => apri({ p: 'task', id: String(task.id) })}>#{task.id} {task.titolo}</button> : 'Nessun task associato'}</dd></div>
+      <div><dt>Ultima attività</dt><dd>{attivita ? fa(attivita) : 'Non disponibile'}</dd></div>
+      {device.last_checkpoint && <div><dt>Ultimo checkpoint</dt><dd>{fa(device.last_checkpoint)}</dd></div>}
+    </dl>
+  </section>;
 }

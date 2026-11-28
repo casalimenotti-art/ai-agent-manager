@@ -38,12 +38,12 @@ function Header() {
   const aggiornamento = source.modo === 'demo' ? 'Dati locali' : diretta === 'live' ? 'Live' : `Polling 20 s${caricato ? ` · ${fa(new Date(caricato).toISOString())}` : ''}`;
   return (
     <header className="header">
-      <div className="brand"><svg width="22" height="22" viewBox="0 0 32 32" aria-hidden><circle cx="16" cy="16" r="11" fill="none" stroke="#22d3ee" strokeWidth="2.5" />
-        <circle cx="16" cy="16" r="4" fill="#22d3ee" /></svg>Guardian <small className="hide-sm">NEXO Command Center</small></div>
+      <div className="brand"><svg width="22" height="22" viewBox="0 0 32 32" aria-hidden><circle cx="16" cy="16" r="11" fill="none" stroke="#F2F6FF" strokeWidth="2" />
+        <circle cx="16" cy="16" r="4" fill="#F2F6FF" /></svg>Guardian <small className="hide-sm">NEXO Command Center</small></div>
       <span className="spacer" />
-      <button className={`pill ${salute[0]} hide-sm`} style={{ border: 0, cursor: 'pointer' }} onClick={() => apri({ p: 'salute' })}
-        title={pingAl ? `Controllato ${fa(new Date(pingAl).toISOString())}` : undefined}><HeartPulse aria-hidden />{salute[1]}</button>
-      <span className={`pill ${diretta === 'live' ? 'ok' : ''} hide-sm`} title="Come arrivano gli aggiornamenti">{aggiornamento}</span>
+      <button className={`header-status ${salute[0]}`} onClick={() => apri({ p: 'salute' })}
+        aria-label={`${salute[1]}; ${aggiornamento}`} title={`${salute[1]} · ${aggiornamento}${pingAl ? ` · controllato ${fa(new Date(pingAl).toISOString())}` : ''}`}>
+        <span aria-hidden="true" /></button>
       <button className="btn ghost sm" onClick={() => setPalette(true)} aria-label="Cerca e comandi (Ctrl+K)"><Search size={16} aria-hidden />
         <span className="hide-sm">Cerca</span> <kbd className="hide-sm">Ctrl K</kbd></button>
       <button className="btn ghost icon rel" onClick={() => apri({ p: 'notifiche' })} aria-label={`Notifiche, ${nonLette} non lette`}>
@@ -76,9 +76,9 @@ function Rail() {
   }, [pannello, stanza, apriStanza]);
   return (
     <nav className="rail" aria-label="Navigazione">
-      <button onClick={() => { chiudi(); apriStanza(null); }} aria-current={!pannello && !stanza}><LayoutDashboard size={20} aria-hidden />Centro</button>
+      <button title="Centro" aria-label="Centro" onClick={() => { chiudi(); apriStanza(null); }} aria-current={!pannello && !stanza}><LayoutDashboard size={20} aria-hidden /><span>Centro</span></button>
       {NAV.map((n) => (
-        <button key={n.p} onClick={() => apri({ p: n.p })} aria-current={pannello?.p === n.p}><n.icona size={20} aria-hidden />{n.nome}</button>
+        <button key={n.p} title={n.nome} aria-label={n.nome} onClick={() => apri({ p: n.p })} aria-current={pannello?.p === n.p}><n.icona size={20} aria-hidden /><span>{n.nome}</span></button>
       ))}
     </nav>
   );

@@ -11,7 +11,7 @@ import { GuardianCore } from './GuardianCore';
 import { Gravita, Scheletro, Sezione, StatoAgente, StatoTask, Vuoto } from './kit';
 import { OrbitaStanze, VistaStanza } from './Stanze';
 import { useVoce } from './voce';
-import { PulsanteConversazione, StatoCervello, useConversazione } from './Conversazione';
+import { useConversazione } from './Conversazione';
 
 const ORDINE: Task['stato'][] = ['running', 'needs_approval', 'blocked', 'failed', 'waiting', 'ready'];
 const PESO_PRIO = { urgente: 0, alta: 1, media: 2, bassa: 3 };
@@ -54,7 +54,7 @@ export function CommandCenter() {
         <div>
           <h1>Guardian</h1>
           <p className="stato" aria-live="polite">{testoStato(snap, opz)}</p>
-          <div className="row hero-comandi"><PulsanteConversazione /><StatoCervello />
+          <div className="row hero-comandi">
             <button type="button" className="btn ghost sm tendina-btn" aria-expanded={dettagli} aria-controls="dettagli-centro" onClick={cambiaDettagli}>
               <BarChart3 size={14} aria-hidden /> {dettagli ? 'Chiudi dettagli' : 'Dettagli'}</button></div>
           <div className="stellar-status" aria-label="Stato dei collegamenti">

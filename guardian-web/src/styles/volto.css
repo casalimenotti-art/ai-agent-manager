@@ -73,6 +73,7 @@
   border: 0; border-radius: 50%; background: transparent; color: #f2f6ff; cursor: pointer; pointer-events: auto; }
 .agent-star-point { width: 6px; height: 6px; border-radius: 50%; background: #9fe8f5; box-shadow: 0 0 10px rgba(159,232,245,.46); }
 .agent-star.is-waiting .agent-star-point { background: #ffd9a0; box-shadow: 0 0 8px rgba(255,217,160,.34); }
+.agent-star.is-error .agent-star-point { background: #ffb4a8; box-shadow: 0 0 8px rgba(255,180,168,.3); }
 .agent-star-name { position: absolute; left: 50%; bottom: 100%; width: max-content; max-width: 180px; padding: 3px 7px; border: 1px solid rgba(242,246,255,.16);
   border-radius: 999px; background: rgba(0,0,0,.86); color: #f2f6ff; font-size: 11px; opacity: 0; transform: translate(-50%, 3px); transition: opacity 150ms ease; }
 .agent-star:hover .agent-star-name, .agent-star:focus-visible .agent-star-name { opacity: 1; }
@@ -122,8 +123,21 @@
 /* Visione Nexo: scena nera, nucleo leggibile e controlli stellari leggeri. */
 body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6ff; color-scheme: dark; }
 .atlas-sfondo { background: #000; }
-.shell { background: transparent; }
-.header { background: rgba(0,0,0,.72); border-color: rgba(242,246,255,.12); backdrop-filter: none; }
+.shell { background: transparent; grid-template-columns: 56px 1fr; }
+.header { min-height: 44px; background: rgba(0,0,0,.78); border-color: rgba(242,246,255,.12); backdrop-filter: none; }
+.header-status { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.header-status span { width: 8px; height: 8px; border-radius: 50%; background: #8a93a6; box-shadow: 0 0 10px rgba(242,246,255,.18); }
+.header-status.ok span { background: #f2f6ff; box-shadow: 0 0 12px rgba(242,246,255,.35); }
+.header-status.crit span { background: #ffb4a8; box-shadow: 0 0 10px rgba(255,180,168,.26); }
+.header-status:focus-visible { outline: 2px solid #f2f6ff; outline-offset: 2px; }
+.rail { width: 56px; padding-inline: 6px; background: rgba(0,0,0,.72); border-color: rgba(242,246,255,.1); overflow: visible; transition: width 150ms ease; }
+.rail button { flex-direction: row; justify-content: flex-start; width: 42px; min-height: 40px; gap: 10px; padding: 8px 11px; overflow: hidden;
+  color: rgba(242,246,255,.55); font-size: 13px; white-space: nowrap; transition: opacity 150ms ease, background-color 150ms ease; }
+.rail button span { width: 0; opacity: 0; overflow: hidden; }
+.rail:hover, .rail:focus-within { width: 182px; background: rgba(0,0,0,.94); box-shadow: 10px 0 26px rgba(0,0,0,.35); }
+.rail:hover button, .rail:focus-within button { width: 100%; }
+.rail:hover button span, .rail:focus-within button span { width: auto; opacity: 1; }
+.rail button:hover, .rail button[aria-current='true'] { color: #f2f6ff; background: rgba(242,246,255,.07); }
 .cc { display: block; min-height: calc(100svh - var(--header-h)); }
 .cc .hero { display: block; height: calc(100svh - var(--header-h) - 8px); min-height: 560px; padding: 0; overflow: visible;
   background: transparent; border: 0; border-radius: 0; text-align: center; }
@@ -133,9 +147,20 @@ body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6
   color: rgba(242,246,255,.72); font-weight: 500; letter-spacing: .12em; }
 .cc .hero .stato { position: absolute; top: 59%; left: 50%; transform: translateX(-50%); width: min(80vw, 520px); margin: 0;
   color: rgba(242,246,255,.86); font-size: 14px; text-wrap: balance; }
-.hero-comandi { position: fixed; z-index: 5; bottom: max(10px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
-  width: min(calc(100vw - 32px), 580px); min-height: 44px; justify-content: center; padding: 5px 8px;
-  border: 1px solid rgba(242,246,255,.16); border-radius: 999px; background: rgba(0,0,0,.82); }
+.hero-comandi { position: fixed; z-index: 5; top: calc(var(--header-h) + 48px); right: 16px; left: auto; transform: none;
+  width: auto; min-height: 40px; justify-content: flex-end; padding: 0;
+  border: 0; border-radius: 999px; background: transparent; }
+.dock { bottom: max(10px, env(safe-area-inset-bottom)); width: min(700px, calc(100vw - 110px)); }
+.dock .bar { min-height: 48px; max-height: 52px; padding: 3px 6px; border: 1px solid rgba(242,246,255,.18); border-radius: 999px;
+  background: rgba(0,0,0,.84); box-shadow: 0 0 16px rgba(220,232,255,.08); backdrop-filter: none; }
+.dock .bar input { padding-inline: 12px; font-size: 14px; }
+.dock .bar input::placeholder { color: rgba(242,246,255,.58); }
+.btn { border-radius: 999px; transition: opacity 150ms ease, box-shadow 150ms ease; }
+.btn.primary { background: rgba(242,246,255,.92); color: #05070d; border-color: rgba(242,246,255,.92); box-shadow: 0 0 14px rgba(220,232,255,.14); }
+.btn.primary:hover:not(:disabled) { background: rgba(242,246,255,.98); box-shadow: 0 0 14px rgba(220,232,255,.28); }
+.btn.ghost { background: rgba(242,246,255,.04); border-color: rgba(242,246,255,.22); color: #f2f6ff; }
+.btn.ghost:hover:not(:disabled) { background: rgba(242,246,255,.08); border-color: rgba(242,246,255,.4); color: #f2f6ff; box-shadow: 0 0 14px rgba(220,232,255,.14); }
+.btn:focus-visible, .dock .bar button:focus-visible { outline: 2px solid #f2f6ff; outline-offset: 2px; }
 .stellar-status { position: fixed; z-index: 4; top: calc(var(--header-h) + 10px); right: 16px; display: flex; gap: 8px; }
 .stellar-status button { min-height: 32px; padding: 5px 12px; border: 1px solid rgba(242,246,255,.2); border-radius: 999px;
   background: rgba(242,246,255,.035); color: rgba(242,246,255,.88); cursor: pointer; font-size: 12px; }
@@ -144,10 +169,10 @@ body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6
 .stellar-kpis { position: absolute; inset: 0; display: block; pointer-events: none; }
 .stellar-kpis .kpi { position: absolute; display: grid; justify-items: center; gap: 4px; width: 190px; min-height: 76px; padding: 8px;
   border: 0; border-radius: 999px; background: transparent; color: #f2f6ff; text-align: center; pointer-events: auto; }
-.stellar-kpis .kpi:nth-child(1) { left: 12%; top: 36%; }
-.stellar-kpis .kpi:nth-child(2) { right: 12%; top: 36%; }
-.stellar-kpis .kpi:nth-child(3) { left: 12%; top: 64%; }
-.stellar-kpis .kpi:nth-child(4) { right: 12%; top: 64%; }
+.stellar-kpis .kpi:nth-child(1) { left: 4%; top: 40%; }
+.stellar-kpis .kpi:nth-child(2) { right: 4%; top: 40%; }
+.stellar-kpis .kpi:nth-child(3) { left: 4%; top: 61%; }
+.stellar-kpis .kpi:nth-child(4) { right: 4%; top: 61%; }
 .stellar-kpis .kpi:hover { background: rgba(242,246,255,.035); box-shadow: 0 0 18px rgba(220,232,255,.12); }
 .stellar-kpis .kpi:focus-visible { outline: 2px solid #f2f6ff; outline-offset: 2px; }
 .stellar-kpis .kpi .v { font: 300 32px/1.05 var(--font-sans); font-variant-numeric: tabular-nums; }
@@ -173,17 +198,25 @@ body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6
 .atlas-controlli button[aria-pressed='true'], .atlas-controlli button[aria-checked='true'] { background: rgba(242,246,255,.92); color: #05070d; border-color: rgba(242,246,255,.92); }
 .atlas-controlli button.vista { background: rgba(242,246,255,.92); color: #05070d; border-color: rgba(242,246,255,.92); }
 @media (max-width: 599px) {
+  .shell { grid-template-columns: 1fr; }
+  .rail { width: auto; }
+  .rail button { flex-direction: column; justify-content: center; width: auto; min-height: 48px; min-width: 64px; gap: 2px; padding: 6px 4px; font-size: 10px; }
+  .rail button span, .rail:hover button span, .rail:focus-within button span { width: auto; opacity: 1; }
+  .rail:hover, .rail:focus-within { width: auto; }
+  .rail:hover button, .rail:focus-within button { width: auto; }
   .cc .hero { min-height: calc(100svh - var(--header-h)); }
   .cc .hero .stato { top: 62%; font-size: 13px; }
   .stellar-status { top: calc(var(--header-h) + 8px); right: 8px; gap: 4px; }
   .stellar-status button { min-height: 40px; padding: 5px 8px; font-size: 11px; }
   .stellar-kpis .kpi { width: 136px; min-height: 68px; }
-  .stellar-kpis .kpi:nth-child(1) { left: 0; top: 35%; }
-  .stellar-kpis .kpi:nth-child(2) { right: 0; top: 35%; }
-  .stellar-kpis .kpi:nth-child(3) { left: 0; top: 67%; }
-  .stellar-kpis .kpi:nth-child(4) { right: 0; top: 67%; }
+  .stellar-kpis .kpi:nth-child(1) { left: 0; top: 42%; }
+  .stellar-kpis .kpi:nth-child(2) { right: 0; top: 42%; }
+  .stellar-kpis .kpi:nth-child(3) { left: 0; top: 62%; }
+  .stellar-kpis .kpi:nth-child(4) { right: 0; top: 62%; }
   .stellar-kpis .kpi .v { font-size: 27px; }
   .stellar-kpis .kpi .l { font-size: 10px; }
+  .dock { bottom: calc(62px + env(safe-area-inset-bottom)); left: 8px; right: 8px; width: auto; transform: none; }
+  .hero-comandi { top: calc(var(--header-h) + 52px); right: 8px; }
   .dettagli-centro { top: auto; right: 0; bottom: 0; left: 0; width: 100%; min-width: 0; height: 85svh; padding: 16px;
     border-radius: 18px 18px 0 0; animation: pannello-arriva 220ms ease-out both; }
 }

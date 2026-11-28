@@ -12,6 +12,11 @@ import { ThreeBrain } from './ThreeBrain';
 
 const FONDO = '#000000';
 const TELEFONO = 600;
+const STELLE = Array.from({ length: 420 }, (_, i) => ({
+  x: hash01(`stella-x-${i}`), y: hash01(`stella-y-${i}`), fase: hash01(`stella-fase-${i}`) * Math.PI * 2,
+  periodo: 2 + hash01(`stella-periodo-${i}`) * 4, luce: 0.14 + hash01(`stella-luce-${i}`) * 0.36,
+  dimensione: 0.5 + hash01(`stella-dimensione-${i}`) * 0.7,
+}));
 
 /** Etichetta in maiuscolo spaziato, centrata (spaziatura a mano: letterSpacing non c'è in tutti i browser). */
 function etichetta(c: CanvasRenderingContext2D, t: string, x: number, y: number, spazio: number) {
@@ -49,9 +54,18 @@ type Geo = ReturnType<typeof geometria>;
 type Polvere = ReturnType<typeof polvere>;
 const luce = (p: number) => 0.3 + 0.7 * p; // i nodi dietro sono più tenui
 
-export function disegna(c: CanvasRenderingContext2D, g: Grafo3, w: number, h: number, vuoto: boolean, geo: Geo, dust: Polvere | null) {
+export function disegna(c: CanvasRenderingContext2D, g: Grafo3, w: number, h: number, vuoto: boolean, geo: Geo, dust: Polvere | null, t = 0) {
   const { k, Q, cx, cy, sx, sy, v } = geo; const piccolo = k < 0.8;
   c.globalAlpha = 1; c.fillStyle = FONDO; c.fillRect(0, 0, w, h);
+  const rot = t / 1000 * Math.PI * 2 / 450; const ca = Math.cos(rot); const sa = Math.sin(rot);
+  c.save(); c.fillStyle = '#F2F6FF';
+  for (const stella of STELLE) {
+    const x = stella.x * w - w / 2; const y = stella.y * h - h / 2;
+    const px = w / 2 + x * ca - y * sa; const py = h / 2 + x * sa + y * ca;
+    c.globalAlpha = stella.luce * (0.85 + 0.15 * Math.sin(t / 1000 * Math.PI * 2 / stella.periodo + stella.fase));
+    c.fillRect(px, py, stella.dimensione, stella.dimensione);
+  }
+  c.restore();
   // polvere neurale decorativa: linee in due fasce (dietro, davanti) e puntini come quadratini
   if (dust) {
     const pr = dust.punti.map((q) => { const r = proietta(q, geo.ay, geo.ax); return [cx + r.x * sx * 1.12 * v.z, cy + r.y * sy * 1.12 * v.z, r.p] as const; });
@@ -195,7 +209,7 @@ export default function Atlas() {
   const stato = statoNucleo(snap, { pingOk, ascolta: voce === 'ascolto', pensa, parla: voce === 'parla' });
   const trePronto = useCallback(() => setThreeReady(true), []);
   const treFallback = useCallback(() => setThreeReady(false), []);
-  const apriDispositivi = useCallback(() => apri({ p: 'dispositivi' }), [apri]);
+  const apriDispositivi = useCallback((id: number | null) => id === null ? apri({ p: 'dispositivi' }) : apri({ p: 'pc', id: String(id) }), [apri]);
   const apriAgente = useCallback((id: string) => apri({ p: 'agente', id }), [apri]);
   useEffect(() => {
     const misura = () => {
@@ -320,7 +334,7 @@ export default function Atlas() {
     // un fotogramma completo: tutto ruota, quindi niente strato fermo
     const disegnaTutto = (t: number) => {
       const geo = geometria(zona, vistaRef.current, rot.current.y + (ridotto ? 0 : angoloAuto(t)), rot.current.x); geoRef.current = geo;
-      c.setTransform(dpr, 0, 0, dpr, 0, 0); disegna(c, g, dim.w, dim.h, vuoto, geo, dust);
+      c.setTransform(dpr, 0, 0, dpr, 0, 0); disegna(c, g, dim.w, dim.h, vuoto, geo, dust, t);
       if (grafo) disegnaVita(c, grafo, geo, t, rispondendo.current);
     };
     disegnaTutto(0); ridisegna.current = () => disegnaTutto(tUltimo);
