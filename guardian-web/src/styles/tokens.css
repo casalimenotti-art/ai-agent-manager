@@ -43,7 +43,7 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* livelli e dimensioni */
   --z-rail: 20; --z-header: 30; --z-dock: 40; --z-drawer: 50; --z-modal: 60; --z-palette: 70; --z-toast: 80;
-  --drawer-w: 480px; --drawer-w-lg: 720px; --rail-w: 72px; --header-h: 60px;
+  --drawer-w: 480px; --drawer-w-lg: 720px; --rail-w: 56px; --header-h: 44px;
 }
 @media (prefers-reduced-motion: reduce) {
   :root { --t-micro: 0ms; --t-panel: 0ms; --t-large: 0ms; }

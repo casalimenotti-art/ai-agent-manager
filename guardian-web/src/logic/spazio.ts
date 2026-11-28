@@ -53,5 +53,5 @@ export function puntoPercorso3D(percorso: PercorsoSpazio, t: number): PuntoSpazi
 
 /** Twinkle discreto con fase e periodo stabili per ciascuna stella. */
 export function alphaStella(base: number, fase: number, periodo: number, secondi: number): number {
-  return base * (0.85 + 0.15 * Math.sin(2 * Math.PI * secondi / periodo + fase));
+  return base * (1 + 0.15 * Math.sin(2 * Math.PI * secondi / periodo + fase));
 }

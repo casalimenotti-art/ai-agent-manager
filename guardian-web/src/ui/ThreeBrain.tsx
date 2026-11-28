@@ -163,7 +163,7 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
           uniforms: { uTime: { value: 0 } },
           vertexShader: `attribute float aPhase; attribute float aPeriod; attribute float aSize; uniform float uTime; varying float vAlpha;
             void main() { vec4 viewPosition = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * viewPosition;
-              gl_PointSize = aSize; vAlpha = 0.32 * (0.85 + 0.15 * sin(6.28318 * uTime / aPeriod + aPhase)); }`,
+              gl_PointSize = aSize; vAlpha = 0.32 * (1.0 + 0.15 * sin(6.28318 * uTime / aPeriod + aPhase)); }`,
           fragmentShader: `varying float vAlpha; void main() { float d = distance(gl_PointCoord, vec2(0.5));
             float shape = 1.0 - smoothstep(0.28, 0.5, d); gl_FragColor = vec4(0.95, 0.97, 1.0, vAlpha * shape); }`,
         });

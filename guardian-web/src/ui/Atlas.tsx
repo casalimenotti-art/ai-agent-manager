@@ -15,7 +15,7 @@ const FONDO = '#000000';
 const TELEFONO = 600;
 const STELLE = Array.from({ length: 420 }, (_, i) => ({
   x: hash01(`stella-x-${i}`), y: hash01(`stella-y-${i}`), fase: hash01(`stella-fase-${i}`) * Math.PI * 2,
-  periodo: 2 + hash01(`stella-periodo-${i}`) * 4, luce: 0.14 + hash01(`stella-luce-${i}`) * 0.36,
+  periodo: 2 + hash01(`stella-periodo-${i}`) * 4, luce: 0.145 + hash01(`stella-luce-${i}`) * 0.285,
   dimensione: 0.5 + hash01(`stella-dimensione-${i}`) * 0.7,
 }));
 

@@ -252,6 +252,8 @@ body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6
   .hero-comandi { top: calc(var(--header-h) + 52px); left: 8px; }
   .dettagli-centro { top: auto; right: 0; bottom: 0; left: 0; width: 100%; min-width: 0; height: 85svh; padding: 16px;
     border-radius: 18px 18px 0 0; animation: pannello-arriva 220ms ease-out both; }
+  .drawer, .drawer.lg { top: auto; right: 0; bottom: 0; left: 0; width: 100vw; height: 85svh; max-height: 85svh;
+    border: 1px solid rgba(242,246,255,.12); border-radius: 18px 18px 0 0; animation: pannello-arriva 220ms ease-out both; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dettagli-centro, .drawer { animation: none; }

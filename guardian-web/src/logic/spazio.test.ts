@@ -65,12 +65,14 @@ describe('logica della scena spaziale', () => {
   });
 
   it('mantiene il twinkle deterministico entro ±15% della luminosità di base', () => {
-    const bassa = alphaStella(0.4, 0, 4, 0);
-    const alta = alphaStella(0.4, 0, 4, 1);
+    const bassa = alphaStella(0.4, -Math.PI / 2, 4, 0);
+    const base = alphaStella(0.4, 0, 4, 0);
+    const alta = alphaStella(0.4, Math.PI / 2, 4, 0);
     expect(bassa).toBeCloseTo(0.34);
-    expect(alta).toBeCloseTo(0.4);
-    expect(alphaStella(0.4, 0, 4, 5)).toBeCloseTo(bassa);
+    expect(base).toBeCloseTo(0.4);
+    expect(alta).toBeCloseTo(0.46);
+    expect(alphaStella(0.4, -Math.PI / 2, 4, 4)).toBeCloseTo(bassa);
     expect(bassa).toBeGreaterThanOrEqual(0.4 * 0.85);
-    expect(alta).toBeLessThanOrEqual(0.4);
+    expect(alta).toBeLessThanOrEqual(0.4 * 1.15);
   });
 });
