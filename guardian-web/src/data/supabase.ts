@@ -1,5 +1,6 @@
 // SupabaseSource: Auth + query con RLS + Realtime. Solo la anon key pubblica nel browser.
 // Le colonne lette sono esplicite dove serve: devices.token_hash NON è leggibile (voluto, vedi migrazione 001).
+import { nomeRevocato, pcAttivi } from '../logic/dispositivi';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AgentLog, Memory, Snapshot, Task, User } from '../types';
 import { eventiModificaTask } from './eventi';
@@ -65,7 +66,7 @@ export class SupabaseSource implements DataSource {
       tollera(this.c.from('scadenze').select('*').order('data').limit(300)),
       tollera(this.c.from('costi').select('*').order('data', { ascending: false }).limit(500)),
     ]);
-    return { users, devices, agents, projects, tasks, events, approvals, notifications, handoffs, stanze, vendite, scadenze, costi,
+    return { users, devices: pcAttivi(devices), agents, projects, tasks, events, approvals, notifications, handoffs, stanze, vendite, scadenze, costi,
       cervello: (cervello as Snapshot['cervello'][])[0] ?? null } as Snapshot;
   }
 
@@ -199,8 +200,8 @@ export class SupabaseSource implements DataSource {
     await this.evento({ event_type: 'device_registered', message: `PC registrato: ${nome}`, user_id: by });
   }
 
-  async revocaPc(id: number, nuovoHash: string, by: string) {
-    await this.q(this.c.from('devices').update({ token_hash: nuovoHash, stato: 'offline' }).eq('id', id));
+  async revocaPc(id: number, nuovoHash: string, by: string, nome: string) {
+    await this.q(this.c.from('devices').update({ token_hash: nuovoHash, stato: 'offline', nome: nomeRevocato(nome) }).eq('id', id));
     await this.evento({ event_type: 'device_revoked', message: `PC revocato (#${id})`, user_id: by, severity: 'warning' });
   }
 

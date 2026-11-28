@@ -19,3 +19,13 @@ describe('codice', () => {
   it('formato e unicità', () => { const a = nuovoCodice(); expect(a).toMatch(/^gdn_[A-Za-z0-9_-]{43}$/); expect(nuovoCodice()).not.toBe(a); });
   it('hash sha256 noto', async () => expect(await hashCodice('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'));
 });
+
+import { REVOCATO, nomeRevocato, pcAttivi } from './dispositivi';
+describe('PC revocati', () => {
+  it('il nome viene segnato una volta sola e i segnati spariscono', () => {
+    expect(nomeRevocato('PC-A')).toBe(`${REVOCATO}PC-A`);
+    expect(nomeRevocato(nomeRevocato('PC-A'))).toBe(`${REVOCATO}PC-A`);
+    expect(nomeRevocato('x'.repeat(80)).length).toBe(80);
+    expect(pcAttivi([{ nome: 'PC-A' }, { nome: nomeRevocato('PC-B') }]).map((d) => d.nome)).toEqual(['PC-A']);
+  });
+});

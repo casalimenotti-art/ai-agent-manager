@@ -273,9 +273,8 @@ export class DemoSource implements DataSource {
     this.evento({ event_type: 'device_registered', message: `PC registrato: ${nome}`, user_id: by }); this.cambiato();
   }
 
-  async revocaPc(id: number, _hash: string, by: string) {
-    const x = this.d.devices.find((v) => v.id === id);
-    if (x) x.stato = 'offline';
+  async revocaPc(id: number, _hash: string, by: string, _nome: string) {
+    this.d.devices = this.d.devices.filter((v) => v.id !== id);
     this.evento({ event_type: 'device_revoked', message: `PC revocato (#${id})`, user_id: by, severity: 'warning' }); this.cambiato();
   }
 

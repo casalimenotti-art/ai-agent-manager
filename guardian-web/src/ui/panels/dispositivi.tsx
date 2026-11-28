@@ -69,7 +69,7 @@ export function DispositiviAdminPanel() {
         <div className="s">{snap.users.find((u) => u.id === d.user_id)?.nome ?? d.user_id} · ultimo segnale {fa(d.last_seen)}</div></div>
         <span className={`pill ${on ? 'ok' : ''}`}>{on ? 'online' : 'offline'}</span>
         {daRevocare === d.id
-          ? <><button className="btn" type="button" onClick={async () => { await esegui(async () => { await source.revocaPc(d.id, await hashCodice(nuovoCodice()), user.id); return true; }, 'PC revocato'); setDaRevocare(null); }}>Conferma revoca</button>
+          ? <><button className="btn" type="button" onClick={async () => { await esegui(async () => { await source.revocaPc(d.id, await hashCodice(nuovoCodice()), user.id, d.nome); return true; }, 'PC revocato'); setDaRevocare(null); }}>Conferma revoca</button>
             <button className="btn" type="button" onClick={() => setDaRevocare(null)}>Annulla</button></>
           : <button className="btn" type="button" aria-label={`Revoca ${d.nome}`} onClick={() => setDaRevocare(d.id)}>Revoca</button>}
       </div>);

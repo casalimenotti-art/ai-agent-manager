@@ -46,7 +46,7 @@ export interface DataSource {
   /** Registra un PC salvando solo l'hash del codice (mai il codice). */
   registraPc(userId: string, nome: string, hashCodice: string, by: string): Promise<void>;
   /** Revoca un PC: il suo codice smette di funzionare (l'hash viene sostituito con uno nuovo mai mostrato). */
-  revocaPc(id: number, nuovoHash: string, by: string): Promise<void>;
+  revocaPc(id: number, nuovoHash: string, by: string, nome: string): Promise<void>;
   /** Domanda al cervello sul PC del titolare: restituisce le frasi della risposta mentre arrivano. */
   chiediCervello(userId: string, testo: string, contesto: Record<string, unknown>): AsyncIterable<string>;
 }

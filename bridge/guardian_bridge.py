@@ -60,7 +60,9 @@ class RpcClient:
     def call(self, fn: str, **params):
         body = json.dumps({"p_token": self.token, **{f"p_{k}": v for k, v in params.items()}}).encode()
         req = urllib.request.Request(f"{self.url}/rest/v1/rpc/{fn}", data=body, method="POST", headers={
-            "apikey": self.key, "Authorization": f"Bearer {self.key}", "Content-Type": "application/json"})
+            "apikey": self.key, "Content-Type": "application/json",
+            # le chiavi nuove (sb_publishable_...) non sono JWT: vanno solo in "apikey"
+            **({"Authorization": f"Bearer {self.key}"} if self.key.startswith("eyJ") else {})})
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
                 testo = r.read().decode() or "null"

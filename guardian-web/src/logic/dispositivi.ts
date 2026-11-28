@@ -26,6 +26,10 @@ export function erroreNomePc(nome: string): string | null {
   try { validaNomePc(nome); return null; } catch (e) { return e instanceof ErroreDati ? e.message : 'Nome non valido.'; }
 }
 
+/** La revoca non può cancellare la riga (nessuna policy di delete): segna il nome e i PC segnati spariscono dalla dashboard. */
+export const REVOCATO = '[revocato] ';
+export const nomeRevocato = (nome: string) => (nome.startsWith(REVOCATO) ? nome : `${REVOCATO}${nome}`.slice(0, 80));
+export const pcAttivi = <T extends { nome: string }>(elenco: T[]): T[] => elenco.filter((d) => !d.nome.startsWith(REVOCATO));
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
 
 /** Stesso formato del classico: "gdn_" + 32 byte casuali in base64 url-safe. */
