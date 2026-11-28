@@ -54,7 +54,21 @@ Questo file aggiunge **lo stato reale di oggi** e **l'elenco delle funzioni che 
 | Utilizzo | Barra di utilizzo di Claude (5 ore e settimana) visibile in alto | — |
 | Sicurezza | Accesso con login; "Registra PC" solo per l'admin; registro di chi entra | Nessun segreto nel repo o nel browser |
 
-## 4. Regole del giro (come nel MASTER V3, in breve)
+## 4. Chi lavora: regola del titolare (28/11), da controllare all'inizio di OGNI giro
+1. Leggi l'utilizzo **settimanale** di Claude da `~/.claude/guardian/usage.json` (`seven_day.pct`).
+2. Controlla se il PC di Niko o di Francesco è **acceso e collegato**:
+   - nel database, tabella `devices` (o `agents`), guarda se il loro dispositivo ha dato segno di vita negli **ultimi 5 minuti**;
+   - in alternativa guarda la dashboard: un PC "online" nella stanza Vendite o Amministrazione.
+3. Decidi:
+   - **settimana ≥ 60% e un PC amico online** → apri un passaggio per quel socio (`--per amico1` o `--per amico2`). Lo prende il suo Codex. Fai commit e push, poi rispondi solo alle richieste dirette del titolare.
+   - **settimana ≥ 60% ma nessun PC amico online** → **continua tu**, a giri piccoli. Ricontrolla al giro dopo.
+   - **settimana ≥ 95%** → fermati comunque: salva lo stato, apri un passaggio `--per chiunque` e avvisa il titolare.
+   - **settimana < 60%** → continua tu.
+4. Se lavori a ciclo continuo, a fine giro rimanda a te stesso questo stesso prompt (in Claude Code: `/loop` dinamico). Ogni giro rifà il controllo del punto 4.
+
+Stato al 28/11: nessun PC amico è registrato, quindi per ora continua Claude.
+
+## 5. Regole del giro (come nel MASTER V3, in breve)
 - Una ondata piccola per giro, così: test → build → E2E → **screenshot vero a 1440 e 390 px** → commit → push. Il push ripubblica il sito.
 - Aggiorna `guardian-web/ROADMAP.md` e scrivi la riga nel registro (`registro/scrivi.py`).
 - Se l'utilizzo supera il 60%: `registro/passa.py apri --per chiunque` e push.
