@@ -13,7 +13,8 @@ BRIDGE = Path(gb.__file__)
 
 def run(db, *argv, token=None, env=None):
     import os
-    e = {**os.environ, "GUARDIAN_DEVICE_TOKEN": token or "", **(env or {})}
+    # gli id agente vuoti impediscono che il vero bridge/.env del PC entri nel test
+    e = {**os.environ, "GUARDIAN_DEVICE_TOKEN": token or "", "GUARDIAN_CLAUDE_AGENT_ID": "", "GUARDIAN_CODEX_AGENT_ID": "", **(env or {})}
     return subprocess.run([sys.executable, str(BRIDGE), "--local", str(db), *argv], capture_output=True, text=True,
                           env=e, timeout=60)
 

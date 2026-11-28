@@ -68,9 +68,14 @@ def frasi(pezzi: Iterable[str]) -> Iterator[str]:
 def chiedi_claude(prompt: str, bin_claude: str, timeout: float = 90) -> Iterator[str]:
     cartella = Path(os.environ.get("GUARDIAN_HOME", Path.home() / ".guardian")) / "cervello"
     cartella.mkdir(parents=True, exist_ok=True)
-    cmd = [bin_claude, "-p", prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "plan",
+    # la domanda passa da stdin: su Windows claude.CMD spezza gli argomenti lunghi con a capo e virgolette
+    cmd = [bin_claude, "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan",
            "--disallowedTools", *VIETATI]
-    proc = subprocess.Popen(cmd, cwd=cartella, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding="utf-8")
+    proc = subprocess.Popen(cmd, cwd=cartella, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding="utf-8")
+    try:
+        proc.stdin.write(prompt); proc.stdin.close()  # type: ignore[union-attr]
+    except OSError:
+        pass  # il processo ha già chiuso: si legge comunque quello che ha scritto
     inizio = time.monotonic()
     try:
         for riga in testi_da_stream(proc.stdout):  # type: ignore[arg-type]
