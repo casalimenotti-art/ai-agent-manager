@@ -147,3 +147,49 @@ describe('atlas: vita (ondata 2)', () => {
     expect(zonaLibera(area, null)).toBe(area);
   });
 });
+
+// ---------- ondata 3 ----------
+import { DURATA_ZOOM_MS, FILTRO_TUTTI, easeOut, filtraGrafo, interpolaVista, nodoInPunto, nodoVisibile, schedaNodo, VISTA_COMPLETA, vistaStanza } from './atlas';
+describe('atlas ondata 3', () => {
+  const s = snap([agente('a1', 'menotti', 'working'), agente('a2', 'amico1', 'idle')], [task(1, 'running', { assigned_agent_id: 'a1' }), task(2, 'ready')]);
+  const g = disponi(costruisciGrafo(s, { ora: ORA }));
+  const P = (n: { x: number; y: number }) => [400 + n.x * 300, 300 + n.y * 250] as const;
+
+  it('hit-test: punto sul nodo lo trova, lontano no, gli esclusi non rispondono', () => {
+    const a1 = g.nodi.find((n) => n.id === 'a:a1')!; const [x, y] = P(a1);
+    expect(nodoInPunto(g, P, x + 2, y + 1)?.id).toBe('a:a1');
+    expect(nodoInPunto(g, P, 5, 5)).toBeNull();
+    const f = filtraGrafo(g, { stanza: 'vendite', soloAttivi: false });
+    expect(nodoInPunto(f, P, x, y)).toBeNull();
+  });
+  it('filtro: stanza e solo attivi, alpha 0.1 per gli esclusi, input intatto', () => {
+    const f = filtraGrafo(g, { stanza: 'sviluppo', soloAttivi: false });
+    expect(f.nodi.find((n) => n.id === 'a:a1')!.escluso).toBeUndefined();
+    expect(f.nodi.find((n) => n.id === 'a:a2')!.alpha).toBe(0.1);
+    expect(f.nodi.find((n) => n.id === 'nucleo')!.escluso).toBeUndefined();
+    expect(g.nodi.find((n) => n.id === 'a:a2')!.alpha).not.toBe(0.1);
+    expect(filtraGrafo(g, FILTRO_TUTTI)).toBe(g);
+    expect(nodoVisibile({ tipo: 'task', stanza: null, stato: 'fermo' }, { stanza: 'tutti', soloAttivi: true })).toBe(false);
+    expect(nodoVisibile({ tipo: 'stanza', stanza: 'vendite', stato: 'attivo' }, { stanza: 'tutti', soloAttivi: true })).toBe(true);
+  });
+  it('riepilogo segue il filtro', () => {
+    expect(riepilogoAtlas(s, ORA)).toContain('1 agente al lavoro: a1 su 2');
+    expect(riepilogoAtlas(s, ORA, { stanza: 'vendite', soloAttivi: false })).toBe('Filtro: Vendite. Nessun agente al lavoro su 1.');
+  });
+  it('zoom: vista della stanza, ease-out e reduced-motion', () => {
+    const v = vistaStanza(g, 'sviluppo');
+    expect(v.z).toBeGreaterThanOrEqual(1); expect(v.z).toBeLessThanOrEqual(3);
+    expect(vistaStanza(g, 'inesistente')).toEqual(VISTA_COMPLETA);
+    expect(DURATA_ZOOM_MS).toBe(400);
+    expect(easeOut(0)).toBe(0); expect(easeOut(1)).toBe(1); expect(easeOut(0.5)).toBeGreaterThan(0.5);
+    expect(interpolaVista(VISTA_COMPLETA, v, 0)).toEqual(VISTA_COMPLETA);
+    expect(interpolaVista(VISTA_COMPLETA, v, 1)).toEqual(v);
+    expect(interpolaVista(VISTA_COMPLETA, v, 0.1, true)).toEqual(v);
+  });
+  it('scheda del nodo: agente, task e stanza', () => {
+    const a = schedaNodo(s, g.nodi.find((n) => n.id === 'a:a1')!);
+    expect(a.apre).toEqual({ p: 'agente', id: 'a1' }); expect(a.righe.map((r) => r.k)).toEqual(['Agente', 'PC', 'Stato', 'Task', 'Ultimo evento']);
+    expect(schedaNodo(s, g.nodi.find((n) => n.id === 't:1')!).apre).toEqual({ p: 'task', id: '1' });
+    expect(schedaNodo(s, g.nodi.find((n) => n.id === 's:vendite')!).apre).toEqual({ zoom: 'vendite' });
+  });
+});

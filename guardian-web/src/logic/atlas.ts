@@ -20,10 +20,15 @@ export interface Nodo {
   attivita?: string;
   /** solo agenti: serve il via libera di una persona (stato "ok" o approvazione in attesa) */
   okInAttesa?: boolean;
+  /** escluso dal filtro: resta disegnato ma quasi invisibile (alpha 0.1) e non risponde a mouse e tocco */
+  escluso?: boolean;
 }
 export interface Link { da: string; a: string; stato: StatoAtlas; stanza: string | null }
 export interface Grafo { nodi: Nodo[]; link: Link[] }
 export interface OpzioniGrafo { ora?: number; telefono?: boolean; maxTask?: number; maxEventi?: number }
+
+export interface FiltroAtlas { stanza: string; soloAttivi: boolean }
+export const FILTRO_TUTTI: FiltroAtlas = { stanza: 'tutti', soloAttivi: false };
 
 export const COLORI_ATLAS = {
   nucleo: '#bfe6ff', // azzurro ghiaccio
@@ -180,13 +185,22 @@ export function disponi(g: Grafo, o: { seed?: number; iterazioni?: number } = {}
   return { nodi, link: g.link };
 }
 
-/** Riepilogo per chi non vede il disegno (lettori di schermo). */
-export function riepilogoAtlas(s: Snapshot, ora: number = Date.now()): string {
+/** Stanza di un agente: quella il cui responsabile è il suo utente. */
+export function stanzaAgente(s: Snapshot, a: Agent): string | null {
+  return [...s.stanze].filter((st) => st.attiva).sort((x, y) => x.ordine - y.ordine).find((st) => st.responsabile === a.user_id)?.id ?? null;
+}
+
+/** Riepilogo per chi non vede il disegno (lettori di schermo). Con un filtro conta solo gli agenti visibili. */
+export function riepilogoAtlas(s: Snapshot, ora: number = Date.now(), f: FiltroAtlas = FILTRO_TUTTI): string {
   if (s.agents.length === 0) return 'Nessun agente collegato. Guardian e le stanze sono vuoti.';
-  const al = s.agents.filter((a) => statoAgenteAtlas(a, ora) === 'attivo');
-  const ok = s.agents.filter((a) => statoAgenteAtlas(a, ora) === 'ok').length; const bl = s.agents.filter((a) => statoAgenteAtlas(a, ora) === 'bloccato').length;
+  const nomeStanza = f.stanza === 'tutti' ? null : (s.stanze.find((st) => st.id === f.stanza)?.nome ?? f.stanza);
+  const agenti = s.agents.filter((a) => f.stanza === 'tutti' || stanzaAgente(s, a) === f.stanza);
+  const prefisso = nomeStanza || f.soloAttivi ? `Filtro: ${[nomeStanza, f.soloAttivi ? 'solo attivi' : null].filter(Boolean).join(', ')}. ` : '';
+  if (agenti.length === 0) return `${prefisso}Nessun agente in questa stanza.`;
+  const al = agenti.filter((a) => statoAgenteAtlas(a, ora) === 'attivo');
+  const ok = agenti.filter((a) => statoAgenteAtlas(a, ora) === 'ok').length; const bl = agenti.filter((a) => statoAgenteAtlas(a, ora) === 'bloccato').length;
   const testo = al.length === 0 ? 'Nessun agente al lavoro' : `${al.length} ${al.length === 1 ? 'agente al lavoro' : 'agenti al lavoro'}: ${al.map((a) => a.nome).join(', ')}`;
-  return `${testo} su ${s.agents.length}.${ok ? ` ${ok} in attesa del tuo OK.` : ''}${bl ? ` ${bl} bloccati.` : ''}`;
+  return `${prefisso}${testo} su ${agenti.length}.${ok ? ` ${ok} in attesa del tuo OK.` : ''}${bl ? ` ${bl} bloccati.` : ''}`;
 }
 
 // ---------- ondata 2: vita (funzioni pure, il disegno sta in ui/Atlas.tsx) ----------
@@ -240,4 +254,91 @@ export function zonaLibera(area: Rett, pannello: Rett | null): Rett {
   ].filter((r) => r.w > 0 && r.h > 0);
   if (cand.length === 0) return area;
   return cand.reduce((m, r) => (r.w * r.h > m.w * m.h ? r : m));
+}
+
+// ---------- ondata 3: interazione (funzioni pure; DOM e canvas stanno in ui/Atlas.tsx) ----------
+/** Un nodo è visibile se rispetta il filtro: il nucleo resta sempre; le stanze seguono la stanza scelta; il resto anche lo stato ("solo attivi"). */
+export function nodoVisibile(n: Pick<Nodo, 'tipo' | 'stanza' | 'stato'>, f: FiltroAtlas): boolean {
+  if (n.tipo === 'nucleo') return true;
+  if (f.stanza !== 'tutti' && n.stanza !== f.stanza) return false;
+  if (f.soloAttivi && n.tipo !== 'stanza' && n.stato !== 'attivo') return false;
+  return true;
+}
+/** Copia del grafo in cui i nodi esclusi dal filtro hanno alpha 0.1 e `escluso`. Non modifica l'input. */
+export function filtraGrafo(g: Grafo, f: FiltroAtlas): Grafo {
+  if (f.stanza === 'tutti' && !f.soloAttivi) return g;
+  return { nodi: g.nodi.map((n) => (nodoVisibile(n, f) ? n : { ...n, alpha: 0.1, escluso: true })), link: g.link };
+}
+
+/** Vista: il punto normalizzato (fx, fy) sta al centro della zona e le distanze valgono z volte. Vista completa = z 1 al centro. */
+export interface Vista { z: number; fx: number; fy: number }
+export const VISTA_COMPLETA: Vista = { z: 1, fx: 0, fy: 0 };
+export const ZOOM_MAX = 3;
+export const DURATA_ZOOM_MS = 400;
+/** Vista che inquadra il cluster di una stanza (stanza, agenti, task, eventi): centro del riquadro, zoom per stare in ~85% della zona. */
+export function vistaStanza(g: Grafo, stanza: string): Vista {
+  const ns = g.nodi.filter((n) => n.stanza === stanza && !n.escluso); if (ns.length === 0) return VISTA_COMPLETA;
+  const xs = ns.map((n) => n.x); const ys = ns.map((n) => n.y);
+  const x0 = Math.min(...xs); const x1 = Math.max(...xs); const y0 = Math.min(...ys); const y1 = Math.max(...ys);
+  const mezzo = Math.max((x1 - x0) / 2, (y1 - y0) / 2, 0.12);
+  return { z: Math.max(1, Math.min(ZOOM_MAX, 0.85 / mezzo)), fx: (x0 + x1) / 2, fy: (y0 + y1) / 2 };
+}
+/** Ease-out cubico: parte veloce, arriva piano. */
+export function easeOut(u: number): number { const v = Math.max(0, Math.min(1, u)); return 1 - (1 - v) ** 3; }
+/** Vista intermedia a frazione u (0..1) con ease-out. Con `ridotto` (prefers-reduced-motion) salta alla vista finale. */
+export function interpolaVista(da: Vista, a: Vista, u: number, ridotto = false): Vista {
+  if (ridotto) return a;
+  const e = easeOut(u);
+  return { z: da.z + (a.z - da.z) * e, fx: da.fx + (a.fx - da.fx) * e, fy: da.fy + (a.fy - da.fy) * e };
+}
+
+/**
+ * Hit-test: il nodo più vicino al punto (px, py), entro la tolleranza in pixel. `P` porta un nodo a pixel (con la vista corrente).
+ * Gli esclusi dal filtro non rispondono; stanze e agenti battono i puntini di task ed eventi.
+ */
+export function nodoInPunto(g: Grafo, P: (n: { x: number; y: number }) => Pt, px: number, py: number, tocco = false): Nodo | null {
+  const PRIO: Record<TipoNodo, number> = { stanza: 0, agente: 1, nucleo: 2, task: 3, evento: 4 };
+  let meglio: Nodo | null = null; let migliore = Infinity;
+  for (const n of g.nodi) {
+    if (n.escluso) continue;
+    const [x, y] = P(n); const d = Math.hypot(px - x, py - y);
+    const tol = Math.max(tocco ? 18 : 9, n.raggio * (n.tipo === 'nucleo' ? 1.2 : 2));
+    if (d > tol) continue;
+    const punteggio = d + PRIO[n.tipo] * 2.5;
+    if (punteggio < migliore) { migliore = punteggio; meglio = n; }
+  }
+  return meglio;
+}
+
+export interface Scheda { titolo: string; righe: { k: string; v: string }[]; apre: { p: 'agente' | 'task'; id: string } | { zoom: string } | null }
+const ETICHETTA_STATO: Record<StatoAtlas, string> = { attivo: 'al lavoro', fermo: 'fermo', bloccato: 'bloccato', ok: 'attende il tuo OK' };
+const NA = 'non disponibile';
+/** Contenuto del tooltip e azione del clic per un nodo. Solo dati veri; ciò che manca è "non disponibile". */
+export function schedaNodo(s: Snapshot, n: Nodo): Scheda {
+  const pc = (id?: number | null) => (id != null ? s.devices.find((d) => d.id === id)?.nome : undefined) ?? NA;
+  const ultimo = (f: (e: Snapshot['events'][number]) => boolean) => [...s.events].filter(f).sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))[0]?.message ?? NA;
+  const riga = (k: string, v: string) => ({ k, v });
+  if (n.id.startsWith('a:')) {
+    const a = s.agents.find((x) => x.id === n.id.slice(2));
+    const t = a?.current_task_id != null ? s.tasks.find((x) => x.id === a.current_task_id) : undefined;
+    return { titolo: n.etichetta, apre: a ? { p: 'agente', id: a.id } : null, righe: [riga('Agente', n.etichetta), riga('PC', pc(a?.device_id)), riga('Stato', ETICHETTA_STATO[n.stato]),
+      riga('Task', t?.titolo ?? 'nessuno'), riga('Ultimo evento', a ? ultimo((e) => e.agent_id === a.id) : NA)] };
+  }
+  if (n.id.startsWith('t:')) {
+    const t = s.tasks.find((x) => x.id === Number(n.id.slice(2))); const a = t?.assigned_agent_id ? s.agents.find((x) => x.id === t.assigned_agent_id) : undefined;
+    return { titolo: t?.titolo ?? n.etichetta, apre: t ? { p: 'task', id: String(t.id) } : null, righe: [riga('Agente', a?.nome ?? 'nessuno'), riga('PC', pc(a?.device_id)), riga('Stato', ETICHETTA_STATO[n.stato]),
+      riga('Task', t?.titolo ?? n.etichetta), riga('Ultimo evento', t ? ultimo((e) => e.task_id === t.id) : NA)] };
+  }
+  if (n.id.startsWith('e:')) {
+    const e = s.events.find((x) => x.id === Number(n.id.slice(2)));
+    const a = e?.agent_id ? s.agents.find((x) => x.id === e.agent_id) : undefined;
+    return { titolo: 'Evento', apre: e?.task_id != null ? { p: 'task', id: String(e.task_id) } : a ? { p: 'agente', id: a.id } : null,
+      righe: [riga('Agente', a?.nome ?? e?.agent_name ?? NA), riga('PC', pc(a?.device_id ?? e?.device_id)), riga('Stato', ETICHETTA_STATO[n.stato]),
+        riga('Task', e?.task_id != null ? (s.tasks.find((x) => x.id === e.task_id)?.titolo ?? NA) : 'nessuno'), riga('Ultimo evento', e?.message ?? NA)] };
+  }
+  if (n.tipo === 'stanza') {
+    const ag = s.agents.filter((a) => stanzaAgente(s, a) === n.stanza);
+    return { titolo: n.etichetta, apre: n.stanza ? { zoom: n.stanza } : null, righe: [riga('Agenti', String(ag.length)), riga('Al lavoro', String(ag.filter((a) => statoAgenteAtlas(a) === 'attivo').length))] };
+  }
+  return { titolo: 'Guardian', apre: null, righe: [riga('Agenti', String(s.agents.length)), riga('Task aperti', String(s.tasks.filter((t) => !TASK_TERMINALI.includes(t.stato)).length))] };
 }

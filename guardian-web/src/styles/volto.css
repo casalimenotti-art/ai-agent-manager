@@ -67,3 +67,21 @@
   .con-volto .kpi .f { display: none; }
   .con-volto .kpi .v { font-size: 1.5rem; }
 }
+
+/* Atlas: filtri in alto a destra e tooltip (fuori dallo sfondo, sopra la pagina) */
+.atlas-controlli { position: fixed; top: calc(var(--header-h) + 10px); right: 16px; z-index: 2; display: flex; gap: 6px; align-items: center; justify-content: flex-end;
+  flex-wrap: wrap; max-width: calc(100vw - 32px); }
+.atlas-controlli button, .atlas-controlli select { font: inherit; font-size: 12px; min-height: 32px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+  background: #0b1424; color: #e6eefb; border: 1px solid #5d7190; }
+.atlas-controlli button[aria-pressed='true'], .atlas-controlli button[aria-checked='true'] { background: #cfeaff; color: #06101c; border-color: #cfeaff; }
+.atlas-controlli button.vista { background: #ffd89a; color: #1a1002; border-color: #ffd89a; }
+.atlas-controlli button:focus-visible, .atlas-controlli select:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.atlas-tip { position: fixed; z-index: 3; pointer-events: none; width: 250px; padding: 10px 12px; border-radius: 10px; background: #0b1424; color: #e6eefb;
+  border: 1px solid #5d7190; font-size: 12px; line-height: 1.4; }
+.atlas-tip strong { display: block; font-size: 13px; margin-bottom: 4px; }
+.atlas-tip dl { margin: 0; }
+.atlas-tip dl div { display: flex; gap: 6px; }
+.atlas-tip dt { color: #a9b8d0; flex: 0 0 84px; }
+.atlas-tip dd { margin: 0; overflow-wrap: anywhere; }
+.atlas-tip em { display: block; margin-top: 4px; color: #ffd89a; font-style: normal; }
+@media (max-width: 599px) { .atlas-controlli button, .atlas-controlli select { min-height: 36px; } }
