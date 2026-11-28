@@ -130,11 +130,12 @@ def servi(client, bin_claude: str | None = None, intervallo: float = 1.5, giri: 
         print("Né 'claude' né 'codex' trovati: installane uno o imposta GUARDIAN_CLAUDE_BIN / GUARDIAN_CODEX_BIN.", file=sys.stderr)
         return 2
     print(f"Cervello di Guardian attivo ({', '.join(m[0] for m in motori)}, in sola risposta). Ctrl+C per fermare.")
-    ultimo_battito, n = 0.0, 0
+    ultimo_battito, n, ultimo_ok = 0.0, 0, None
     try:
         while True:
             pronti = [m for m in motori if not (m[0] == "claude-code" and claude_al_limite())] or motori
-            attuale = modello or pronti[0][0]
+            # l'HQ legge il motore dal battito (snapshot): mostra quello che ha risposto per ultimo, se è ancora pronto
+            attuale = modello or (ultimo_ok if ultimo_ok in [m[0] for m in pronti] else pronti[0][0])
             if time.monotonic() - ultimo_battito > 20:
                 client.call("bridge_cervello_battito", modello=attuale)
                 ultimo_battito = time.monotonic()
@@ -147,14 +148,14 @@ def servi(client, bin_claude: str | None = None, intervallo: float = 1.5, giri: 
                                     testo="Il cervello principale non è disponibile e quello di riserva è riservato all'amministratore.")
                         errore = None
                         break
+                    if nome != attuale:  # prima della risposta: l'HQ etichetta la risposta col motore giusto
+                        client.call("bridge_cervello_battito", modello=nome)
                     try:
                         for f in frasi(chiedi(costruisci_prompt(r), bin_)):
                             client.call("bridge_rispondi", richiesta_id=r["id"], seq=seq, testo=f, fine=False, errore=False)
                             seq += 1
                         client.call("bridge_rispondi", richiesta_id=r["id"], seq=seq, testo="", fine=True, errore=False)
-                        errore = None
-                        if nome != attuale:  # l'HQ vede quale motore ha risposto
-                            client.call("bridge_cervello_battito", modello=nome)
+                        errore, ultimo_ok = None, nome
                         break
                     except Exception as e:
                         errore = e
