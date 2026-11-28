@@ -217,7 +217,10 @@ export default function Atlas() {
     const tutta = { x: sinistra, y: 64, w: dim.w - sinistra, h: Math.max(120, dim.h * (telefono ? 0.9 : 0.86) - 64) };
     const z = zonaLibera(tutta, pannelloRett);
     // se la zona libera è troppo stretta, il cervello usa tutto lo sfondo e il pannello di vetro gli sta davanti
-    return z.w * z.h < tutta.w * tutta.h * 0.45 ? tutta : z;
+    if (z.w * z.h >= tutta.w * tutta.h * 0.45) return z;
+    if (!pannelloRett) return tutta;
+    const x0 = pannelloRett.x + pannelloRett.w / 2; // dalla metà del pannello in poi: il nucleo resta visibile
+    return { x: x0, y: tutta.y, w: Math.max(z.w, tutta.x + tutta.w - x0), h: tutta.h };
   }, [dim, pannelloRett, telefono]);
 
   // vista (zoom e pan): la corrente sta in un ref, l'animazione la sposta e chiede il ridisegno dello strato fermo
