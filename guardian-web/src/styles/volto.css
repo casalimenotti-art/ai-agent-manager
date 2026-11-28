@@ -261,3 +261,7 @@ body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6
 
 /* spazio profondo: il contenitore del Centro non è un pannello di vetro (sfocava il cervello 3D dietro) */
 .con-volto .cc .hero, .con-volto .cc .hero > div:last-child { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* frase di stato in alto sotto «Guardian»: non copre più il cervello */
+.cc .hero .stato { top: 3.4rem; }
+@media (max-width: 599px) { .cc .hero .stato { top: 3.2rem; } }

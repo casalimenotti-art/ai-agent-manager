@@ -46,7 +46,7 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
         const root = new THREE.Group(); scene.add(root);
         const neural = new THREE.Group(); root.add(neural);
         const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 3), new THREE.MeshBasicMaterial({
-          color: 0xf2f6ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending,
+          color: 0xf2f6ff, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending,
         }));
         materialiStato.current = []; // il nucleo resta bianco stella: lo stato si legge da guscio e alone
         neural.add(core);
@@ -59,27 +59,42 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
         }));
         neural.add(inner);
 
-        const shellGeometry = new THREE.SphereGeometry(1.04, 58, 44);
-        const shellPositions = shellGeometry.attributes.position.array as Float32Array;
+        // nuvola neurale a forma di cervello: due emisferi, solco centrale, densità irregolare (niente griglia regolare)
+        const N = innerWidth < 600 ? 1400 : 2600;
+        const shellPositions = new Float32Array(N * 3); const luci = new Float32Array(N * 3);
+        let seme = 7; const rnd = () => { seme = (seme * 16807) % 2147483647; return seme / 2147483647; };
+        for (let i = 0; i < N; i++) {
+          const y = 1 - (2 * (i + 0.5)) / N; const r = Math.sqrt(1 - y * y); const t = i * 2.399963;
+          let x = Math.cos(t) * r; const z = Math.sin(t) * r;
+          const pieghe = 0.82 + 0.1 * Math.sin(x * 9 + y * 5) * Math.cos(z * 7 - y * 4) + 0.12 * rnd(); // circonvoluzioni
+          x += Math.sign(x || 1) * 0.07; // solco tra gli emisferi
+          shellPositions.set([x * 1.18 * pieghe, y * 0.86 * pieghe - 0.04, z * 1.02 * pieghe], i * 3);
+          const l = 0.45 + 0.55 * rnd() ** 2; luci.set([l, l, l], i * 3); // stelle più e meno luminose
+        }
         const shell = new THREE.BufferGeometry();
-        shell.setAttribute('position', new THREE.BufferAttribute(shellPositions.slice(), 3));
-        const shellPoints = new THREE.Points(shell, new THREE.PointsMaterial({ color: 0xdceBff, size: 0.026, transparent: true,
-          opacity: 0.62, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true }));
+        shell.setAttribute('position', new THREE.BufferAttribute(shellPositions, 3));
+        shell.setAttribute('color', new THREE.BufferAttribute(luci, 3));
+        const tela = document.createElement('canvas'); tela.width = tela.height = 32; const tc = tela.getContext('2d')!;
+        const gr = tc.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, '#fff'); gr.addColorStop(0.35, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        tc.fillStyle = gr; tc.fillRect(0, 0, 32, 32);
+        const stella = new THREE.CanvasTexture(tela);
+        const shellPoints = new THREE.Points(shell, new THREE.PointsMaterial({ color: 0xdceBff, size: 0.05, map: stella, vertexColors: true, transparent: true,
+          opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true }));
         materialiStato.current.push(shellPoints.material as PointsMaterial);
         neural.add(shellPoints);
 
-        const filaments = new Float32Array(78 * 6);
-        for (let i = 0; i < 78; i++) {
-          const a = Math.floor((i * 37) % (shellPositions.length / 3)) * 3;
-          const b = Math.floor((i * 83 + 29) % (shellPositions.length / 3)) * 3;
-          filaments.set(shellPositions.slice(a, a + 3), i * 6);
-          filaments.set(shellPositions.slice(b, b + 3), i * 6 + 3);
+        // sinapsi: ogni punto di un campione si collega ai 2 vicini più prossimi
+        const campione = Array.from({ length: 420 }, (_, i) => Math.floor((i * N) / 420));
+        const sinapsi: number[] = [];
+        for (const i of campione) {
+          const vicini = campione.filter((j) => j !== i).map((j) => [j, (shellPositions[i * 3] - shellPositions[j * 3]) ** 2 + (shellPositions[i * 3 + 1] - shellPositions[j * 3 + 1]) ** 2 + (shellPositions[i * 3 + 2] - shellPositions[j * 3 + 2]) ** 2] as const)
+            .sort((m, n) => m[1] - n[1]).slice(0, 2);
+          for (const [j] of vicini) sinapsi.push(...shellPositions.slice(i * 3, i * 3 + 3), ...shellPositions.slice(j * 3, j * 3 + 3));
         }
         const filamentGeometry = new THREE.BufferGeometry();
-        filamentGeometry.setAttribute('position', new THREE.BufferAttribute(filaments, 3));
+        filamentGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sinapsi), 3));
         neural.add(new THREE.LineSegments(filamentGeometry, new THREE.LineBasicMaterial({ color: 0xdceBff, transparent: true,
-          opacity: 0.075, blending: THREE.AdditiveBlending, depthWrite: false })));
-        shellGeometry.dispose();
+          opacity: 0.11, blending: THREE.AdditiveBlending, depthWrite: false })));
 
         const machinePositions = [new THREE.Vector3(-2.65, 1.45, -0.25), new THREE.Vector3(2.65, 1.45, -0.25), new THREE.Vector3(0, -1.55, 0.12)];
         const activeMarkers: { mesh: import('three').Mesh; curve: PercorsoSpazio; phase: number;
@@ -175,7 +190,7 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
           const w = host.current.clientWidth || window.innerWidth;
           const h = host.current.clientHeight || window.innerHeight;
           renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-          root.scale.setScalar(w < 600 ? 0.6 : w < 1100 ? 0.82 : 1); // telefono: cervello più piccolo, i numeri restano leggibili
+          root.scale.setScalar(w < 600 ? 0.6 : w < 1100 ? 0.82 : w < 1400 ? 1 : 1.22); // telefono: cervello più piccolo, i numeri restano leggibili
         };
         size();
         const observer = new ResizeObserver(size); observer.observe(host.current);
@@ -222,7 +237,7 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
           (shellPoints.material as PointsMaterial).color.setHex(color);
           (shellPoints.material as PointsMaterial).opacity = statoAttuale === 'offline' ? 0.24 : 0.62;
           halo.visible = statoAttuale === 'approval' || statoAttuale === 'error';
-          haloMaterial.color.setHex(color); haloMaterial.opacity = statoAttuale === 'error' ? 0.09 : 0.07;
+          haloMaterial.color.setHex(color); haloMaterial.opacity = statoAttuale === 'error' ? 0.05 : 0.035;
           halo.scale.setScalar(1 + (statoAttuale === 'approval' ? Math.sin(t * 0.8) * 0.018 : 0));
           const busy = statoAttuale === 'thinking' || statoAttuale === 'working' || statoAttuale === 'listening' || statoAttuale === 'speaking';
           const pulse = statoAttuale === 'completed' ? 0.055 * Math.max(0, 1 - (now - cambiatoStato) / 950) : 0;
@@ -302,7 +317,7 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
               if (Array.isArray(material)) material.forEach((item) => item.dispose()); else material.dispose();
             }
           });
-          renderer?.dispose(); renderer?.domElement.remove();
+          stella.dispose(); renderer?.dispose(); renderer?.domElement.remove();
           materialiStato.current = []; haloRef.current = null; ridisegna.current = () => {};
           rootEl?.setAttribute('data-three-ready', 'false');
         };
