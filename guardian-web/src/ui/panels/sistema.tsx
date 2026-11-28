@@ -1,12 +1,9 @@
 // Pannelli di sistema: agenti, aziende, notifiche, attività, statistiche, workflow, PC, salute, impostazioni.
 import { Activity, Bell, Bot, Building2, Cpu, GitBranchPlus, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { attivitaPerGiorno, caricoPerAgente, completatiOggi, durataMediaOre, errori24h, tassoCompletamento } from '../../logic/metrics';
-import { report } from '../../logic/report';
 import { cervelloOnline, fa, statoAgente, statoDispositivo } from '../../logic/status';
 import { leggiPreferenze, salvaPreferenze, useG, type Pannello, type Preferenze } from '../../state';
 import { TASK_TERMINALI, type AgentLog, type Severita } from '../../types';
-import { GraficoBarre, GraficoLinee } from '../charts';
 import { Gravita, Scheletro, StatoAgente, StatoTask, Vuoto } from '../kit';
 import { supportoAscolto, supportoParlato } from '../voce';
 import { suona } from '../suoni';
@@ -155,27 +152,54 @@ export function AttivitaPanel() {
 export function StatistichePanel() {
   const { snap } = useG();
   if (!snap) return <Scheletro />;
-  const r = report(snap); const tasso = tassoCompletamento(snap); const durata = durataMediaOre(snap);
-  const giorni = attivitaPerGiorno(snap, 14);
-  const carico = caricoPerAgente(snap);
-  const fmt = (d: number) => new Date(d).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-  const tiles: [string, string, string][] = [
-    ['Completati oggi', String(completatiOggi(snap)), 'eventi task_completed di oggi'],
-    ['Tasso di completamento', tasso === null ? 'n.d.' : `${Math.round(tasso * 100)}%`, 'task chiusi negli ultimi 7 giorni'],
-    ['Durata media', durata === null ? 'n.d.' : `${durata.toFixed(1)} h`, 'da task_started a task_completed'],
-    ['Errori 24 h', String(errori24h(snap)), 'eventi con gravità errore o critica'],
+  const aperti = snap.tasks.filter((t) => !TASK_TERMINALI.includes(t.stato));
+  const running = snap.tasks.filter((t) => t.stato === 'running').length;
+  const completati = snap.tasks.filter((t) => t.stato === 'completed').length;
+  const falliti = snap.tasks.filter((t) => t.stato === 'failed').length;
+  const attivi = snap.agents.filter((a) => ['working', 'waiting', 'needs_approval'].includes(statoAgente(a))).length;
+  const approvazioni = snap.approvals.filter((a) => a.status === 'richiesta').length;
+  const pcOnline = snap.devices.filter((d) => statoDispositivo(d) !== 'offline').length;
+  const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
+  const inizio = new Date(oggi); inizio.setDate(oggi.getDate() - 13);
+  const completatiGiornalieri = Array.from({ length: 14 }, (_, i) => {
+    const giorno = new Date(inizio); giorno.setDate(inizio.getDate() + i);
+    const fine = new Date(giorno); fine.setDate(giorno.getDate() + 1);
+    const n = snap.events.filter((e) => e.event_type === 'task_completed' && Date.parse(e.timestamp) >= giorno.getTime() && Date.parse(e.timestamp) < fine.getTime()).length;
+    return { giorno, n };
+  });
+  const massimo = Math.max(1, ...completatiGiornalieri.map((g) => g.n));
+  const formatoGiorno = new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit' });
+  const inizioSettimanaScorsa = new Date(oggi); inizioSettimanaScorsa.setDate(oggi.getDate() - 13);
+  const inizioSettimanaCorrente = new Date(oggi); inizioSettimanaCorrente.setDate(oggi.getDate() - 6);
+  const haSettimanaScorsa = snap.events.some((e) => e.event_type === 'task_completed' && Date.parse(e.timestamp) >= inizioSettimanaScorsa.getTime() && Date.parse(e.timestamp) < inizioSettimanaCorrente.getTime());
+  const completatiSettimanaScorsa = completatiGiornalieri.slice(0, 7).reduce((n, g) => n + g.n, 0);
+  const completatiSettimanaCorrente = completatiGiornalieri.slice(7).reduce((n, g) => n + g.n, 0);
+  const righe: [string, number][] = [
+    ['Agenti attivi', attivi], ['Task aperti', aperti.length], ['In esecuzione', running], ['Completati', completati],
+    ['Falliti', falliti], ['Approvazioni in attesa', approvazioni], ['PC online', pcOnline],
   ];
-  return (<>
-    <div className="kpis">{tiles.map(([l, v, f]) => <div key={l} className="kpi" style={{ cursor: 'default' }}><div className="v">{v}</div><div className="l">{l}</div><div className="f">{f}</div></div>)}</div>
-    <div className="card"><GraficoLinee titolo="Attività negli ultimi 14 giorni" etichette={giorni.map((g) => fmt(g.giorno))}
-      serie={[{ nome: 'Eventi', valori: giorni.map((g) => g.eventi) }, { nome: 'Task completati', valori: giorni.map((g) => g.completati) }]} /></div>
-    <div className="card">{carico.length === 0 ? <Vuoto>Nessun agente registrato.</Vuoto> :
-      <GraficoBarre titolo="Task aperti per agente" ordineColori={snap.agents.map((a) => a.id)}
-        barre={carico.map((c) => ({ id: c.id, nome: `${c.nome} · ${c.id}`, valore: c.aperti, extra: `${c.completati} completati` }))} />}</div>
-    <div className="card"><GraficoBarre titolo="Task per stato" ordineColori={Object.keys(r.conteggi)}
-      barre={Object.entries(r.conteggi).filter(([, v]) => v > 0).map(([k, v]) => ({ id: k, nome: k, valore: v }))} /></div>
-    <p className="dim" style={{ fontSize: 12 }}>Tutti i numeri sono calcolati dai dati del database. Ricavi e spese non hanno ancora una fonte: non vengono mostrati.</p>
-  </>);
+  return <section className="stats-panel" aria-label="Statistiche Guardian">
+    <dl className="stats-summary">{righe.map(([nome, valore]) => <div key={nome}><dt>{nome}</dt><dd>{valore}</dd></div>)}</dl>
+    <section className="stats-chart" aria-labelledby="stats-completati-titolo">
+      <h3 id="stats-completati-titolo">Task completati · ultimi 14 giorni</h3>
+      {snap.events.length === 0 ? <p className="dim">Non disponibile: non ci sono eventi registrati.</p> : <svg viewBox="0 0 560 190" role="img" aria-label="Barre dei task completati al giorno negli ultimi 14 giorni">
+        <line x1="24" y1="150" x2="548" y2="150" stroke="rgba(242,246,255,.24)" />
+        {completatiGiornalieri.map(({ giorno, n }, i) => {
+          const x = 30 + i * 37; const altezza = n ? Math.max(2, n / massimo * 112) : 1;
+          return <g key={giorno.toISOString()}><rect x={x} y={150 - altezza} width="22" height={altezza} rx="3" fill="#F2F6FF" fillOpacity=".78" />
+            {i % 2 === 0 && <text x={x + 11} y="173" textAnchor="middle" fill="rgba(242,246,255,.72)" fontSize="12">{formatoGiorno.format(giorno)}</text>}</g>;
+        })}
+      </svg>}
+      {haSettimanaScorsa && <p className="stats-compare">Settimana scorsa: {completatiSettimanaScorsa} · ultimi 7 giorni: {completatiSettimanaCorrente}</p>}
+    </section>
+    <section className="stats-recent" aria-labelledby="stats-attivita-titolo">
+      <h3 id="stats-attivita-titolo">Attività recente</h3>
+      {snap.events.length === 0 ? <p>Nessuna attività registrata.</p> : <ul>{snap.events.slice(0, 8).map((evento) => <li key={evento.id}>
+        <span>{evento.message}</span><time>{fa(evento.timestamp)}</time>
+      </li>)}</ul>}
+    </section>
+    <p className="stats-footnote">I numeri arrivano dallo snapshot Guardian. Un dato assente viene indicato come non disponibile.</p>
+  </section>;
 }
 
 export function WorkflowPanel() {

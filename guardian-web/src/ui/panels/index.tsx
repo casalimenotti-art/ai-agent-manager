@@ -5,6 +5,7 @@ import { AgentePanel, AgentiPanel, AttivitaPanel, AziendaPanel, AziendePanel, Im
   StatistichePanel, WorkflowPanel } from './sistema';
 import { MappaPanel } from './mappa';
 import { DispositiviAdminPanel, MacchinaPanel } from './dispositivi';
+import { EmailPanel } from './email';
 
 export const PANNELLI: Record<string, { titolo: string; componente: ComponentType<Pannello>; largo?: boolean }> = {
   agenti: { titolo: 'Agenti', componente: AgentiPanel }, agente: { titolo: 'Agente', componente: AgentePanel, largo: true },
@@ -13,6 +14,7 @@ export const PANNELLI: Record<string, { titolo: string; componente: ComponentTyp
   approvazioni: { titolo: 'Approvazioni', componente: ApprovalsPanel }, approvazione: { titolo: 'Approvazione', componente: ApprovalPanel },
   handoff: { titolo: 'Handoff', componente: HandoffPanel }, memoria: { titolo: 'Memoria condivisa', componente: MemoriaPanel },
   notifiche: { titolo: 'Notifiche', componente: NotifichePanel }, attivita: { titolo: 'Attività', componente: AttivitaPanel, largo: true },
+  email: { titolo: 'Email', componente: EmailPanel },
   statistiche: { titolo: 'Statistiche', componente: StatistichePanel, largo: true }, workflow: { titolo: 'Workflow', componente: WorkflowPanel },
   dispositivi: { titolo: 'Dispositivi', componente: DispositiviAdminPanel }, pc: { titolo: 'PC', componente: MacchinaPanel }, salute: { titolo: 'Salute del sistema', componente: SalutePanel },
   impostazioni: { titolo: 'Impostazioni', componente: ImpostazioniPanel },

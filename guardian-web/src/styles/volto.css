@@ -96,10 +96,12 @@
 }
 
 /* Atlas: filtri in alto a destra e tooltip (fuori dallo sfondo, sopra la pagina) */
-.atlas-controlli { position: fixed; top: calc(var(--header-h) + 10px); right: 16px; z-index: 2; display: flex; gap: 6px; align-items: center; justify-content: flex-end;
+.atlas-controlli { position: fixed; top: calc(var(--header-h) + 48px); right: 16px; z-index: 2; display: flex; gap: 6px; align-items: flex-start; justify-content: flex-end;
   flex-wrap: wrap; max-width: calc(100vw - 32px); }
 .atlas-controlli button, .atlas-controlli select { font: inherit; font-size: 12px; min-height: 32px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
   background: #0b1424; color: #e6eefb; border: 1px solid #5d7190; }
+.atlas-filtri { display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap; max-width: min(78vw, 620px);
+  padding: 6px; border: 1px solid rgba(242,246,255,.13); border-radius: 16px; background: rgba(0,0,0,.84); }
 .atlas-controlli button[aria-pressed='true'], .atlas-controlli button[aria-checked='true'] { background: #cfeaff; color: #06101c; border-color: #cfeaff; }
 .atlas-controlli button.vista { background: #ffd89a; color: #1a1002; border-color: #ffd89a; }
 .atlas-controlli button:focus-visible, .atlas-controlli select:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
@@ -111,7 +113,7 @@
 .atlas-tip dt { color: #a9b8d0; flex: 0 0 84px; }
 .atlas-tip dd { margin: 0; overflow-wrap: anywhere; }
 .atlas-tip em { display: block; margin-top: 4px; color: #ffd89a; font-style: normal; }
-@media (max-width: 599px) { .atlas-controlli button, .atlas-controlli select { min-height: 36px; } }
+@media (max-width: 599px) { .atlas-controlli button, .atlas-controlli select { min-height: 40px; } .atlas-controlli { top: calc(var(--header-h) + 48px); right: 8px; } }
 
 /* tendina dei numeri del Centro: chiusa all'avvio, si apre morbida (solo transform e opacity) */
 .kpis.tendina { animation: tendina-apri 200ms ease-out; }
@@ -147,7 +149,7 @@ body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6
   color: rgba(242,246,255,.72); font-weight: 500; letter-spacing: .12em; }
 .cc .hero .stato { position: absolute; top: 59%; left: 50%; transform: translateX(-50%); width: min(80vw, 520px); margin: 0;
   color: rgba(242,246,255,.86); font-size: 14px; text-wrap: balance; }
-.hero-comandi { position: fixed; z-index: 5; top: calc(var(--header-h) + 48px); right: 16px; left: auto; transform: none;
+.hero-comandi { position: fixed; z-index: 5; top: calc(var(--header-h) + 48px); right: auto; left: calc(var(--rail-w) + 8px); transform: none;
   width: auto; min-height: 40px; justify-content: flex-end; padding: 0;
   border: 0; border-radius: 999px; background: transparent; }
 .dock { bottom: max(10px, env(safe-area-inset-bottom)); width: min(700px, calc(100vw - 110px)); }
@@ -155,6 +157,8 @@ body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6
   background: rgba(0,0,0,.84); box-shadow: 0 0 16px rgba(220,232,255,.08); backdrop-filter: none; }
 .dock .bar input { padding-inline: 12px; font-size: 14px; }
 .dock .bar input::placeholder { color: rgba(242,246,255,.58); }
+.dock-state { position: absolute; right: 8px; bottom: calc(100% + 5px); max-width: min(88vw, 660px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,.72); color: rgba(242,246,255,.74); font-size: 12px; }
 .btn { border-radius: 999px; transition: opacity 150ms ease, box-shadow 150ms ease; }
 .btn.primary { background: rgba(242,246,255,.92); color: #05070d; border-color: rgba(242,246,255,.92); box-shadow: 0 0 14px rgba(220,232,255,.14); }
 .btn.primary:hover:not(:disabled) { background: rgba(242,246,255,.98); box-shadow: 0 0 14px rgba(220,232,255,.28); }
@@ -194,6 +198,35 @@ body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6
   animation: pannello-arriva 220ms ease-out both; }
 .drawer header { background: rgba(4,6,12,.65); border-color: rgba(242,246,255,.12); }
 .drawer .body { color: #f2f6ff; }
+.email-panel { display: grid; min-height: min(60vh, 520px); gap: 18px; color: #f2f6ff; }
+.email-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid rgba(242,246,255,.12); }
+.email-toolbar button, .email-toolbar label { display: flex; align-items: center; gap: 7px; min-height: 36px; padding: 6px 10px;
+  border: 1px solid rgba(242,246,255,.14); border-radius: 999px; background: rgba(242,246,255,.035); color: rgba(242,246,255,.62); }
+.email-toolbar label { flex: 1 1 180px; }
+.email-toolbar input { width: 100%; min-width: 0; border: 0; background: transparent; color: #f2f6ff; }
+.email-empty { display: grid; align-content: center; justify-items: center; gap: 8px; min-height: 300px; text-align: center; }
+.email-empty svg { color: rgba(242,246,255,.75); }
+.email-empty h3, .email-empty p { margin: 0; }
+.email-empty h3 { font-size: 18px; font-weight: 500; }
+.email-empty p, .email-empty span, .email-approval-note { color: rgba(242,246,255,.68); font-size: 13px; }
+.email-approval-note { margin: auto 0 0; padding-top: 12px; border-top: 1px solid rgba(242,246,255,.1); }
+.machine-detail-status { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.machine-detail dl { display: grid; gap: 14px; margin: 0; }
+.machine-detail dl > div { display: grid; gap: 4px; }
+.machine-detail dt { color: rgba(242,246,255,.6); font-size: 12px; }
+.machine-detail dd { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.stats-panel { display: grid; gap: 18px; min-width: 0; }
+.stats-summary { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px 18px; margin: 0; }
+.stats-summary > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(242,246,255,.1); padding: 4px 0 8px; }
+.stats-summary dt { color: rgba(242,246,255,.68); font-size: 13px; }
+.stats-summary dd { margin: 0; color: #f2f6ff; font-size: 23px; font-weight: 350; font-variant-numeric: tabular-nums; }
+.stats-chart h3, .stats-recent h3 { margin: 0 0 10px; font-size: 15px; font-weight: 500; }
+.stats-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.stats-compare, .stats-footnote { margin: 8px 0 0; color: rgba(242,246,255,.64); font-size: 12px; }
+.stats-recent ul { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.stats-recent li { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(242,246,255,.09); }
+.stats-recent li span { min-width: 0; overflow-wrap: anywhere; }
+.stats-recent time { color: rgba(242,246,255,.58); white-space: nowrap; font-size: 12px; }
 .btn.ghost, .atlas-controlli button, .atlas-controlli select { background: rgba(242,246,255,.04); border-color: rgba(242,246,255,.22); color: #f2f6ff; }
 .atlas-controlli button[aria-pressed='true'], .atlas-controlli button[aria-checked='true'] { background: rgba(242,246,255,.92); color: #05070d; border-color: rgba(242,246,255,.92); }
 .atlas-controlli button.vista { background: rgba(242,246,255,.92); color: #05070d; border-color: rgba(242,246,255,.92); }
@@ -216,7 +249,7 @@ body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6
   .stellar-kpis .kpi .v { font-size: 27px; }
   .stellar-kpis .kpi .l { font-size: 10px; }
   .dock { bottom: calc(62px + env(safe-area-inset-bottom)); left: 8px; right: 8px; width: auto; transform: none; }
-  .hero-comandi { top: calc(var(--header-h) + 52px); right: 8px; }
+  .hero-comandi { top: calc(var(--header-h) + 52px); left: 8px; }
   .dettagli-centro { top: auto; right: 0; bottom: 0; left: 0; width: 100%; min-width: 0; height: 85svh; padding: 16px;
     border-radius: 18px 18px 0 0; animation: pannello-arriva 220ms ease-out both; }
 }

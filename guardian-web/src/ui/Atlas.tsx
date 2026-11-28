@@ -6,8 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { angoloAuto, COLORI_ATLAS, conProfondita, costruisciGrafo, hash01, polvere, proietta, type Grafo3, devoDisegnare, DURATA_ZOOM_MS, disponi, faseImpulso, FILTRO_TUTTI, filtraGrafo, interpolaVista, lampeggio, nodoInPunto, possoAnimare,
   puntoSulPercorso, respiro, riepilogoAtlas, schedaNodo, stileStato, VISTA_COMPLETA, vistaStanza, zonaLibera, type FiltroAtlas, type Grafo, type Nodo, type Pt, type Rett, type Scheda, type Vista } from '../logic/atlas';
-import { useG } from '../state';
+import { leggiPreferenze, useG } from '../state';
 import { statoNucleo } from '../logic/guardian';
+import { alphaStella } from '../logic/spazio';
 import { ThreeBrain } from './ThreeBrain';
 
 const FONDO = '#000000';
@@ -62,7 +63,7 @@ export function disegna(c: CanvasRenderingContext2D, g: Grafo3, w: number, h: nu
   for (const stella of STELLE) {
     const x = stella.x * w - w / 2; const y = stella.y * h - h / 2;
     const px = w / 2 + x * ca - y * sa; const py = h / 2 + x * sa + y * ca;
-    c.globalAlpha = stella.luce * (0.85 + 0.15 * Math.sin(t / 1000 * Math.PI * 2 / stella.periodo + stella.fase));
+    c.globalAlpha = alphaStella(stella.luce, stella.fase, stella.periodo, t / 1000);
     c.fillRect(px, py, stella.dimensione, stella.dimensione);
   }
   c.restore();
@@ -179,10 +180,10 @@ export function disegnaVita(c: CanvasRenderingContext2D, g: Grafo, geo: Geo, t: 
 }
 
 /** Rettangolo del pannello iniziale del Centro letto dal DOM (coordinate di pagina), oppure una costante ragionevole. */
-function leggiPannello(w: number): Rett | null {
+function leggiPannello(): Rett | null {
   const el = document.querySelector('.drawer, .dettagli-centro');
   if (el) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) return { x: r.x + window.scrollX, y: r.y + window.scrollY, w: r.width, h: r.height }; }
-  return w >= TELEFONO ? { x: 96, y: 100, w: 440, h: 470 } : null; // costante: colonna del Centro a sinistra
+  return null;
 }
 const CHIAVI: (keyof Rett)[] = ['x', 'y', 'w', 'h'];
 const rettUguali = (a: Rett | null, b: Rett | null) => a === b || (!!a && !!b && CHIAVI.every((k) => Math.abs(a[k] - b[k]) < 2));
@@ -200,9 +201,11 @@ export default function Atlas() {
   const radice = useRef<HTMLDivElement>(null);
   const rispondendo = useRef(false); rispondendo.current = pensa;
   const [dim, setDim] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
-  const [pannelloRett, setPannello] = useState<Rett | null>(() => leggiPannello(window.innerWidth));
+  const [pannelloRett, setPannello] = useState<Rett | null>(() => leggiPannello());
   const [ridotto, setRidotto] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
   const [filtro, setFiltro] = useState<FiltroAtlas>(FILTRO_TUTTI);
+  const [filtriAperti, setFiltriAperti] = useState(false);
+  const [dettagliAperti, setDettagliAperti] = useState(() => leggiPreferenze().dettagliAperti);
   const [stanzaZoom, setStanzaZoom] = useState<string | null>(null);
   const [tip, setTip] = useState<Tip | null>(null);
   const [threeReady, setThreeReady] = useState(false);
@@ -214,13 +217,24 @@ export default function Atlas() {
   useEffect(() => {
     const misura = () => {
       setDim((d) => (d.w === window.innerWidth && d.h === window.innerHeight ? d : { w: window.innerWidth, h: window.innerHeight }));
-      setPannello((p) => { const n = leggiPannello(window.innerWidth); return rettUguali(p, n) ? p : n; });
+      setPannello((p) => { const n = leggiPannello(); return rettUguali(p, n) ? p : n; });
     };
-    window.addEventListener('resize', misura);
+    window.addEventListener('resize', misura); window.addEventListener('guardian:preferenze', misura);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(misura) : null; ro?.observe(document.body);
     const t = window.setTimeout(misura, 300); // il Centro può montarsi dopo l'Atlas
-    return () => { window.removeEventListener('resize', misura); ro?.disconnect(); window.clearTimeout(t); };
+    return () => { window.removeEventListener('resize', misura); window.removeEventListener('guardian:preferenze', misura); ro?.disconnect(); window.clearTimeout(t); };
   }, []);
+  useEffect(() => {
+    const aggiorna = () => setDettagliAperti(leggiPreferenze().dettagliAperti);
+    window.addEventListener('guardian:preferenze', aggiorna); return () => window.removeEventListener('guardian:preferenze', aggiorna);
+  }, []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const nuovo = leggiPannello();
+      setPannello((corrente) => rettUguali(corrente, nuovo) ? corrente : nuovo);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [dettagliAperti, pannello]);
   useEffect(() => {
     const m = window.matchMedia?.('(prefers-reduced-motion: reduce)'); if (!m) return;
     const f = () => setRidotto(m.matches); m.addEventListener('change', f); return () => m.removeEventListener('change', f);
@@ -365,31 +379,34 @@ export default function Atlas() {
   const nodoTip = tip && grafo ? grafo.nodi.find((n) => n.id === tip.id) : undefined;
   const scheda: Scheda | null = nodoTip && snap ? schedaNodo(snap, nodoTip) : null;
   const stanze = (snap?.stanze ?? []).filter((st) => st.attiva).sort((a, b) => a.ordine - b.ordine);
-  const nascondi = !!pannello || paletteAperta || parete;
+  const nascondi = !!pannello || paletteAperta || parete || dettagliAperti;
   return (
     <div ref={radice} className="atlas-sfondo" data-atlas={grafo ? 'pronto' : 'attesa'} data-atlas-nodi={grafo?.nodi.length ?? 0} data-three-ready={threeReady}>
       <canvas ref={canvas} aria-hidden="true" />
       <ThreeBrain stato={stato} ridotto={ridotto} dispositivi={snap?.devices ?? []} agenti={snap?.agents ?? []}
-        eventi={snap?.events ?? []} pannelloAperto={!!pannello} onReady={trePronto} onFallback={treFallback}
+        eventi={snap?.events ?? []} pannelloAperto={!!pannello || dettagliAperti} onReady={trePronto} onFallback={treFallback}
         onApriDispositivi={apriDispositivi} onApriAgente={apriAgente} />
       <p className="sr-only" role="status">{`Atlas di Guardian, in 3D. ${testo} I puntini tenui sullo sfondo sono solo decorativi.`}</p>
       {!nascondi && createPortal(
-        <div className="atlas-controlli" role="group" aria-label="Filtri dell'Atlas">
-          {telefono ? (
-            <select aria-label="Filtra per stanza" value={filtro.stanza} onChange={(e) => cambiaFiltro({ ...filtro, stanza: e.target.value })}>
-              <option value="tutti">Tutti</option>
-              {stanze.map((st) => <option key={st.id} value={st.id}>{st.nome}</option>)}
-            </select>
-          ) : (
-            <>
-              <button type="button" aria-pressed={filtro.stanza === 'tutti'} aria-label="Mostra tutte le stanze" onClick={() => cambiaFiltro({ ...filtro, stanza: 'tutti' })}>Tutti</button>
-              {stanze.map((st) => (
-                <button key={st.id} type="button" aria-pressed={filtro.stanza === st.id} aria-label={`Mostra solo la stanza ${st.nome}`} onClick={() => cambiaFiltro({ ...filtro, stanza: st.id })}>{st.nome}</button>
-              ))}
-            </>
-          )}
-          <button type="button" role="switch" aria-checked={filtro.soloAttivi} aria-label="Solo attivi: mostra solo agenti e task al lavoro" onClick={() => cambiaFiltro({ ...filtro, soloAttivi: !filtro.soloAttivi })}>Solo attivi</button>
-          {stanzaZoom && <button type="button" className="vista" aria-label="Vista completa: torna a tutto l'Atlas (tasto Esc)" onClick={vistaCompleta}>Vista completa</button>}
+        <div className="atlas-controlli">
+          <button type="button" aria-expanded={filtriAperti} aria-controls="gruppo-filtri-atlas" onClick={() => setFiltriAperti((x) => !x)}>Filtri</button>
+          {filtriAperti && <div className="atlas-filtri" id="gruppo-filtri-atlas" role="group" aria-label="Filtri dell'Atlas">
+            {telefono ? (
+              <select aria-label="Filtra per stanza" value={filtro.stanza} onChange={(e) => cambiaFiltro({ ...filtro, stanza: e.target.value })}>
+                <option value="tutti">Tutti</option>
+                {stanze.map((st) => <option key={st.id} value={st.id}>{st.nome}</option>)}
+              </select>
+            ) : (
+              <>
+                <button type="button" aria-pressed={filtro.stanza === 'tutti'} aria-label="Mostra tutte le stanze" onClick={() => cambiaFiltro({ ...filtro, stanza: 'tutti' })}>Tutti</button>
+                {stanze.map((st) => (
+                  <button key={st.id} type="button" aria-pressed={filtro.stanza === st.id} aria-label={`Mostra solo la stanza ${st.nome}`} onClick={() => cambiaFiltro({ ...filtro, stanza: st.id })}>{st.nome}</button>
+                ))}
+              </>
+            )}
+            <button type="button" role="switch" aria-checked={filtro.soloAttivi} aria-label="Solo attivi: mostra solo agenti e task al lavoro" onClick={() => cambiaFiltro({ ...filtro, soloAttivi: !filtro.soloAttivi })}>Solo attivi</button>
+            {stanzaZoom && <button type="button" className="vista" aria-label="Vista completa: torna a tutto l'Atlas (tasto Esc)" onClick={vistaCompleta}>Vista completa</button>}
+          </div>}
         </div>, document.body)}
       {scheda && tip && createPortal(
         <div className="atlas-tip" aria-hidden="true" style={{ left: Math.max(8, Math.min(tip.x + 14, dim.w - 260)), top: Math.max(8, Math.min(tip.y + 14, dim.h - 170)) }}>

@@ -1,7 +1,7 @@
-import { Activity, ArrowLeft, Bell, Bot, BookOpen, Building2, Cpu, GitBranchPlus, HeartPulse, LayoutDashboard, ListTodo, LogOut, Mic,
+import { Activity, ArrowLeft, Bell, Bot, BookOpen, Building2, Cpu, GitBranchPlus, HeartPulse, Inbox, LayoutDashboard, ListTodo, LogOut, Mic,
   MicOff, Network, Search, Send, Settings, ShieldCheck, Shuffle, Square, X, type LucideIcon } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent as KE } from 'react';
-import { fa } from '../logic/status';
+import { fa, statoAgente } from '../logic/status';
 import { leggiPreferenze, useG, type Pannello } from '../state';
 import { CommandCenter } from './CommandCenter';
 import { BarraConversazione, PulsanteConversazione, useConversazione } from './Conversazione';
@@ -26,6 +26,7 @@ import { ascolta, inSilenzio, parla, smettiDiAscoltare, supportoAscolto, support
 export const NAV: { p: string; nome: string; icona: LucideIcon }[] = [
   { p: 'mappa', nome: 'Mappa', icona: Network }, { p: 'agenti', nome: 'Agenti', icona: Bot }, { p: 'aziende', nome: 'Aziende', icona: Building2 }, { p: 'tasks', nome: 'Task', icona: ListTodo },
   { p: 'approvazioni', nome: 'Approva', icona: ShieldCheck }, { p: 'memoria', nome: 'Memoria', icona: BookOpen },
+  { p: 'email', nome: 'Email', icona: Inbox },
   { p: 'handoff', nome: 'Handoff', icona: Shuffle }, { p: 'attivita', nome: 'Attività', icona: Activity },
   { p: 'statistiche', nome: 'Statistiche', icona: HeartPulse }, { p: 'workflow', nome: 'Workflow', icona: GitBranchPlus },
   { p: 'dispositivi', nome: 'PC', icona: Cpu }, { p: 'impostazioni', nome: 'Impostazioni', icona: Settings },
@@ -125,23 +126,36 @@ function DrawerHost() {
 }
 
 function Dock() {
-  const { pannello, messaggi, stanza } = useG();
+  const { pannello, messaggi, stanza, snap, pensa } = useG();
   const voce = useVoce();
   const [testo, setTesto] = useState('');
   const [aperta, setAperta] = useState(false);
   const fine = useRef<HTMLDivElement>(null);
+  const cronologia = useRef<string[]>([]);
+  const posizioneCronologia = useRef(-1);
   useEffect(() => { fine.current?.scrollIntoView({ block: 'end' }); }, [messaggi.length]);
 
   const rispondi = useRispondi();
   const conv = useConversazione();
   const chiedi = async (q: string) => {
     if (!q.trim()) return;
+    cronologia.current = [...cronologia.current, q.trim()].slice(-40); posizioneCronologia.current = -1;
     setAperta(true); setTesto('');
     const r = await rispondi(q);
     let t = '';
     if (typeof r === 'string') t = r; else { const parti: string[] = []; for await (const f of r) parti.push(f); t = parti.join(' '); }
     if (t && conv.fase === 'spento' && leggiPreferenze().voce) parla(t);
   };
+  const agenteInCorso = snap?.agents.find((a) => ['working', 'waiting', 'needs_approval'].includes(statoAgente(a)));
+  const taskInCorso = agenteInCorso && snap?.tasks.find((t) => t.assigned_agent_id === agenteInCorso.id && !['completed', 'failed', 'cancelled'].includes(t.stato));
+  const pcInCorso = agenteInCorso?.device_id ? snap?.devices.find((d) => d.id === agenteInCorso.device_id) : undefined;
+  const ultimo = messaggi[messaggi.length - 1];
+  const statoComando = conv.fase === 'elaborazione' || pensa ? 'Guardian sta elaborando la richiesta'
+    : voce.ascolta || conv.fase === 'ascolto' ? 'In ascolto'
+      : voce.parla || conv.fase === 'parla' ? 'Guardian sta rispondendo'
+        : taskInCorso ? `Esecuzione: ${taskInCorso.titolo} · ${agenteInCorso?.nome}${pcInCorso ? ` · ${pcInCorso.nome}` : ''}`
+          : ultimo?.da === 'guardian' ? `Risultato pronto · ${ultimo.testo.slice(0, 72)}`
+            : ultimo?.da === 'user' ? 'Richiesta ricevuta' : 'Pronto a ricevere un comando';
   useEffect(() => {
     const f = (e: Event) => chiedi((e as CustomEvent<string>).detail);
     window.addEventListener('guardian:chiedi', f); return () => window.removeEventListener('guardian:chiedi', f);
@@ -155,9 +169,20 @@ function Dock() {
           {messaggi.map((m, i) => <div key={i} className={`msg ${m.da}`}>{m.testo}{m.fonte && <span className="src">Fonte: {m.fonte}</span>}</div>)}
           <div ref={fine} />
         </div>)}
+      <div className="dock-state" role="status" aria-live="polite">{statoComando}</div>
       <form className="bar" onSubmit={(e) => { e.preventDefault(); chiedi(testo); }}>
-        <input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder={pannello ? 'Chiedi a Guardian su questo pannello…' : stanza ? 'Chiedi a Guardian su questa stanza…' : 'Chiedi a Guardian: «apri vendite», «cosa è bloccato?»'}
-          aria-label="Messaggio per Guardian" onFocus={() => setAperta(true)} />
+        <input value={testo} onChange={(e) => { setTesto(e.target.value); posizioneCronologia.current = -1; }}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp' && cronologia.current.length && (e.currentTarget.selectionStart ?? 0) === 0) {
+              e.preventDefault(); posizioneCronologia.current = Math.min(cronologia.current.length - 1, posizioneCronologia.current + 1);
+              setTesto(cronologia.current[cronologia.current.length - 1 - posizioneCronologia.current]);
+            } else if (e.key === 'ArrowDown' && posizioneCronologia.current >= 0) {
+              e.preventDefault(); posizioneCronologia.current--;
+              setTesto(posizioneCronologia.current < 0 ? '' : cronologia.current[cronologia.current.length - 1 - posizioneCronologia.current]);
+            }
+          }}
+          placeholder={pannello ? 'Chiedi a Guardian su questo pannello…' : stanza ? 'Chiedi a Guardian su questa stanza…' : 'Chiedi a Guardian: «apri vendite», «cosa è bloccato?»'}
+          aria-label="Messaggio per Guardian" aria-keyshortcuts="ArrowUp ArrowDown" onFocus={() => setAperta(true)} />
         {messaggi.length > 0 && <button type="button" className="btn ghost sm" onClick={() => setAperta((a) => !a)} aria-expanded={aperta}>
           {aperta ? 'Nascondi' : `Conversazione (${messaggi.length})`}</button>}
         {voce.parla && <button type="button" className="btn ghost icon" onClick={zitto} aria-label="Interrompi la voce"><Square size={16} aria-hidden /></button>}
