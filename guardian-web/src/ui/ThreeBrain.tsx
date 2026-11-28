@@ -45,17 +45,17 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
 
         const root = new THREE.Group(); scene.add(root);
         const neural = new THREE.Group(); root.add(neural);
-        const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.64, 4), new THREE.MeshBasicMaterial({
-          color: 0xf2f6ff, transparent: true, opacity: 0.94, blending: THREE.AdditiveBlending,
+        const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 3), new THREE.MeshBasicMaterial({
+          color: 0xf2f6ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending,
         }));
-        materialiStato.current = [core.material as MeshBasicMaterial];
+        materialiStato.current = []; // il nucleo resta bianco stella: lo stato si legge da guscio e alone
         neural.add(core);
         const haloMaterial = new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: 0.08,
           side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false });
         const halo = new THREE.Mesh(new THREE.SphereGeometry(0.96, 36, 28), haloMaterial);
         halo.visible = false; neural.add(halo); haloRef.current = haloMaterial;
-        const inner = new THREE.Mesh(new THREE.SphereGeometry(0.34, 32, 24), new THREE.MeshBasicMaterial({
-          color: 0xffffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending,
+        const inner = new THREE.Mesh(new THREE.SphereGeometry(0.075, 24, 16), new THREE.MeshBasicMaterial({
+          color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending,
         }));
         neural.add(inner);
 
@@ -175,6 +175,7 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
           const w = host.current.clientWidth || window.innerWidth;
           const h = host.current.clientHeight || window.innerHeight;
           renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+          root.scale.setScalar(w < 600 ? 0.6 : w < 1100 ? 0.82 : 1); // telefono: cervello più piccolo, i numeri restano leggibili
         };
         size();
         const observer = new ResizeObserver(size); observer.observe(host.current);
@@ -218,7 +219,6 @@ export function ThreeBrain({ stato, ridotto = false, dispositivi = [], agenti = 
           const statoAttuale = statoRef.current;
           if (statoAttuale !== ultimoStato) { ultimoStato = statoAttuale; cambiatoStato = now; }
           const color = PALETTE[statoAttuale];
-          (core.material as MeshBasicMaterial).color.setHex(color);
           (shellPoints.material as PointsMaterial).color.setHex(color);
           (shellPoints.material as PointsMaterial).opacity = statoAttuale === 'offline' ? 0.24 : 0.62;
           halo.visible = statoAttuale === 'approval' || statoAttuale === 'error';

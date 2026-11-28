@@ -258,3 +258,6 @@ body:has(.atlas-sfondo) { background: #000; background-image: none; color: #f2f6
 @media (prefers-reduced-motion: reduce) {
   .dettagli-centro, .drawer { animation: none; }
 }
+
+/* spazio profondo: il contenitore del Centro non è un pannello di vetro (sfocava il cervello 3D dietro) */
+.con-volto .cc .hero, .con-volto .cc .hero > div:last-child { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
